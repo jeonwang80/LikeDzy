@@ -175,14 +175,12 @@ button {
 
 .mobile-menu-btn {
   display: none;
-  background: transparent;
-  color: inherit;
-  z-index: 101;
 }
 
 /* Hero Section */
 .hero {
   height: 100vh;
+  height: 100dvh; /* 모바일 브라우저 주소창 고려 */
   display: flex;
   flex-direction: row;
   overflow: hidden;
@@ -448,6 +446,12 @@ button {
   margin-bottom: 2rem;
 }
 
+.mobile-sticky-action-bar {
+  display: flex; 
+  gap: 1rem; 
+  margin-bottom: 1rem;
+}
+
 /* Tabs */
 .detail-tabs-container {
   display: flex;
@@ -517,22 +521,13 @@ button {
     font-size: 0.95rem;
   }
   .header-nav {
-    position: fixed;
-    top: 0;
-    right: -100%;
-    width: 70%;
-    height: 100vh;
-    background: var(--bg-color);
-    flex-direction: column;
-    padding: 6rem 2rem 2rem;
-    transition: right 0.3s ease;
-    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
-  }
-  .header-nav.open {
-    right: 0;
+    display: none; /* 하단 네비게이션으로 대체되므로 숨김 */
   }
   .mobile-menu-btn {
-    display: block;
+    display: none; /* 햄버거 메뉴 버튼 숨김 */
+  }
+  body {
+    padding-bottom: 70px; /* 하단 네비게이션 공간 확보 */
   }
   .product-grid {
     gap: 1.5rem;
@@ -544,10 +539,23 @@ button {
   .detail-title {
     font-size: 2rem;
   }
-  .detail-action-container {
-    gap: 0.5rem !important;
+  .mobile-sticky-action-bar {
+    position: fixed;
+    bottom: 60px; /* 하단 네비게이션바 높이만큼 띄움 */
+    left: 0;
+    right: 0;
+    padding: 10px 5%;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--glass-border);
+    z-index: 90; /* 바텀 네비보다는 아래, 내용보다는 위 */
+    margin-bottom: 0;
+    gap: 0.5rem;
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
   }
   .detail-action-btn {
+    margin-bottom: 0 !important;
     padding: 1rem 0.5rem !important;
     font-size: 1rem !important;
   }

@@ -12,10 +12,16 @@ import AdminInventory from './pages/AdminInventory';
 import AdminBoard from './pages/AdminBoard';
 import AdminLogin from './pages/AdminLogin';
 import CartModal from './components/CartModal';
+import IntroSplash from './components/IntroSplash';
+import BottomNav from './components/BottomNav';
 
 function App() {
+  const [showSplash, setShowSplash] = React.useState(true);
+
   return (
     <HashRouter>
+      {showSplash && <IntroSplash onComplete={() => setShowSplash(false)} />}
+      
       <Routes>
         <Route path="/" element={<Storefront />} />
         <Route path="/login" element={<Login />} />
@@ -35,6 +41,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <CartModal />
+      <BottomNav />
     </HashRouter>
   );
 }

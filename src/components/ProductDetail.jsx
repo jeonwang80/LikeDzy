@@ -203,7 +203,7 @@ export default function ProductDetail({ product, onBack }) {
               </div>
             )}
 
-            <div className="detail-action-container" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+            <div className="mobile-sticky-action-bar">
               <button 
                 onClick={handleAddToCart}
                 className="btn-secondary detail-action-btn"
