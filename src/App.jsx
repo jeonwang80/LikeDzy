@@ -1,30 +1,41 @@
-import React, { useState } from 'react';
-import Header from './components/Header';
-import HeroSection from './components/HeroSection';
-import FeaturedProducts from './components/FeaturedProducts';
-import BrandStory from './components/BrandStory';
-import Footer from './components/Footer';
-import ProductDetail from './components/ProductDetail';
+import React from 'react';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Storefront from './pages/Storefront';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import MyPage from './pages/MyPage';
+import AdminLayout from './pages/AdminLayout';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminStats from './pages/AdminStats';
+import AdminOrders from './pages/AdminOrders';
+import AdminInventory from './pages/AdminInventory';
+import AdminBoard from './pages/AdminBoard';
+import AdminLogin from './pages/AdminLogin';
+import CartModal from './components/CartModal';
 
 function App() {
-  const [selectedProduct, setSelectedProduct] = useState(null);
-
   return (
-    <>
-      <Header />
-      <main style={{ paddingTop: selectedProduct ? '80px' : '0' }}>
-        {selectedProduct ? (
-          <ProductDetail product={selectedProduct} onBack={() => setSelectedProduct(null)} />
-        ) : (
-          <>
-            <HeroSection />
-            <FeaturedProducts onProductSelect={setSelectedProduct} />
-            <BrandStory />
-          </>
-        )}
-      </main>
-      <Footer />
-    </>
+    <HashRouter>
+      <Routes>
+        <Route path="/" element={<Storefront />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/mypage" element={<MyPage />} />
+        
+        {/* Admin Routes */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="stats" element={<AdminStats />} />
+          <Route path="orders" element={<AdminOrders />} />
+          <Route path="inventory" element={<AdminInventory />} />
+          <Route path="board" element={<AdminBoard />} />
+        </Route>
+        
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <CartModal />
+    </HashRouter>
   );
 }
 

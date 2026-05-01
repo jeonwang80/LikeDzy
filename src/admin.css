@@ -1,0 +1,92 @@
+/* Admin Global Styling & Responsive Utilities */
+
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f1f5f9;
+}
+
+.admin-sidebar {
+  width: 250px;
+  background: #0f172a;
+  color: white;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.admin-main {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  width: calc(100% - 250px);
+}
+
+.admin-table-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  overflow-x: auto; /* enables horizontal scrolling */
+  width: 100%;
+}
+
+.admin-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.admin-modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+  .admin-layout {
+    flex-direction: column;
+  }
+  
+  .admin-sidebar {
+    width: 100%;
+    padding: 1rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .admin-sidebar h2 {
+    margin-bottom: 0 !important;
+  }
+
+  .admin-sidebar-nav {
+    display: none !important; /* Hide standard nav on very small screens, or we can make it a simple row */
+  }
+
+  .admin-sidebar button {
+    margin-top: 0 !important;
+  }
+
+  .admin-main {
+    width: 100%;
+    padding: 1rem;
+  }
+  
+  .admin-modal-content {
+    padding: 1.5rem;
+  }
+}

@@ -1,48 +1,57 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export default function FeaturedProducts({ onProductSelect }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const sectionRef = useRef(null);
-
-  const products = [
-    { 
-      id: 1, 
-      images: [
-        './product_pants_1776726381627.png', 
-        './hero_woven_golf_1776726365621.png', 
-        './product_jacket_1776726540377.png'
-      ] 
-    },
-    { 
-      id: 2, 
-      images: [
-        './product_hat_1776726393074.png', 
-        './product_pants_1776726381627.png', 
-        './product_jacket_1776726540377.png'
-      ] 
-    },
-    { 
-      id: 3, 
-      images: [
-        './product_jacket_1776726540377.png', 
-        './hero_woven_golf_1776726365621.png', 
-        './product_pants_1776726381627.png'
-      ] 
-    }
-  ];
-
-  // Map translations to products
-  const translatedProducts = products.map((product, index) => ({
-    ...product,
-    name: t(`products.items.${index}.name`),
-    category: t(`products.items.${index}.category`),
-    price: t(`products.items.${index}.price`),
-    description: t(`products.items.${index}.description`),
-    checkoutUrl: t(`products.items.${index}.checkoutUrl`)
-  }));
+  const [products, setProducts] = useState([]);
 
   useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'products'));
+        const productsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setProducts(productsList.sort((a, b) => {
+          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+          return timeB - timeA; // 최신순 정렬
+        }));
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  // Map translations to products based on current language
+  const translatedProducts = products.map(product => {
+    const langData = product[language] || product.ko || {};
+    
+    // Format price based on language if prices object exists
+    let displayPrice = product.price;
+    if (product.prices) {
+      if (language === 'ko') displayPrice = `₩${product.prices.KRW?.toLocaleString()}`;
+      else if (language === 'en') displayPrice = `$${product.prices.USD?.toLocaleString()}`;
+      else if (language === 'vi') displayPrice = `₫${product.prices.VND?.toLocaleString()}`;
+    }
+
+    return {
+      ...product,
+      name: langData.name || '',
+      category: langData.category || '',
+      description: langData.description || '',
+      fabric: langData.fabric || '',
+      sizeGuide: langData.sizeGuide || '',
+      price: displayPrice,
+      images: product.imageUrls || (product.imageUrl ? [product.imageUrl] : []),
+    };
+  });
+
+  useEffect(() => {
+    if (products.length === 0) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -58,13 +67,13 @@ export default function FeaturedProducts({ onProductSelect }) {
     cards.forEach((card) => observer.observe(card));
 
     return () => observer.disconnect();
-  }, []);
+  }, [products]);
 
   return (
     <section id="collection" className="products-section container">
       <div className="section-header">
         <h2 className="section-title">{t('products.title')}</h2>
-        <a href="#shop" className="view-all">{t('products.viewAll')}</a>
+        <a href="#collection" className="view-all">{t('products.viewAll')}</a>
       </div>
       <div className="product-grid" ref={sectionRef}>
         {translatedProducts.map((product) => (

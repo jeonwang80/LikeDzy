@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { Link, useNavigate } from 'react-router-dom';
 
-export default function Header() {
+export default function Header({ onNavigateHome }) {
   const { t, language, setLanguage } = useLanguage();
+  const { cart, setIsCartOpen } = useCart();
+  const { currentUser } = useAuth();
+  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -12,14 +19,23 @@ export default function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleNavClick = (path) => {
+    setMobileMenuOpen(false);
+    if (path) {
+      navigate(path);
+    } else if (onNavigateHome) {
+      onNavigateHome();
+    }
+  };
+
   return (
     <header className="header" style={{ padding: scrolled ? '1rem 5%' : '1.5rem 5%' }}>
-      <div className="header-logo">LikeDzy</div>
+      <div className="header-logo" style={{ cursor: 'pointer' }} onClick={() => handleNavClick('/')}>LikeDzy</div>
       
       <nav className={`header-nav ${mobileMenuOpen ? 'open' : ''}`}>
-        <a href="#shop" onClick={() => setMobileMenuOpen(false)}>{t('nav.shop')}</a>
-        <a href="#collection" onClick={() => setMobileMenuOpen(false)}>{t('nav.collection')}</a>
-        <a href="#about" onClick={() => setMobileMenuOpen(false)}>{t('nav.about')}</a>
+        <a href="/#collection" onClick={() => setMobileMenuOpen(false)}>{t('nav.shop')}</a>
+        <a href="/#collection" onClick={() => setMobileMenuOpen(false)}>{t('nav.collection')}</a>
+        <a href="/#about" onClick={() => setMobileMenuOpen(false)}>{t('nav.about')}</a>
       </nav>
 
       <div className="header-actions">
@@ -33,12 +49,23 @@ export default function Header() {
           <option value="vi">VI</option>
         </select>
         
-        <button style={{ background: 'transparent', color: 'inherit' }}>
+        {currentUser ? (
+          <Link to="/mypage" style={{ color: 'inherit', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold' }}>마이페이지</Link>
+        ) : (
+          <Link to="/login" style={{ color: 'inherit', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold' }}>로그인</Link>
+        )}
+
+        <button onClick={() => setIsCartOpen(true)} style={{ background: 'transparent', color: 'inherit', position: 'relative', border: 'none', cursor: 'pointer', padding: 0 }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <path d="M16 10a4 4 0 0 1-8 0"></path>
           </svg>
+          {cartItemCount > 0 && (
+            <span style={{ position: 'absolute', top: '-5px', right: '-10px', background: '#ef4444', color: 'white', borderRadius: '50%', fontSize: '0.75rem', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+              {cartItemCount}
+            </span>
+          )}
         </button>
 
         <button 
