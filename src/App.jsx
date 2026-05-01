@@ -14,6 +14,7 @@ import AdminLogin from './pages/AdminLogin';
 import CartModal from './components/CartModal';
 import IntroSplash from './components/IntroSplash';
 import BottomNav from './components/BottomNav';
+import ScrollToTop from './components/ScrollToTop';
 
 function App() {
   const [showSplash, setShowSplash] = React.useState(true);
@@ -42,6 +43,7 @@ function App() {
       </Routes>
       <CartModal />
       <BottomNav />
+      <ScrollToTop />
     </HashRouter>
   );
 }

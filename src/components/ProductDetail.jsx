@@ -20,14 +20,20 @@ export default function ProductDetail({ product, onBack }) {
 
   // Prepare media items (Video first, then images)
   const mediaItems = [];
-  if (product?.youtubeUrl) {
+  if (product?.videoUrl) {
+    mediaItems.push({
+      type: 'native_video',
+      url: product.videoUrl,
+      thumbnail: product.imageUrls && product.imageUrls.length > 0 ? product.imageUrls[0] : ''
+    });
+  } else if (product?.youtubeUrl) {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
     const match = product.youtubeUrl.match(regExp);
     if (match && match[2].length === 11) {
       const youtubeId = match[2];
       mediaItems.push({
-        type: 'video',
-        url: `https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&controls=0&modestbranding=1&playsinline=1`,
+        type: 'youtube_video',
+        url: `https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&controls=0&modestbranding=1&playsinline=1&rel=0&showinfo=0&iv_load_policy=3&fs=0`,
         thumbnail: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`
       });
     }
@@ -74,7 +80,7 @@ export default function ProductDetail({ product, onBack }) {
         </button>
         
         <div className="detail-layout">
-          <div className="detail-image-gallery-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="detail-image-gallery-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0, maxWidth: '100%' }}>
             {mediaItems.length > 0 && (
               <div 
                 className="detail-main-image-wrapper" 
@@ -83,17 +89,29 @@ export default function ProductDetail({ product, onBack }) {
                   backgroundColor: '#ffffff', 
                   borderRadius: '8px', 
                   overflow: 'hidden', 
-                  aspectRatio: mediaItems[mainImageIndex].type === 'video' ? '9/16' : '3/4', 
+                  width: '100%',
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  aspectRatio: '3/4', 
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'center',
                   maxHeight: '80vh'
                 }}
               >
-                {mediaItems[mainImageIndex].type === 'video' ? (
+                {mediaItems[mainImageIndex].type === 'native_video' ? (
+                  <video 
+                    src={mediaItems[mainImageIndex].url}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
+                    autoPlay 
+                    muted 
+                    loop 
+                    playsInline
+                  />
+                ) : mediaItems[mainImageIndex].type === 'youtube_video' ? (
                   <iframe 
                     src={mediaItems[mainImageIndex].url}
-                    style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }}
+                    style={{ width: '100%', height: '100%', border: 'none', minWidth: 0, maxWidth: '100%' }}
                     allow="autoplay; encrypted-media; gyroscope; picture-in-picture"
                     title="Product Video"
                   />
@@ -152,7 +170,7 @@ export default function ProductDetail({ product, onBack }) {
                     }}
                   >
                     <img src={item.thumbnail} alt={`thumbnail-${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    {item.type === 'video' && (
+                    {(item.type === 'youtube_video' || item.type === 'native_video') && (
                       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: 'white', fontSize: '1.5rem', background: 'rgba(0,0,0,0.4)', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         ▶
                       </div>
@@ -271,6 +289,9 @@ export default function ProductDetail({ product, onBack }) {
             
           </div>
         </div>
+
+        {/* 모바일 하단 플로팅 버튼들로 인한 가려짐 방지 여백 */}
+        <div style={{ height: '120px', width: '100%' }}></div>
 
       </div>
     </div>

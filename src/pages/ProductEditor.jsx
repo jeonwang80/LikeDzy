@@ -10,6 +10,8 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
   const [imageFiles, setImageFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
   const [baseCurrency, setBaseCurrency] = useState('KRW');
   const [rawPrice, setRawPrice] = useState(() => {
     if (product && product.prices) {
@@ -103,6 +105,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     return {
       price: '',
       youtubeUrl: '',
+      videoUrl: '',
       ko: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
       en: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
       vi: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
@@ -173,12 +176,31 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     }
   };
 
+  const handleVideoChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.size > 20 * 1024 * 1024) {
+        alert("영상 용량은 20MB 이하만 가능합니다.");
+        return;
+      }
+      setVideoFile(file);
+      setVideoPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveVideo = () => {
+    setVideoFile(null);
+    setVideoPreviewUrl(null);
+    setFormData(prev => ({ ...prev, videoUrl: '' }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       let finalImageUrls = [...formData.imageUrls];
+      let finalVideoUrl = formData.videoUrl || '';
 
       // 1. Upload new images if selected (replaces old ones)
       if (imageFiles.length > 0) {
@@ -191,7 +213,14 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         }
       }
 
-      const finalData = { ...formData, imageUrls: finalImageUrls, updatedAt: new Date() };
+      // 1.5 Upload new video if selected
+      if (videoFile) {
+        const videoRef = ref(storage, `products/videos/${Date.now()}_${videoFile.name}`);
+        const snapshot = await uploadBytes(videoRef, videoFile);
+        finalVideoUrl = await getDownloadURL(snapshot.ref);
+      }
+
+      const finalData = { ...formData, imageUrls: finalImageUrls, videoUrl: finalVideoUrl, updatedAt: new Date() };
       delete finalData.imageUrl; // Remove legacy field
 
       // 2. Save to Firestore
@@ -253,8 +282,32 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                 style={{ flex: 1, padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} 
               />
             </div>
-            <div style={{ marginTop: '1rem' }}>
-              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#1e293b' }}>유튜브 영상 링크 (선택사항)</label>
+            <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '6px' }}>
+              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#1e293b' }}>
+                직접 영상 업로드 (.mp4) <span style={{ fontSize: '0.8rem', color: '#ef4444' }}>* 추천 (10MB 이하 짧은 영상)</span>
+              </label>
+              <input type="file" accept="video/mp4,video/quicktime" onChange={handleVideoChange} style={{ width: '100%', marginBottom: '0.5rem' }} />
+              
+              {(videoPreviewUrl || formData.videoUrl) && (
+                <div style={{ position: 'relative', display: 'inline-block', marginTop: '0.5rem' }}>
+                  <video 
+                    src={videoPreviewUrl || formData.videoUrl} 
+                    style={{ width: '150px', height: '150px', objectFit: 'cover', borderRadius: '4px', backgroundColor: 'black' }} 
+                    controls 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={handleRemoveVideo}
+                    style={{ position: 'absolute', top: '-10px', right: '-10px', background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}
+                  >
+                    X
+                  </button>
+                </div>
+              )}
+
+              <label style={{ fontWeight: 'bold', display: 'block', margin: '1.5rem 0 0.5rem', color: '#1e293b' }}>
+                유튜브 영상 링크 (대체/서브용)
+              </label>
               <input 
                 placeholder="예: https://youtube.com/watch?v=..."
                 value={formData.youtubeUrl || ''} 

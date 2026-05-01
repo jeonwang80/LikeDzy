@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, orderBy, onSnapshot, addDoc } from 'firebase/firestore';
+import { createPortal } from 'react-dom';
+import { collection, query, where, orderBy, onSnapshot, addDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export default function ProductQnA({ productId }) {
@@ -57,6 +58,24 @@ export default function ProductQnA({ productId }) {
     }
   };
 
+  const handleDeleteClick = async (qna) => {
+    const pwd = window.prompt("문의 작성 시 입력한 비밀번호를 입력하세요.");
+    if (pwd === null) return; // 취소 누름
+    if (pwd !== qna.password) {
+      alert("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+    if (window.confirm("정말 이 문의를 삭제하시겠습니까?")) {
+      try {
+        await deleteDoc(doc(db, 'qna', qna.id));
+        alert("문의가 삭제되었습니다.");
+      } catch (error) {
+        console.error("Delete error:", error);
+        alert("삭제 중 오류가 발생했습니다.");
+      }
+    }
+  };
+
   return (
     <div style={{ marginTop: '3rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -77,7 +96,7 @@ export default function ProductQnA({ productId }) {
             
             return (
               <div key={qna.id} style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', alignItems: 'flex-start' }}>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <span style={{ 
                       padding: '0.2rem 0.5rem', 
@@ -91,9 +110,17 @@ export default function ProductQnA({ productId }) {
                     </span>
                     {qna.isSecret && <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>🔒 비밀글</span>}
                   </div>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                    {qna.createdAt ? qna.createdAt.toLocaleDateString() : ''}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                      {qna.createdAt ? qna.createdAt.toLocaleDateString() : ''}
+                    </span>
+                    <button 
+                      onClick={() => handleDeleteClick(qna)}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)' }}
+                    >
+                      삭제
+                    </button>
+                  </div>
                 </div>
                 
                 {isLocked ? (
@@ -125,8 +152,8 @@ export default function ProductQnA({ productId }) {
         </div>
       )}
 
-      {showModal && (
-        <div className="admin-modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {showModal && createPortal(
+        <div className="admin-modal-overlay" style={{ zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="admin-modal-content" style={{ maxWidth: '500px', width: '90%', background: 'var(--bg-color)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem' }}>상품 문의하기</h2>
@@ -169,7 +196,8 @@ export default function ProductQnA({ productId }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

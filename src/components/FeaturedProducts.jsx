@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import './FeaturedProducts.css'; // 새 스타일 파일 연결
 
-export default function FeaturedProducts({ onProductSelect }) {
+export default function FeaturedProducts({ onProductSelect, onViewAll }) {
   const { t, language } = useLanguage();
   const sectionRef = useRef(null);
   const [products, setProducts] = useState([]);
@@ -71,27 +72,22 @@ export default function FeaturedProducts({ onProductSelect }) {
 
   return (
     <section id="collection" className="products-section container">
-      <div className="section-header">
-        <h2 className="section-title">{t('products.title')}</h2>
-        <a href="#collection" className="view-all">{t('products.viewAll')}</a>
+      <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1rem', padding: '0 10px' }}>
+        <h2 className="section-title" style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>NEW IN</h2>
+        <button onClick={onViewAll} className="view-all" style={{ fontSize: '0.9rem', color: '#888', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>더 보러가기 {'>'}</button>
       </div>
-      <div className="product-grid" ref={sectionRef}>
+      <p style={{ margin: '0 0 1.5rem 10px', color: '#aaa', fontSize: '0.9rem' }}>새롭게 공개된 LikeDzy 컬렉션을 지금 바로 확인하세요.</p>
+      
+      <div className="product-swipe-container" ref={sectionRef}>
         {translatedProducts.map((product) => (
-          <div key={product.id} className="product-card" style={{ opacity: 0, transform: 'translateY(20px)' }} onClick={() => onProductSelect(product)}>
-            <div className="product-image-wrapper">
+          <div key={product.id} className="product-swipe-card" onClick={() => onProductSelect(product)}>
+            <div className="product-image-wrapper borderless">
               <img src={product.images[0]} alt={product.name} className="product-image" />
             </div>
-            <div className="product-info" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <p className="product-category" style={{ margin: 0 }}>{product.category}</p>
-              <h3 className="product-name" style={{ margin: 0 }}>{product.name}</h3>
-              <p className="product-price" style={{ fontWeight: 600, fontSize: '1.2rem', color: 'var(--text-color)' }}>{product.price}</p>
-              <button 
-                className="btn-primary" 
-                style={{ padding: '0.8rem', marginTop: '0.5rem', fontSize: '0.9rem', width: '100%', background: 'var(--bg-color)', color: 'var(--text-color)', border: '1px solid var(--border-color)' }}
-                onClick={(e) => { e.stopPropagation(); onProductSelect(product); }}
-              >
-                {t('products.viewDetails')}
-              </button>
+            <div className="product-info-minimal">
+              <p className="product-category-minimal">{product.category}</p>
+              <h3 className="product-name-minimal">{product.name}</h3>
+              <p className="product-price-minimal">{product.price}</p>
             </div>
           </div>
         ))}

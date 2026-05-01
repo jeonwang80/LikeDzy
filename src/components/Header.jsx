@@ -19,18 +19,18 @@ export default function Header({ onNavigateHome }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleNavClick = (path) => {
+  const handleLogoClick = () => {
     setMobileMenuOpen(false);
-    if (path) {
-      navigate(path);
-    } else if (onNavigateHome) {
+    if (onNavigateHome) {
       onNavigateHome();
     }
+    navigate('/');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <header className="header" style={{ padding: scrolled ? '1rem 5%' : '1.5rem 5%' }}>
-      <div className="header-logo" style={{ cursor: 'pointer' }} onClick={() => handleNavClick('/')}>LikeDzy</div>
+      <div className="header-logo" style={{ cursor: 'pointer' }} onClick={handleLogoClick}>LikeDzy</div>
       
       <nav className={`header-nav ${mobileMenuOpen ? 'open' : ''}`}>
         <a href="/#collection" onClick={() => setMobileMenuOpen(false)}>{t('nav.shop')}</a>
