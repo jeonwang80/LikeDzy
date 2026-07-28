@@ -131,7 +131,7 @@ export default function ProductReviews({ productId }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {reviews.map(review => (
-            <div key={review.id} style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div key={review.id} style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', alignItems: 'flex-start' }}>
                 <div>
                   <span style={{ color: '#eab308', letterSpacing: '2px', display: 'block', marginBottom: '0.2rem' }}>{renderStars(review.rating)}</span>
@@ -156,7 +156,7 @@ export default function ProductReviews({ productId }) {
                       src={url} 
                       alt={`review-photo-${idx}`} 
                       onClick={() => setExpandedImage(url)}
-                      style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', flexShrink: 0, border: '1px solid rgba(255,255,255,0.1)' }} 
+                      style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', flexShrink: 0, border: '1px solid var(--border-color)' }} 
                     />
                   ))}
                 </div>
@@ -195,17 +195,17 @@ export default function ProductReviews({ productId }) {
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>이름</label>
-                  <input required value={form.author} onChange={e => setForm({...form, author: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px' }} placeholder="홍길동" />
+                  <input required value={form.author} onChange={e => setForm({...form, author: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '4px' }} placeholder="홍길동" />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>비밀번호</label>
-                  <input required type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px' }} placeholder="4자리 이상" />
+                  <input required type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '4px' }} placeholder="4자리 이상" />
                 </div>
               </div>
               
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>별점</label>
-                <select value={form.rating} onChange={e => setForm({...form, rating: Number(e.target.value)})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px' }}>
+                <select value={form.rating} onChange={e => setForm({...form, rating: Number(e.target.value)})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '4px' }}>
                   <option value={5}>★★★★★ (5점 - 아주 좋아요)</option>
                   <option value={4}>★★★★☆ (4점 - 맘에 들어요)</option>
                   <option value={3}>★★★☆☆ (3점 - 보통이에요)</option>
@@ -216,12 +216,12 @@ export default function ProductReviews({ productId }) {
 
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>리뷰 내용</label>
-                <textarea required value={form.content} onChange={e => setForm({...form, content: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px', minHeight: '100px', fontFamily: 'inherit' }} placeholder="솔직한 리뷰를 남겨주세요." />
+                <textarea required value={form.content} onChange={e => setForm({...form, content: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '4px', minHeight: '100px', fontFamily: 'inherit' }} placeholder="솔직한 리뷰를 남겨주세요." />
               </div>
 
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>사진 첨부 (최대 4장)</label>
-                <input type="file" accept="image/*" multiple onChange={handleImageChange} style={{ width: '100%', marginBottom: '0.5rem', color: 'white' }} />
+                <input type="file" accept="image/*" multiple onChange={handleImageChange} style={{ width: '100%', marginBottom: '0.5rem', color: 'var(--text-color)' }} />
                 {previewUrls.length > 0 && (
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
                     {previewUrls.map((url, idx) => (
@@ -241,7 +241,7 @@ export default function ProductReviews({ productId }) {
               </div>
 
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{ flex: 1, padding: '1rem', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>취소</button>
+                <button type="button" onClick={() => setShowModal(false)} style={{ flex: 1, padding: '1rem', background: 'var(--card-bg)', color: 'var(--text-color)', border: '1px solid var(--border-color)', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>취소</button>
                 <button type="submit" disabled={isSubmitting} style={{ flex: 2, padding: '1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
                   {isSubmitting ? '등록 중...' : '리뷰 등록하기'}
                 </button>

@@ -1,56 +1,66 @@
 .collection-view-container {
-  padding: 2rem 1rem 6rem 1rem; /* 하단 네비게이션을 위한 6rem 여백 */
-  background-color: var(--bg-color, #0a0a0a);
-  color: white;
+  padding: 5rem 5% 6rem 5%;
+  background-color: var(--colors-canvas);
+  color: var(--colors-ink);
   min-height: 100vh;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .collection-header {
-  text-align: center;
-  margin-bottom: 2rem;
-  scroll-snap-align: start; /* 헤더도 최상단 스냅 포인트로 설정 */
+  text-align: left;
+  margin-bottom: 2.5rem;
+  scroll-snap-align: start;
 }
 
 .collection-title {
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: 2px;
-  margin: 0 0 0.5rem 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 500;
+  letter-spacing: 0;
+  margin: 0 0 0.25rem 0;
+  color: var(--colors-ink);
+  text-transform: uppercase;
 }
 
 .collection-subtitle {
-  font-size: 0.9rem;
-  color: #888;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--colors-mute);
   margin: 0;
+  font-weight: 400;
 }
 
 .collection-list {
   display: flex;
   flex-direction: column;
-  gap: 3rem; /* 상품 간 큼직한 간격 */
+  gap: 2.5rem;
 }
 
 .collection-item {
   cursor: pointer;
-  scroll-snap-align: center; /* 화면 중앙에 자석처럼 붙게 설정 */
-  scroll-margin-bottom: 2rem; /* 하단 네비게이션을 고려한 오프셋 조정 */
+  scroll-snap-align: center;
+  scroll-margin-bottom: 2rem;
+  background-color: var(--colors-canvas);
+  border-radius: var(--rounded-none);
+  padding: 0;
 }
 
 .collection-image-container {
   position: relative;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-sm);
 }
 
 .collection-image-wrapper {
   width: 100%;
-  aspect-ratio: 4 / 5;
-  border-radius: 8px;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--rounded-none);
   overflow-x: auto;
   overflow-y: hidden;
-  background-color: #1a1a1a;
+  background-color: var(--colors-soft-cloud);
   display: flex;
   scroll-snap-type: x mandatory;
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -64,11 +74,6 @@
   height: 100%;
   object-fit: cover;
   scroll-snap-align: start;
-  transition: transform 0.5s ease;
-}
-
-.collection-item:hover .collection-slide-img {
-  transform: scale(1.03);
 }
 
 .collection-slide-dots {
@@ -86,49 +91,50 @@
 .collection-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
-  background-color: rgba(150, 150, 150, 0.6); /* 반투명 회색 */
-  box-shadow: 0 1px 2px rgba(0,0,0,0.15); /* 흰 배경에서 윤곽을 잡아주기 위한 미세한 그림자 */
-  transition: all 0.3s ease;
+  border-radius: var(--rounded-full);
+  background-color: rgba(17, 17, 17, 0.3);
+  transition: all 0.2s ease;
 }
 
 .collection-dot.active {
-  background-color: rgba(80, 80, 80, 0.9); /* 진한 회색 */
-  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
-  transform: scale(1.2);
+  background-color: var(--colors-ink);
+  transform: scale(1.3);
 }
 
 .collection-item-info {
   text-align: left;
-  padding: 0 0.5rem;
+  padding: 0 2px;
 }
 
 .collection-item-category {
-  font-size: 0.8rem;
-  color: #888;
-  margin: 0 0 0.3rem 0;
-  text-transform: uppercase;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--colors-mute);
+  margin: 0 0 0.2rem 0;
+  font-weight: 500;
 }
 
 .collection-item-name {
-  font-size: 1.3rem;
+  font-family: var(--font-body);
+  font-size: 1.05rem;
   font-weight: 600;
-  margin: 0 0 0.5rem 0;
-  color: #fff;
+  margin: 0 0 0.25rem 0;
+  color: var(--colors-ink);
 }
 
 .collection-item-price {
-  font-size: 1.2rem;
-  font-weight: 800;
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  font-weight: 600;
   margin: 0;
-  color: #fff;
+  color: var(--colors-ink);
 }
 
 @media (min-width: 768px) {
   .collection-list {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 4rem 2rem;
+    gap: 3rem 1.5rem;
   }
 }
 

@@ -1,61 +1,359 @@
-/* Admin Global Styling & Responsive Utilities */
+/* ==========================================================================
+   Nike Design System - Admin Portal Styling (DESIGN-nike.md Reference)
+   Aesthetics: Monochromatic Chrome (#111111, #ffffff, #f5f5f5), 
+               Pill CTAs (9999px), Razor-Sharp Cards (0px), Ultra Typography
+   ========================================================================== */
 
+:root {
+  /* Nike Chrome Palette */
+  --admin-ink: #111111;
+  --admin-canvas: #ffffff;
+  --admin-soft-cloud: #f5f5f5;
+  --admin-charcoal: #39393b;
+  --admin-ash: #4b4b4d;
+  --admin-mute: #707072;
+  --admin-stone: #9e9ea0;
+  --admin-hairline: #cacacb;
+  --admin-hairline-soft: #e5e5e5;
+  
+  /* Semantic Accents */
+  --admin-sale: #d30005;
+  --admin-sale-deep: #780700;
+  --admin-success: #007d48;
+  --admin-success-bright: #1eaa52;
+  --admin-info: #1151ff;
+
+  /* Geometry & Typography */
+  --admin-radius-none: 0px;
+  --admin-radius-md: 24px;
+  --admin-radius-pill: 9999px;
+  --admin-font-display: 'Bebas Neue', 'Anton', sans-serif;
+  --admin-font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Base Layout Structure */
 .admin-layout {
   display: flex;
   min-height: 100vh;
-  background: #f1f5f9;
+  background-color: var(--admin-soft-cloud);
+  font-family: var(--admin-font-body);
+  color: var(--admin-ink);
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Sidebar Navigation (Nike Ink Theme) */
 .admin-sidebar {
-  width: 250px;
-  background: #0f172a;
-  color: white;
-  padding: 1.5rem;
+  width: 270px;
+  background-color: var(--admin-ink);
+  color: var(--admin-canvas);
+  padding: 2.25rem 1.5rem;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.admin-sidebar-logo {
+  font-family: var(--admin-font-display);
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 2.75rem;
+  color: var(--admin-canvas);
+  text-transform: uppercase;
+}
+
+.admin-sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Navigation Link - Nike Pill Active State */
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--admin-radius-pill);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-nav-item:hover {
+  color: var(--admin-canvas);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.admin-nav-item.active {
+  color: var(--admin-ink);
+  background-color: var(--admin-canvas);
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.admin-logout-btn {
+  margin-top: auto;
+  padding: 0.85rem 1.25rem;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--admin-radius-pill);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.admin-logout-btn:hover {
+  color: var(--admin-canvas);
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: var(--admin-canvas);
+}
+
+/* Main Content Surface */
 .admin-main {
   flex: 1;
-  padding: 2rem;
+  padding: 2.5rem 3rem;
   overflow-y: auto;
-  width: calc(100% - 250px);
+  width: calc(100% - 270px);
 }
 
+.admin-header {
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admin-title {
+  font-family: var(--admin-font-body);
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--admin-ink);
+  text-transform: uppercase;
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+/* Razor-Sharp Card Container (Nike Catalog Style: 0px radius, 1px border) */
+.admin-card {
+  background: var(--admin-canvas);
+  border: 1px solid var(--admin-hairline-soft);
+  border-radius: var(--admin-radius-none);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: none;
+}
+
+.admin-card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--admin-ink);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--admin-hairline-soft);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-transform: uppercase;
+  letter-spacing: -0.2px;
+}
+
+/* Button Component System - Nike Pill Geometry */
+.admin-btn-primary {
+  background-color: var(--admin-ink);
+  color: var(--admin-canvas);
+  border: none;
+  padding: 10px 24px;
+  height: 44px;
+  border-radius: var(--admin-radius-pill);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.admin-btn-primary:hover {
+  opacity: 0.88;
+  transform: scale(0.98);
+}
+
+.admin-btn-primary:active {
+  transform: scale(0.96);
+  opacity: 0.75;
+}
+
+.admin-btn-secondary {
+  background-color: var(--admin-soft-cloud);
+  color: var(--admin-ink);
+  border: 1px solid var(--admin-hairline-soft);
+  padding: 10px 24px;
+  height: 44px;
+  border-radius: var(--admin-radius-pill);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-btn-secondary:hover {
+  background-color: var(--admin-hairline-soft);
+  color: var(--admin-ink);
+}
+
+.admin-btn-danger {
+  background-color: var(--admin-sale);
+  color: var(--admin-canvas);
+  border: none;
+  padding: 8px 18px;
+  border-radius: var(--admin-radius-pill);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-btn-danger:hover {
+  background-color: var(--admin-sale-deep);
+}
+
+/* Form Controls - Nike Soft Cloud Pill Input */
+.admin-input, .admin-select, .admin-textarea {
+  width: 100%;
+  padding: 10px 20px;
+  border: 1px solid var(--admin-hairline);
+  border-radius: var(--admin-radius-md);
+  font-size: 0.95rem;
+  font-family: inherit;
+  background-color: var(--admin-canvas);
+  color: var(--admin-ink);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.admin-textarea {
+  border-radius: 16px;
+}
+
+.admin-input:focus, .admin-select:focus, .admin-textarea:focus {
+  border-color: var(--admin-ink);
+  box-shadow: 0 0 0 4px var(--admin-soft-cloud);
+}
+
+/* Table Design (Clean Monochrome Grid) */
 .admin-table-container {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  overflow-x: auto; /* enables horizontal scrolling */
+  background: var(--admin-canvas);
+  border: 1px solid var(--admin-hairline-soft);
+  border-radius: var(--admin-radius-none);
+  overflow-x: auto;
   width: 100%;
 }
 
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.admin-table th {
+  background-color: var(--admin-soft-cloud);
+  color: var(--admin-ink);
+  font-weight: 700;
+  text-align: left;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--admin-hairline-soft);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.admin-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--admin-hairline-soft);
+  color: var(--admin-charcoal);
+  vertical-align: middle;
+}
+
+.admin-table tr:hover td {
+  background-color: var(--admin-soft-cloud);
+}
+
+/* Pill Badges */
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: var(--admin-radius-pill);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.admin-badge-success {
+  background-color: #e6f4ea;
+  color: var(--admin-success);
+}
+
+.admin-badge-warning {
+  background-color: #fef7e0;
+  color: #b45309;
+}
+
+.admin-badge-danger {
+  background-color: #fce8e6;
+  color: var(--admin-sale);
+}
+
+/* Admin Modal Overlay */
 .admin-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
   z-index: 1000;
-  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
 }
 
 .admin-modal-content {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
+  background: var(--admin-canvas);
+  border: 1px solid var(--admin-hairline-soft);
+  border-radius: var(--admin-radius-none);
+  padding: 2.5rem;
   width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
+  maxWidth: 720px;
+  maxHeight: 90vh;
   overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
 }
 
-/* Mobile Adjustments */
+/* Responsive Adjustments */
+@media (max-width: 992px) {
+  .admin-main {
+    padding: 2rem 1.5rem;
+  }
+}
+
 @media (max-width: 768px) {
   .admin-layout {
     flex-direction: column;
@@ -63,30 +361,30 @@
   
   .admin-sidebar {
     width: 100%;
-    padding: 1rem;
+    padding: 1.25rem 1.5rem;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
-  
-  .admin-sidebar h2 {
-    margin-bottom: 0 !important;
+
+  .admin-sidebar-logo {
+    margin-bottom: 0;
+    font-size: 1.8rem;
   }
 
   .admin-sidebar-nav {
-    display: none !important; /* Hide standard nav on very small screens, or we can make it a simple row */
+    display: none;
   }
 
-  .admin-sidebar button {
-    margin-top: 0 !important;
+  .admin-logout-btn {
+    margin-top: 0;
+    padding: 0.5rem 1rem;
   }
 
   .admin-main {
     width: 100%;
-    padding: 1rem;
-  }
-  
-  .admin-modal-content {
-    padding: 1.5rem;
+    padding: 1.5rem 1rem;
   }
 }

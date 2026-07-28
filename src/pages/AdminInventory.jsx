@@ -26,7 +26,6 @@ function InventoryModal({ product, onClose }) {
   const handleSave = async () => {
     setLoading(true);
     try {
-      // Create history entries for modified stock
       const originalOptions = product.options || [];
       const updatedOptions = options.map((opt, idx) => {
         const originalOpt = originalOptions.find(o => o.name === opt.name);
@@ -60,73 +59,75 @@ function InventoryModal({ product, onClose }) {
   };
 
   return (
-    <div className="admin-modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="admin-modal-content" style={{ maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+    <div className="admin-modal-overlay">
+      <div className="admin-card" style={{ maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto', borderRadius: '0px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid #e5e5e5', paddingBottom: '1rem' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b' }}>재고 및 옵션 관리</h2>
-            <p style={{ margin: '0.5rem 0 0 0', color: '#64748b' }}>{product.name} (SKU: {product.id.slice(0, 8).toUpperCase()})</p>
+            <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '700', color: '#111111' }}>재고 및 옵션 관리</h2>
+            <p style={{ margin: '0.25rem 0 0 0', color: '#707072', fontSize: '0.85rem' }}>{product.name} (SKU: {product.id.slice(0, 8).toUpperCase()})</p>
           </div>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#111111' }}>&times;</button>
         </div>
 
-        <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#334155' }}>옵션 목록</h3>
-          <button onClick={handleAddOption} style={{ padding: '0.4rem 0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>+ 새 옵션</button>
+        <div style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: '#111111' }}>옵션 목록</h3>
+          <button onClick={handleAddOption} className="admin-btn-primary" style={{ height: '36px', padding: '6px 16px', fontSize: '0.85rem' }}>+ 새 옵션</button>
         </div>
 
         {options.length === 0 ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '8px' }}>
+          <div style={{ padding: '2rem', textAlign: 'center', color: '#707072', background: '#f5f5f5' }}>
             등록된 옵션이 없습니다.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {options.map((opt, idx) => (
-              <div key={idx} style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <div key={idx} style={{ background: '#f5f5f5', padding: '1rem', border: '1px solid #e5e5e5' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                   <div style={{ flex: 2 }}>
-                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.2rem' }}>옵션명</label>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#707072', marginBottom: '0.2rem', fontWeight: '600' }}>옵션명</label>
                     <input 
                       value={opt.name} 
                       onChange={e => handleOptionChange(idx, 'name', e.target.value)} 
                       placeholder="예: 블랙 M"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                      className="admin-input"
+                      style={{ padding: '6px 12px', fontSize: '0.85rem' }}
                     />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.2rem' }}>현재 재고</label>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#707072', marginBottom: '0.2rem', fontWeight: '600' }}>현재 재고</label>
                     <input 
                       type="number" 
                       value={opt.stock} 
                       onChange={e => handleOptionChange(idx, 'stock', e.target.value)} 
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                      className="admin-input"
+                      style={{ padding: '6px 12px', fontSize: '0.85rem' }}
                     />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.2rem' }}>누적 판매량</label>
-                    <div style={{ padding: '0.5rem', background: '#e2e8f0', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', color: '#334155' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#707072', marginBottom: '0.2rem', fontWeight: '600' }}>누적 판매량</label>
+                    <div style={{ padding: '6px 12px', background: '#ffffff', border: '1px solid #cacacb', borderRadius: '24px', textAlign: 'center', fontWeight: '700', color: '#111111', fontSize: '0.85rem' }}>
                       {opt.sales || 0}
                     </div>
                   </div>
-                  <button onClick={() => handleRemoveOption(idx)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '1.2rem', cursor: 'pointer', padding: '0', marginTop: '1.2rem' }}>&times;</button>
+                  <button onClick={() => handleRemoveOption(idx)} style={{ background: 'none', border: 'none', color: '#d30005', fontSize: '1.2rem', cursor: 'pointer', padding: '0', marginTop: '1.2rem' }}>&times;</button>
                 </div>
 
                 {opt.history && opt.history.length > 0 && (
                   <div style={{ marginTop: '0.5rem' }}>
                     <button 
                       onClick={() => setExpandedHistoryIdx(expandedHistoryIdx === idx ? null : idx)}
-                      style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '0.85rem', cursor: 'pointer', padding: 0 }}
+                      style={{ background: 'none', border: 'none', color: '#111111', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
                     >
                       {expandedHistoryIdx === idx ? '▲ 이력 접기' : '▼ 이력 보기'} ({opt.history.length}건)
                     </button>
                     
                     {expandedHistoryIdx === idx && (
-                      <div style={{ marginTop: '0.5rem', maxHeight: '150px', overflowY: 'auto', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '0.5rem' }}>
+                      <div style={{ marginTop: '0.5rem', maxHeight: '150px', overflowY: 'auto', background: '#fff', border: '1px solid #e5e5e5', padding: '0.5rem' }}>
                         {opt.history.map((h, hIdx) => (
-                          <div key={hIdx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '0.25rem 0', borderBottom: hIdx < opt.history.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                            <span style={{ color: '#64748b' }}>{new Date(h.date).toLocaleString()}</span>
-                            <span style={{ color: '#334155' }}>{h.type}</span>
-                            <span style={{ fontWeight: 'bold', color: h.amount > 0 ? '#16a34a' : '#ef4444' }}>
+                          <div key={hIdx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '0.25rem 0', borderBottom: hIdx < opt.history.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+                            <span style={{ color: '#707072' }}>{new Date(h.date).toLocaleString()}</span>
+                            <span style={{ color: '#111111' }}>{h.type}</span>
+                            <span style={{ fontWeight: 'bold', color: h.amount > 0 ? '#007d48' : '#d30005' }}>
                               {h.amount > 0 ? `+${h.amount}` : h.amount}
                             </span>
                           </div>
@@ -140,9 +141,9 @@ function InventoryModal({ product, onClose }) {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
-          <button onClick={onClose} disabled={loading} style={{ padding: '0.75rem 1.5rem', background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>취소</button>
-          <button onClick={handleSave} disabled={loading} style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+          <button onClick={onClose} disabled={loading} className="admin-btn-secondary">취소</button>
+          <button onClick={handleSave} disabled={loading} className="admin-btn-primary">
             {loading ? '저장 중...' : '변경사항 저장'}
           </button>
         </div>
@@ -170,65 +171,70 @@ export default function AdminInventory() {
     return () => unsubscribe();
   }, []);
 
-  if (loading) return <div style={{ color: '#94a3b8' }}>재고 데이터 불러오는 중...</div>;
+  if (loading) return <div style={{ color: '#707072', fontWeight: 'bold' }}>재고 데이터 불러오는 중...</div>;
 
   return (
     <div>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#f1f5f9' }}>재고 관리 (Inventory Management)</h2>
+      <div className="admin-header">
+        <h1 className="admin-title">재고 관리 (Inventory)</h1>
+      </div>
 
-      <div style={{ background: '#1e293b', borderRadius: '8px', overflow: 'hidden', overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem', minWidth: '800px' }}>
-          <thead>
-            <tr style={{ background: '#334155', color: '#f8fafc' }}>
-              <th style={{ padding: '1rem', borderBottom: '1px solid #475569' }}>상품 사진</th>
-              <th style={{ padding: '1rem', borderBottom: '1px solid #475569' }}>SKU (고유코드)</th>
-              <th style={{ padding: '1rem', borderBottom: '1px solid #475569' }}>상품명</th>
-              <th style={{ padding: '1rem', borderBottom: '1px solid #475569' }}>옵션 수</th>
-              <th style={{ padding: '1rem', borderBottom: '1px solid #475569' }}>총 남은 재고</th>
-              <th style={{ padding: '1rem', borderBottom: '1px solid #475569' }}>누적 판매량</th>
-              <th style={{ padding: '1rem', borderBottom: '1px solid #475569', textAlign: 'right' }}>관리</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.length === 0 ? (
+      <div className="admin-card" style={{ padding: 0 }}>
+        <div className="admin-table-container">
+          <table className="admin-table">
+            <thead>
               <tr>
-                <td colSpan="7" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>등록된 상품이 없습니다.</td>
+                <th>상품 사진</th>
+                <th>SKU (고유코드)</th>
+                <th>상품명</th>
+                <th>옵션 수</th>
+                <th>총 남은 재고</th>
+                <th>누적 판매량</th>
+                <th style={{ textAlign: 'right' }}>관리</th>
               </tr>
-            ) : (
-              products.map((product) => {
-                const totalStock = (product.options || []).reduce((acc, opt) => acc + (opt.stock || 0), 0);
-                const totalSales = (product.options || []).reduce((acc, opt) => acc + (opt.sales || 0), 0);
-                
-                return (
-                  <tr key={product.id} style={{ borderBottom: '1px solid #334155' }}>
-                    <td style={{ padding: '1rem' }}>
-                      <img src={product.imageUrls?.[0] || product.imageUrl} alt={product.name} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
-                    </td>
-                    <td style={{ padding: '1rem', color: '#94a3b8', fontFamily: 'monospace' }}>
-                      {product.id.slice(0, 8).toUpperCase()}
-                    </td>
-                    <td style={{ padding: '1rem', color: '#f8fafc', fontWeight: 'bold' }}>{product.name}</td>
-                    <td style={{ padding: '1rem', color: '#cbd5e1' }}>{product.options?.length || 0}개</td>
-                    <td style={{ padding: '1rem', color: totalStock === 0 ? '#ef4444' : '#10b981', fontWeight: 'bold' }}>
-                      {totalStock}개
-                    </td>
-                    <td style={{ padding: '1rem', color: '#3b82f6', fontWeight: 'bold' }}>
-                      {totalSales}개
-                    </td>
-                    <td style={{ padding: '1rem', textAlign: 'right' }}>
-                      <button 
-                        onClick={() => setSelectedProduct(product)}
-                        style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
-                      >
-                        재고/옵션 관리
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {products.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ padding: '3rem', textAlign: 'center', color: '#707072' }}>등록된 상품이 없습니다.</td>
+                </tr>
+              ) : (
+                products.map((product) => {
+                  const totalStock = (product.options || []).reduce((acc, opt) => acc + (opt.stock || 0), 0);
+                  const totalSales = (product.options || []).reduce((acc, opt) => acc + (opt.sales || 0), 0);
+                  
+                  return (
+                    <tr key={product.id}>
+                      <td>
+                        <img src={product.imageUrls?.[0] || product.imageUrl} alt={product.name} style={{ width: '48px', height: '48px', objectFit: 'cover', backgroundColor: '#f5f5f5' }} />
+                      </td>
+                      <td style={{ color: '#707072', fontFamily: 'monospace' }}>
+                        {product.id.slice(0, 8).toUpperCase()}
+                      </td>
+                      <td style={{ fontWeight: '600' }}>{product.name}</td>
+                      <td>{product.options?.length || 0}개</td>
+                      <td style={{ color: totalStock === 0 ? '#d30005' : '#007d48', fontWeight: '700' }}>
+                        {totalStock}개
+                      </td>
+                      <td style={{ fontWeight: '700' }}>
+                        {totalSales}개
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button 
+                          onClick={() => setSelectedProduct(product)}
+                          className="admin-btn-secondary"
+                          style={{ height: '36px', padding: '6px 16px', fontSize: '0.85rem' }}
+                        >
+                          재고/옵션 관리
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {selectedProduct && (

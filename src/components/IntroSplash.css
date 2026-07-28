@@ -5,12 +5,13 @@
   width: 100vw;
   height: 100dvh;
   z-index: 9999;
-  background-color: #000;
+  background-color: var(--colors-ink);
+  color: var(--colors-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  transition: opacity 1s cubic-bezier(0.7, 0, 0.3, 1), transform 1s cubic-bezier(0.7, 0, 0.3, 1);
+  transition: opacity 0.8s ease, transform 0.8s ease;
   transform-origin: center center;
 }
 
@@ -23,44 +24,41 @@
   position: relative;
 }
 
-.intro-splash-background::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.4); /* 이미지 어둡게 처리 */
-}
-
 .intro-splash-content {
   position: relative;
   z-index: 1;
   text-align: center;
-  color: white;
-  animation: fadeInSplash 1s ease forwards;
+  color: #ffffff;
+  animation: fadeInSplash 0.8s ease forwards;
 }
 
 .intro-splash-logo {
-  font-size: 4rem;
-  font-weight: 800;
-  letter-spacing: -2px;
-  margin-bottom: 0.5rem;
-  text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 10vw, 7rem);
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: 2px;
+  margin-bottom: 0.75rem;
+  color: #ffffff;
+  text-transform: uppercase;
 }
 
 .intro-splash-text {
-  font-size: 1.2rem;
-  font-weight: 300;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 500;
   letter-spacing: 4px;
-  opacity: 0.8;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
 }
 
-/* 빨려들어가는 마법 같은 애니메이션 (Zoom Out to screen) */
 .intro-splash-overlay.zoom-out {
-  transform: scale(5); /* 카메라가 화면 안으로 통과하는 느낌 */
+  transform: scale(2.5);
   opacity: 0;
   pointer-events: none;
 }
 
 @keyframes fadeInSplash {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }

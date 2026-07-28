@@ -8,6 +8,7 @@ export default function HeroSection() {
   const { t } = useLanguage();
   const [heroImages, setHeroImages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [heroTextData, setHeroTextData] = useState({ title: '', subtitle: '' });
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -20,6 +21,9 @@ export default function HeroSection() {
             setHeroImages(data.heroImageUrls);
           } else if (data.heroImageUrl) {
             setHeroImages([data.heroImageUrl]);
+          }
+          if (data.heroTitle !== undefined || data.heroSubtitle !== undefined) {
+            setHeroTextData({ title: data.heroTitle || '', subtitle: data.heroSubtitle || '' });
           }
         }
       } catch (error) {
@@ -81,8 +85,19 @@ export default function HeroSection() {
       </div>
 
       <div className="hero-content-area">
-        <h1 className="hero-title">{t('hero.title')}</h1>
-        <p className="hero-subtitle">{t('hero.subtitle')}</p>
+        <h1 className={`hero-title size-${heroTextData.titleSize}`}>{heroTextData.title || t('hero.title')}</h1>
+        <p className={`hero-subtitle size-${heroTextData.subtitleSize}`}>
+          {heroTextData.subtitle ? (
+            heroTextData.subtitle.split('\n').map((line, i) => (
+              <React.Fragment key={i}>
+                {line}
+                <br />
+              </React.Fragment>
+            ))
+          ) : (
+            t('hero.subtitle')
+          )}
+        </p>
       </div>
     </section>
   );

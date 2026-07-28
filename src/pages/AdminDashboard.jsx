@@ -12,6 +12,11 @@ export default function AdminDashboard() {
   const [heroLoading, setHeroLoading] = useState(false);
   const [splashImageUrl, setSplashImageUrl] = useState(null);
   const [splashLoading, setSplashLoading] = useState(false);
+  const [heroTitle, setHeroTitle] = useState('');
+  const [heroTitleSize, setHeroTitleSize] = useState('md');
+  const [heroSubtitle, setHeroSubtitle] = useState('');
+  const [heroSubtitleSize, setHeroSubtitleSize] = useState('md');
+  const [heroTextLoading, setHeroTextLoading] = useState(false);
 
   const fetchProducts = async () => {
     try {
@@ -34,6 +39,10 @@ export default function AdminDashboard() {
           // Backward compatibility
           setHeroImageUrls([data.heroImageUrl]);
         }
+        if (data.heroTitle !== undefined) setHeroTitle(data.heroTitle);
+        if (data.heroTitleSize) setHeroTitleSize(data.heroTitleSize);
+        if (data.heroSubtitle !== undefined) setHeroSubtitle(data.heroSubtitle);
+        if (data.heroSubtitleSize) setHeroSubtitleSize(data.heroSubtitleSize);
       }
     } catch (error) {
       console.error("Error fetching hero image:", error);
@@ -121,6 +130,24 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleHeroTextSave = async () => {
+    setHeroTextLoading(true);
+    try {
+      await setDoc(doc(db, 'settings', 'main'), { 
+        heroTitle, 
+        heroTitleSize,
+        heroSubtitle,
+        heroSubtitleSize
+      }, { merge: true });
+      alert("하단 텍스트가 저장되었습니다.");
+    } catch (error) {
+      console.error("Error saving hero text:", error);
+      alert("저장 중 오류가 발생했습니다.");
+    } finally {
+      setHeroTextLoading(false);
+    }
+  };
+
   const handleSplashUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -156,113 +183,178 @@ export default function AdminDashboard() {
 
   return (
     <div>
+      <div className="admin-header">
+        <h1 className="admin-title">대시보드 & 메인 관리</h1>
+      </div>
+
       {/* Hero Banner Management */}
-      <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1rem' }}>메인 배너 관리</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="admin-card">
+        <h2 className="admin-card-title">
+          <span>메인 배너 이미지 관리</span>
+        </h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
             {heroImageUrls.length > 0 ? (
               heroImageUrls.map((url, idx) => (
                 <div key={idx} style={{ position: 'relative', flexShrink: 0 }}>
-                  <img src={url} alt={`Hero ${idx}`} style={{ width: '200px', height: '100px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
+                  <img src={url} alt={`Hero ${idx}`} style={{ width: '200px', height: '110px', objectFit: 'cover', border: '1px solid #e5e5e5' }} />
                   <button 
                     onClick={() => handleHeroDelete(url)}
-                    style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                    style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#d30005', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}
                   >
-                    X
+                    ✕
                   </button>
                 </div>
               ))
             ) : (
-              <div style={{ width: '100%', maxWidth: '200px', height: '100px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', border: '1px dashed #cbd5e1', color: '#64748b' }}>기본 배너 사용 중</div>
+              <div style={{ width: '100%', maxWidth: '200px', height: '110px', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #cacacb', color: '#707072', fontSize: '0.9rem' }}>기본 배너 사용 중</div>
             )}
           </div>
           <div>
             <input type="file" accept="image/*" multiple onChange={handleHeroUpload} disabled={heroLoading} id="hero-upload" style={{ display: 'none' }} />
-            <label htmlFor="hero-upload" style={{ background: '#0f172a', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '6px', cursor: heroLoading ? 'not-allowed' : 'pointer', display: 'inline-block', fontWeight: '500' }}>
-              {heroLoading ? '업로드 중...' : '새 배너 사진 추가 (다중 선택 가능)'}
+            <label htmlFor="hero-upload" className="admin-btn-primary" style={{ cursor: heroLoading ? 'not-allowed' : 'pointer' }}>
+              {heroLoading ? '업로드 중...' : '새 배너 사진 추가 (다중 선택)'}
             </label>
-            <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>* 가로가 넓은 고화질 이미지(PC/모바일 공용)를 권장합니다. (여러 장 업로드 시 슬라이드로 자동 전환됩니다)</p>
+            <p style={{ fontSize: '0.85rem', color: '#707072', marginTop: '0.75rem' }}>* 가로가 넓은 고화질 이미지를 권장합니다. 여러 장 등록 시 자동으로 슬라이딩됩니다.</p>
+          </div>
+        </div>
+        
+        <div style={{ marginTop: '2rem', borderTop: '1px solid #e5e5e5', paddingTop: '1.5rem' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#111111', marginBottom: '1.25rem' }}>메인 텍스트 설정</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#39393b', marginBottom: '0.4rem' }}>메인 제목</label>
+                <input 
+                  value={heroTitle} 
+                  onChange={(e) => setHeroTitle(e.target.value)}
+                  placeholder="예: 프리미엄 스포츠웨어의 새로운 기준"
+                  className="admin-input"
+                />
+              </div>
+              <div style={{ width: '130px' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#39393b', marginBottom: '0.4rem' }}>크기</label>
+                <select value={heroTitleSize} onChange={e => setHeroTitleSize(e.target.value)} className="admin-select">
+                  <option value="sm">작게</option>
+                  <option value="md">보통</option>
+                  <option value="lg">크게</option>
+                  <option value="xl">아주 크게</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#39393b', marginBottom: '0.4rem' }}>서브 내용</label>
+                <textarea 
+                  value={heroSubtitle} 
+                  onChange={(e) => setHeroSubtitle(e.target.value)}
+                  placeholder="예: LikeDzy는 최고의 퍼포먼스와 완벽한 핏을 선사합니다."
+                  className="admin-textarea"
+                  style={{ minHeight: '80px', borderRadius: '16px' }}
+                />
+              </div>
+              <div style={{ width: '130px' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#39393b', marginBottom: '0.4rem' }}>크기</label>
+                <select value={heroSubtitleSize} onChange={e => setHeroSubtitleSize(e.target.value)} className="admin-select">
+                  <option value="sm">작게</option>
+                  <option value="md">보통</option>
+                  <option value="lg">크게</option>
+                  <option value="xl">아주 크게</option>
+                </select>
+              </div>
+            </div>
+            <button 
+              onClick={handleHeroTextSave} 
+              disabled={heroTextLoading}
+              className="admin-btn-primary"
+              style={{ alignSelf: 'flex-start' }}
+            >
+              {heroTextLoading ? '저장 중...' : '텍스트 저장'}
+            </button>
           </div>
         </div>
       </div>
 
       {/* Intro Splash Management */}
-      <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1rem' }}>진입 인트로(스플래시) 사진 관리</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="admin-card">
+        <h2 className="admin-card-title">진입 인트로 (스플래시) 비주얼 관리</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
             {splashImageUrl ? (
               <div style={{ position: 'relative', flexShrink: 0 }}>
-                <img src={splashImageUrl} alt="Splash Screen" style={{ width: '200px', height: '100px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
+                <img src={splashImageUrl} alt="Splash Screen" style={{ width: '200px', height: '110px', objectFit: 'cover', border: '1px solid #e5e5e5' }} />
                 <button 
                   onClick={handleSplashDelete}
-                  style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                  style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#d30005', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}
                 >
-                  X
+                  ✕
                 </button>
               </div>
             ) : (
-              <div style={{ width: '100%', maxWidth: '200px', height: '100px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', border: '1px dashed #cbd5e1', color: '#64748b' }}>기본 이미지 사용 중</div>
+              <div style={{ width: '100%', maxWidth: '200px', height: '110px', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #cacacb', color: '#707072', fontSize: '0.9rem' }}>기본 이미지 사용 중</div>
             )}
           </div>
           <div>
             <input type="file" accept="image/*" onChange={handleSplashUpload} disabled={splashLoading} id="splash-upload" style={{ display: 'none' }} />
-            <label htmlFor="splash-upload" style={{ background: '#ec4899', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '6px', cursor: splashLoading ? 'not-allowed' : 'pointer', display: 'inline-block', fontWeight: '500' }}>
-              {splashLoading ? '업로드 중...' : '인트로 사진 변경 (1장만 가능)'}
+            <label htmlFor="splash-upload" className="admin-btn-secondary" style={{ cursor: splashLoading ? 'not-allowed' : 'pointer' }}>
+              {splashLoading ? '업로드 중...' : '인트로 사진 변경 (1장 선택)'}
             </label>
-            <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>* 웹사이트 접속 시 줌인(Zoom-in) 되는 사진입니다.</p>
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a' }}>상품 관리</h2>
-        <button onClick={handleAddNew} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '0.75rem 1.25rem', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-          + 새 상품 추가
-        </button>
+      {/* Products Section */}
+      <div className="admin-card">
+        <div className="admin-card-title" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: '1.5rem' }}>
+          <span>상품 목록</span>
+          <button onClick={handleAddNew} className="admin-btn-primary">
+            + 새 상품 추가
+          </button>
+        </div>
+
+        <div className="admin-table-container">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>상품명 (KO)</th>
+                <th>카테고리</th>
+                <th>가격</th>
+                <th>관리</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.length === 0 ? (
+                <tr>
+                  <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: '#707072' }}>등록된 상품이 없습니다.</td>
+                </tr>
+              ) : (
+                products.map(product => {
+                  const displayImage = (product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls[0] : product.imageUrl;
+                  return (
+                    <tr key={product.id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontWeight: '600' }}>
+                          {displayImage && <img src={displayImage} alt={product.ko?.name} style={{ width: '44px', height: '44px', objectFit: 'cover', backgroundColor: '#f5f5f5' }} />}
+                          {product.ko?.name || '이름 없음'}
+                        </div>
+                      </td>
+                      <td>{product.ko?.category || '-'}</td>
+                      <td style={{ fontWeight: '600' }}>{product.price || '-'}</td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button onClick={() => handleEdit(product)} className="admin-btn-secondary" style={{ height: '36px', padding: '6px 16px', fontSize: '0.85rem' }}>수정</button>
+                          <button onClick={() => handleDelete(product.id)} className="admin-btn-danger" style={{ height: '36px', padding: '6px 16px', fontSize: '0.85rem' }}>삭제</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div className="admin-table-container">
-        <table style={{ minWidth: '600px', width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-            <tr>
-              <th style={{ padding: '1rem', color: '#475569', fontWeight: 'bold' }}>상품명 (KO)</th>
-              <th style={{ padding: '1rem', color: '#475569', fontWeight: 'bold' }}>카테고리</th>
-              <th style={{ padding: '1rem', color: '#475569', fontWeight: 'bold' }}>가격</th>
-              <th style={{ padding: '1rem', color: '#475569', fontWeight: 'bold' }}>관리</th>
-            </tr>
-          </thead>
-          <tbody style={{ color: '#1e293b' }}>
-            {products.length === 0 ? (
-              <tr>
-                <td colSpan="4" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>등록된 상품이 없습니다.</td>
-              </tr>
-            ) : (
-              products.map(product => {
-                const displayImage = (product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls[0] : product.imageUrl;
-                return (
-                  <tr key={product.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        {displayImage && <img src={displayImage} alt={product.ko?.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />}
-                        {product.ko?.name || '이름 없음'}
-                      </div>
-                    </td>
-                    <td style={{ padding: '1rem' }}>{product.ko?.category || '-'}</td>
-                    <td style={{ padding: '1rem' }}>{product.price || '-'}</td>
-                    <td style={{ padding: '1rem' }}>
-                      <button onClick={() => handleEdit(product)} style={{ background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', marginRight: '0.5rem' }}>수정</button>
-                      <button onClick={() => handleDelete(product.id)} style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>삭제</button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-      
       {isEditorOpen && (
         <ProductEditor 
           product={editingProduct} 
@@ -276,3 +368,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

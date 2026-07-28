@@ -9,12 +9,10 @@ export default function AdminBoard() {
   const [productsMap, setProductsMap] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // For QnA reply
   const [replyFormId, setReplyFormId] = useState(null);
   const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
-    // Fetch products to map ID to Name
     const fetchProducts = async () => {
       const snap = await getDocs(collection(db, 'products'));
       const map = {};
@@ -27,13 +25,11 @@ export default function AdminBoard() {
   }, []);
 
   useEffect(() => {
-    // Fetch Q&A
     const qQna = query(collection(db, 'qna'), orderBy('createdAt', 'desc'));
     const unsubQna = onSnapshot(qQna, (snapshot) => {
       setQnas(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() })));
     });
 
-    // Fetch Reviews
     const qReview = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'));
     const unsubReview = onSnapshot(qReview, (snapshot) => {
       setReviews(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() })));
@@ -71,52 +67,54 @@ export default function AdminBoard() {
     }
   };
 
-  if (loading) return <div style={{ color: '#94a3b8' }}>데이터 불러오는 중...</div>;
+  if (loading) return <div style={{ color: '#707072', fontWeight: 'bold' }}>데이터 불러오는 중...</div>;
 
   return (
     <div>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#f1f5f9' }}>게시판 관리</h2>
+      <div className="admin-header">
+        <h1 className="admin-title">게시판 & 리뷰 관리</h1>
+      </div>
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem' }}>
         <button 
           onClick={() => setActiveTab('qna')}
-          style={{ padding: '0.75rem 1.5rem', background: activeTab === 'qna' ? '#3b82f6' : '#1e293b', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+          className={activeTab === 'qna' ? "admin-btn-primary" : "admin-btn-secondary"}
         >
-          Q&A 관리 ({qnas.length})
+          Q&A 문의 ({qnas.length})
         </button>
         <button 
           onClick={() => setActiveTab('reviews')}
-          style={{ padding: '0.75rem 1.5rem', background: activeTab === 'reviews' ? '#3b82f6' : '#1e293b', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+          className={activeTab === 'reviews' ? "admin-btn-primary" : "admin-btn-secondary"}
         >
-          리뷰 관리 ({reviews.length})
+          고객 리뷰 ({reviews.length})
         </button>
       </div>
 
-      <div style={{ background: '#1e293b', borderRadius: '8px', padding: '1.5rem' }}>
+      <div className="admin-card">
         {activeTab === 'qna' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {qnas.length === 0 ? <p style={{ color: '#94a3b8' }}>등록된 Q&A가 없습니다.</p> : qnas.map(qna => (
-              <div key={qna.id} style={{ background: '#0f172a', padding: '1.5rem', borderRadius: '8px', border: '1px solid #334155' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {qnas.length === 0 ? <p style={{ color: '#707072', padding: '2rem 0', textAlign: 'center' }}>등록된 Q&A 문의가 없습니다.</p> : qnas.map(qna => (
+              <div key={qna.id} style={{ background: '#f5f5f5', padding: '1.5rem', border: '1px solid #e5e5e5' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ padding: '0.2rem 0.5rem', background: qna.status === '답변 완료' ? '#16a34a' : '#475569', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>{qna.status}</span>
-                    <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>상품: {productsMap[qna.productId] || '알 수 없는 상품'}</span>
-                    <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>작성자: {qna.author}</span>
-                    {qna.isSecret && <span style={{ color: '#eab308', fontSize: '0.9rem' }}>🔒 비밀글</span>}
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span className={`admin-badge ${qna.status === '답변 완료' ? 'admin-badge-success' : 'admin-badge-warning'}`}>{qna.status}</span>
+                    <span style={{ color: '#111111', fontWeight: '600', fontSize: '0.9rem' }}>상품: {productsMap[qna.productId] || '알 수 없는 상품'}</span>
+                    <span style={{ color: '#707072', fontSize: '0.875rem' }}>작성자: {qna.author}</span>
+                    {qna.isSecret && <span style={{ color: '#d30005', fontSize: '0.85rem' }}>🔒 비밀글</span>}
                   </div>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{qna.createdAt?.toLocaleString()}</span>
-                    <button onClick={() => handleDelete('qna', qna.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem' }}>삭제</button>
+                    <span style={{ color: '#707072', fontSize: '0.85rem' }}>{qna.createdAt?.toLocaleString()}</span>
+                    <button onClick={() => handleDelete('qna', qna.id)} className="admin-btn-danger" style={{ height: '32px', padding: '4px 12px' }}>삭제</button>
                   </div>
                 </div>
 
-                <p style={{ margin: '0 0 1rem 0', lineHeight: '1.6', color: '#f8fafc', whiteSpace: 'pre-wrap' }}>{qna.content}</p>
+                <p style={{ margin: '0 0 1rem 0', lineHeight: '1.6', color: '#111111', whiteSpace: 'pre-wrap', fontWeight: '500' }}>{qna.content}</p>
 
                 {qna.reply ? (
-                  <div style={{ background: 'rgba(59, 130, 246, 0.1)', borderLeft: '3px solid #3b82f6', padding: '1rem', borderRadius: '0 4px 4px 0' }}>
-                    <div style={{ color: '#3b82f6', fontWeight: 'bold', marginBottom: '0.5rem', fontSize: '0.9rem' }}>↳ 관리자 답변</div>
-                    <p style={{ margin: 0, color: '#e2e8f0', whiteSpace: 'pre-wrap' }}>{qna.reply}</p>
-                    <button onClick={() => { setReplyFormId(qna.id); setReplyText(qna.reply); }} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.8rem', marginTop: '0.5rem', padding: 0 }}>답변 수정하기</button>
+                  <div style={{ background: '#ffffff', borderLeft: '4px solid #111111', padding: '1rem', border: '1px solid #e5e5e5', borderLeftColor: '#111111' }}>
+                    <div style={{ color: '#111111', fontWeight: '700', marginBottom: '0.4rem', fontSize: '0.875rem' }}>↳ 관리자 답변</div>
+                    <p style={{ margin: 0, color: '#39393b', whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>{qna.reply}</p>
+                    <button onClick={() => { setReplyFormId(qna.id); setReplyText(qna.reply); }} style={{ background: 'none', border: 'none', color: '#707072', cursor: 'pointer', fontSize: '0.8rem', marginTop: '0.6rem', padding: 0, textDecoration: 'underline' }}>답변 수정하기</button>
                   </div>
                 ) : (
                   replyFormId === qna.id ? (
@@ -125,15 +123,16 @@ export default function AdminBoard() {
                         value={replyText}
                         onChange={e => setReplyText(e.target.value)}
                         placeholder="답변을 입력하세요..."
-                        style={{ width: '100%', padding: '0.75rem', background: '#1e293b', border: '1px solid #475569', color: 'white', borderRadius: '4px', minHeight: '80px', marginBottom: '0.5rem' }}
+                        className="admin-textarea"
+                        style={{ minHeight: '80px', marginBottom: '0.75rem' }}
                       />
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button onClick={() => setReplyFormId(null)} style={{ padding: '0.5rem 1rem', background: '#475569', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>취소</button>
-                        <button onClick={() => handleReplySubmit(qna.id)} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>답변 등록</button>
+                        <button onClick={() => setReplyFormId(null)} className="admin-btn-secondary" style={{ height: '36px' }}>취소</button>
+                        <button onClick={() => handleReplySubmit(qna.id)} className="admin-btn-primary" style={{ height: '36px' }}>답변 등록</button>
                       </div>
                     </div>
                   ) : (
-                    <button onClick={() => { setReplyFormId(qna.id); setReplyText(''); }} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem' }}>답변 달기</button>
+                    <button onClick={() => { setReplyFormId(qna.id); setReplyText(''); }} className="admin-btn-primary" style={{ height: '36px', fontSize: '0.85rem' }}>답변 작성</button>
                   )
                 )}
               </div>
@@ -142,21 +141,21 @@ export default function AdminBoard() {
         )}
 
         {activeTab === 'reviews' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {reviews.length === 0 ? <p style={{ color: '#94a3b8' }}>등록된 리뷰가 없습니다.</p> : reviews.map(review => (
-              <div key={review.id} style={{ background: '#0f172a', padding: '1.5rem', borderRadius: '8px', border: '1px solid #334155' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {reviews.length === 0 ? <p style={{ color: '#707072', padding: '2rem 0', textAlign: 'center' }}>등록된 리뷰가 없습니다.</p> : reviews.map(review => (
+              <div key={review.id} style={{ background: '#f5f5f5', padding: '1.5rem', border: '1px solid #e5e5e5' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ color: '#eab308', letterSpacing: '2px' }}>{'★'.repeat(review.rating) + '☆'.repeat(5 - review.rating)}</span>
-                    <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>상품: {productsMap[review.productId] || '알 수 없는 상품'}</span>
-                    <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>작성자: {review.author}</span>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ color: '#111111', letterSpacing: '2px', fontWeight: 'bold' }}>{'★'.repeat(review.rating) + '☆'.repeat(5 - review.rating)}</span>
+                    <span style={{ color: '#111111', fontWeight: '600', fontSize: '0.9rem' }}>상품: {productsMap[review.productId] || '알 수 없는 상품'}</span>
+                    <span style={{ color: '#707072', fontSize: '0.875rem' }}>작성자: {review.author}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{review.createdAt?.toLocaleString()}</span>
-                    <button onClick={() => handleDelete('reviews', review.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem' }}>삭제</button>
+                    <span style={{ color: '#707072', fontSize: '0.85rem' }}>{review.createdAt?.toLocaleString()}</span>
+                    <button onClick={() => handleDelete('reviews', review.id)} className="admin-btn-danger" style={{ height: '32px', padding: '4px 12px' }}>삭제</button>
                   </div>
                 </div>
-                <p style={{ margin: 0, lineHeight: '1.6', color: '#f8fafc', whiteSpace: 'pre-wrap' }}>{review.content}</p>
+                <p style={{ margin: 0, lineHeight: '1.6', color: '#39393b', whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>{review.content}</p>
               </div>
             ))}
           </div>
