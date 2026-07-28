@@ -34,8 +34,16 @@ export default function AdminLogin() {
       await loginWithGoogle();
       navigate('/admin');
     } catch (err) {
-      console.error(err);
-      setError('구글 로그인 실패: 구글 인증 중 오류가 발생했습니다.');
+      console.error("Google Auth Error:", err);
+      if (err.code === 'auth/unauthorized-domain') {
+        setError('구글 로그인 실패: Firebase Console에 승인된 도메인(Authorized Domain) 등록이 필요합니다.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError('구글 로그인 실패: Firebase Console에서 Google 로그인 제공업체가 활성화되지 않았습니다.');
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setError('구글 로그인 창이 닫혔습니다. 다시 시도해 주세요.');
+      } else {
+        setError(`구글 로그인 실패 (${err.code || err.message})`);
+      }
     } finally {
       setLoading(false);
     }
@@ -47,7 +55,7 @@ export default function AdminLogin() {
         <h2 style={{ textAlign: 'center', marginBottom: '0.25rem', color: '#111111', fontFamily: 'var(--admin-font-display, "Bebas Neue", sans-serif)', fontSize: '2.8rem', letterSpacing: '1px', textTransform: 'uppercase' }}>LikeDzy</h2>
         <p style={{ textAlign: 'center', marginBottom: '2rem', color: '#707072', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Admin Portal Access</p>
         
-        {error && <div style={{ color: '#d30005', background: '#fce8e6', padding: '0.75rem 1rem', borderRadius: '24px', marginBottom: '1.25rem', fontSize: '0.85rem', fontWeight: '600', textAlign: 'center' }}>{error}</div>}
+        {error && <div style={{ color: '#d30005', background: '#fce8e6', padding: '0.75rem 1rem', borderRadius: '24px', marginBottom: '1.25rem', fontSize: '0.85rem', fontWeight: '600', textAlign: 'center', lineHeight: '1.4', wordBreak: 'keep-all' }}>{error}</div>}
         
         <button 
           disabled={loading} 
