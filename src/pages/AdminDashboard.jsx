@@ -318,6 +318,7 @@ export default function AdminDashboard() {
               <tr>
                 <th>상품명 (KO)</th>
                 <th>카테고리</th>
+                <th>메인 룩북 컷 (9:16)</th>
                 <th>가격</th>
                 <th>관리</th>
               </tr>
@@ -325,7 +326,7 @@ export default function AdminDashboard() {
             <tbody>
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: '#707072' }}>등록된 상품이 없습니다.</td>
+                  <td colSpan="5" style={{ padding: '3rem', textAlign: 'center', color: '#707072' }}>등록된 상품이 없습니다.</td>
                 </tr>
               ) : (
                 products.map(product => {
@@ -334,15 +335,34 @@ export default function AdminDashboard() {
                     <tr key={product.id}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontWeight: '600' }}>
-                          {displayImage && <img src={displayImage} alt={product.ko?.name} style={{ width: '44px', height: '44px', objectFit: 'cover', backgroundColor: '#f5f5f5' }} />}
+                          {displayImage && <img src={displayImage} alt={product.ko?.name} style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#f5f5f5' }} />}
                           {product.ko?.name || '이름 없음'}
                         </div>
                       </td>
                       <td>{product.ko?.category || '-'}</td>
+                      <td>
+                        {product.lookbookFitImageUrl ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <img 
+                              src={product.lookbookFitImageUrl} 
+                              alt="lookbook-fit" 
+                              style={{ width: '30px', height: '53px', objectFit: 'cover', borderRadius: '4px', border: '1.5px solid #2563eb' }} 
+                            />
+                            <span style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 'bold' }}>✓ 세로 룩북 등록됨</span>
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => handleEdit(product)} 
+                            style={{ padding: '4px 10px', fontSize: '0.75rem', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
+                          >
+                            + 9:16 룩북사진 추가
+                          </button>
+                        )}
+                      </td>
                       <td style={{ fontWeight: '600' }}>{product.price || '-'}</td>
                       <td>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button onClick={() => handleEdit(product)} className="admin-btn-secondary" style={{ height: '36px', padding: '6px 16px', fontSize: '0.85rem' }}>수정</button>
+                          <button onClick={() => handleEdit(product)} className="admin-btn-secondary" style={{ height: '36px', padding: '6px 16px', fontSize: '0.85rem' }}>수정 & 이미지 변경</button>
                           <button onClick={() => handleDelete(product.id)} className="admin-btn-danger" style={{ height: '36px', padding: '6px 16px', fontSize: '0.85rem' }}>삭제</button>
                         </div>
                       </td>
