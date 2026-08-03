@@ -291,16 +291,16 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '1.5rem'
+      padding: '1rem'
     }}>
       <div className="admin-modal-content" ref={modalContentRef} style={{
         backgroundColor: '#ffffff',
         border: '1px solid #cbd5e1',
         borderRadius: '12px',
-        padding: '2rem 2.5rem',
+        padding: '1.5rem 2rem',
         width: '100%',
-        maxWidth: '860px',
-        maxHeight: '88vh',
+        maxWidth: '780px',
+        maxHeight: '84vh',
         overflowY: 'auto',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
         position: 'relative',
@@ -309,18 +309,18 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         {/* 상단 Sticky 고정 헤더 */}
         <div style={{
           position: 'sticky',
-          top: '-2rem',
+          top: '-1.5rem',
           backgroundColor: '#ffffff',
-          zIndex: 30,
-          paddingTop: '0.25rem',
+          zIndex: 40,
+          paddingTop: '0.5rem',
           paddingBottom: '0.75rem',
-          marginBottom: '1.25rem',
-          borderBottom: '1px solid #e2e8f0',
+          marginBottom: '1rem',
+          borderBottom: '2px solid #e2e8f0',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 'bold', color: '#1e293b' }}>
+          <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 'bold', color: '#0f172a' }}>
             {product ? '✏️ 상품 정보 & 이미지 수정' : '➕ 새 상품 추가'}
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -330,15 +330,16 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               style={{
                 padding: '6px 14px',
                 fontSize: '0.8rem',
-                background: '#eff6ff',
-                color: '#2563eb',
-                border: '1px solid #bfdbfe',
+                background: '#0284c7',
+                color: '#ffffff',
+                border: 'none',
                 borderRadius: '20px',
                 cursor: 'pointer',
-                fontWeight: '600'
+                fontWeight: 'bold',
+                boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)'
               }}
             >
-              ⬆️ 맨 위로 (사진업로드 구역)
+              ⬆️ 이미지 등록 구역 (맨 위로)
             </button>
             <button 
               type="button" 
@@ -362,49 +363,99 @@ export default function ProductEditor({ product, onClose, onSaved }) {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Base Info */}
-          <div>
-            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#1e293b' }}>상품 사진 (최대 8장)</label>
-            <input type="file" accept="image/*" multiple onChange={handleImageChange} style={{ width: '100%' }} />
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', overflowX: 'auto' }}>
-              {imageFiles.length === 0 && formData.imageUrls && formData.imageUrls.map((url, idx) => (
-                <img key={idx} src={url} alt={`preview-${idx}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px' }} />
-              ))}
-              {imageFiles.length > 0 && previewUrls.map((url, idx) => (
-                <img key={idx} src={url} alt={`new-preview-${idx}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px' }} />
-              ))}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          
+          {/* ========================================================
+              1. 🎯 메인 룩북 9:16 세로형 모델 피팅 이미지 전용 업로드 (신규)
+             ======================================================== */}
+          <div style={{
+            padding: '1.25rem',
+            backgroundColor: '#f0f9ff',
+            border: '2px dashed #0284c7',
+            borderRadius: '12px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 'bold', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>📸</span> [신규] 메인 룩북 전신 모델 피팅 사진 (9:16 세로형)
+                </h4>
+                <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.82rem', color: '#0284c7', lineHeight: 1.4 }}>
+                  * 메인 쇼핑몰 <strong>MAIN SELECTION</strong> 룩북 화보 카드(Look 01 등)에 9:16 세로 비율로 최우선 표시됩니다.
+                </p>
+              </div>
+              <label style={{
+                padding: '8px 16px',
+                backgroundColor: '#0284c7',
+                color: '#ffffff',
+                borderRadius: '8px',
+                fontSize: '0.85rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+                whiteSpace: 'nowrap'
+              }}>
+                + 9:16 세로사진 선택
+                <input type="file" accept="image/*" onChange={handleLookbookFitChange} style={{ display: 'none' }} />
+              </label>
             </div>
-            <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>* 여러 장을 한 번에 선택(드래그)할 수 있습니다. 새 사진을 선택하면 기존 사진을 덮어씁니다.</p>
-          </div>
 
-          {/* 🎯 세로형 메인 룩북 모델 피팅 사진 (9:16) */}
-          <div style={{ padding: '1rem', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }}>
-            <label style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#0f172a' }}>
-              <span style={{ fontSize: '1.1rem' }}>🎯</span> 메인 룩북 전신 모델 피팅 사진 (9:16 세로형)
-              <span style={{ fontSize: '0.8rem', color: '#2563eb', fontWeight: 'normal' }}>* 선택사항</span>
-            </label>
-            <input type="file" accept="image/*" onChange={handleLookbookFitChange} style={{ width: '100%', marginBottom: '0.5rem' }} />
-            
-            {(lookbookFitPreviewUrl || formData.lookbookFitImageUrl) && (
-              <div style={{ position: 'relative', display: 'inline-block', marginTop: '0.5rem' }}>
-                <img 
-                  src={lookbookFitPreviewUrl || formData.lookbookFitImageUrl} 
-                  alt="lookbook-fit-preview" 
-                  style={{ width: '108px', height: '192px', objectFit: 'cover', borderRadius: '6px', border: '2px solid #2563eb' }} 
-                />
-                <button 
-                  type="button" 
-                  onClick={handleRemoveLookbookFit}
-                  style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}
-                >
-                  &times;
-                </button>
+            {/* 세로 미리보기 영역 */}
+            {(lookbookFitPreviewUrl || formData.lookbookFitImageUrl) ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginTop: '0.75rem', padding: '0.75rem 1rem', backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <img 
+                    src={lookbookFitPreviewUrl || formData.lookbookFitImageUrl} 
+                    alt="lookbook-fit-preview" 
+                    style={{ width: '100px', height: '178px', objectFit: 'cover', borderRadius: '8px', border: '2px solid #0284c7', boxShadow: '0 6px 16px rgba(0,0,0,0.12)' }} 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={handleRemoveLookbookFit}
+                    style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
+                  >
+                    &times;
+                  </button>
+                </div>
+                <div>
+                  <span style={{ display: 'inline-block', padding: '4px 10px', backgroundColor: '#dbeafe', color: '#1d4ed8', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                    ✓ 9:16 메인 룩북 피팅 이미지 등록됨
+                  </span>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#475569', lineHeight: 1.5 }}>
+                    새로운 세로 이미지를 추가하면 메인 화면 룩북 화보 카드가 즉시 해당 9:16 모델 컷으로 업데이트됩니다.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: '1.25rem', textAlign: 'center', border: '1px dashed #bae6fd', borderRadius: '8px', backgroundColor: '#ffffff', color: '#0369a1', fontSize: '0.85rem' }}>
+                아직 등록된 9:16 세로 룩북 사진이 없습니다. 오른쪽 <strong>[+ 9:16 세로사진 선택]</strong> 버튼을 눌러 모델 전신 컷을 등록해보세요!
               </div>
             )}
-            <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.5rem 0 0 0' }}>
-              * 메인 화면의 <strong>MAIN SELECTION</strong> 룩북 카드(Look 01 등)에 9:16 세로 비율로 최우선 표시됩니다.
-            </p>
+          </div>
+
+          {/* ========================================================
+              2. 🖼️ 일반 상품 갤러리 사진 (최대 8장)
+             ======================================================== */}
+          <div style={{ padding: '1.25rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '0.95rem' }}>🖼️ 일반 상품 갤러리 사진 (최대 8장)</label>
+              <label style={{ padding: '6px 14px', backgroundColor: '#475569', color: '#ffffff', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer' }}>
+                + 상품사진 선택
+                <input type="file" accept="image/*" multiple onChange={handleImageChange} style={{ display: 'none' }} />
+              </label>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', overflowX: 'auto', minHeight: '80px', alignItems: 'center' }}>
+              {imageFiles.length === 0 && formData.imageUrls && formData.imageUrls.map((url, idx) => (
+                <img key={idx} src={url} alt={`preview-${idx}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+              ))}
+              {imageFiles.length > 0 && previewUrls.map((url, idx) => (
+                <img key={idx} src={url} alt={`new-preview-${idx}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '6px', border: '2px solid #3b82f6' }} />
+              ))}
+              {(!formData.imageUrls || formData.imageUrls.length === 0) && imageFiles.length === 0 && (
+                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>등록된 일반 상품 사진이 없습니다.</span>
+              )}
+            </div>
+            <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0.5rem 0 0 0' }}>* 드래그하여 여러 장 선택 가능하며, 새로 선택 시 기존 갤러리 사진을 덮어씁니다.</p>
           </div>
           <div>
             <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#1e293b' }}>가격</label>
