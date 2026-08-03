@@ -5,6 +5,7 @@ import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import imageCompression from 'browser-image-compression';
 import { db, storage } from '../firebase';
+import '../admin.css';
 
 export default function ProductEditor({ product, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
@@ -281,8 +282,30 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   };
 
   return (
-    <div className="admin-modal-overlay">
-      <div className="admin-modal-content" ref={modalContentRef}>
+    <div className="admin-modal-overlay" style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      backdropFilter: 'blur(6px)',
+      zIndex: 9999,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '1.5rem'
+    }}>
+      <div className="admin-modal-content" ref={modalContentRef} style={{
+        backgroundColor: '#ffffff',
+        border: '1px solid #cbd5e1',
+        borderRadius: '12px',
+        padding: '2rem 2.5rem',
+        width: '100%',
+        maxWidth: '860px',
+        maxHeight: '88vh',
+        overflowY: 'auto',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+        position: 'relative',
+        overscrollBehavior: 'contain'
+      }}>
         {/* 상단 Sticky 고정 헤더 */}
         <div style={{
           position: 'sticky',
