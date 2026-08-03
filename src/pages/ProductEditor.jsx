@@ -10,6 +10,8 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
   const [imageFiles, setImageFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
+  const [lookbookFitFile, setLookbookFitFile] = useState(null);
+  const [lookbookFitPreviewUrl, setLookbookFitPreviewUrl] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
   const [baseCurrency, setBaseCurrency] = useState('KRW');
@@ -99,6 +101,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       return {
         ...product,
         imageUrls: product.imageUrls || (product.imageUrl ? [product.imageUrl] : []),
+        lookbookFitImageUrl: product.lookbookFitImageUrl || '',
         options: product.options || []
       };
     }
@@ -106,6 +109,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       price: '',
       youtubeUrl: '',
       videoUrl: '',
+      lookbookFitImageUrl: '',
       ko: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
       en: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
       vi: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
@@ -176,6 +180,20 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     }
   };
 
+  const handleLookbookFitChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setLookbookFitFile(file);
+      setLookbookFitPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveLookbookFit = () => {
+    setLookbookFitFile(null);
+    setLookbookFitPreviewUrl(null);
+    setFormData(prev => ({ ...prev, lookbookFitImageUrl: '' }));
+  };
+
   const handleVideoChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -201,6 +219,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     try {
       let finalImageUrls = [...formData.imageUrls];
       let finalVideoUrl = formData.videoUrl || '';
+      let finalLookbookFitImageUrl = formData.lookbookFitImageUrl || '';
 
       // 1. Upload new images if selected (replaces old ones)
       if (imageFiles.length > 0) {
@@ -213,6 +232,15 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         }
       }
 
+      // 1.2 Upload lookbook 9:16 fit image if selected
+      if (lookbookFitFile) {
+        const options = { maxSizeMB: 1, maxWidthOrHeight: 1600, useWebWorker: true };
+        const compressedFile = await imageCompression(lookbookFitFile, options).catch(() => lookbookFitFile);
+        const lookbookRef = ref(storage, `products/lookbooks/${Date.now()}_${compressedFile.name}`);
+        const snapshot = await uploadBytes(lookbookRef, compressedFile);
+        finalLookbookFitImageUrl = await getDownloadURL(snapshot.ref);
+      }
+
       // 1.5 Upload new video if selected
       if (videoFile) {
         const videoRef = ref(storage, `products/videos/${Date.now()}_${videoFile.name}`);
@@ -220,7 +248,13 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         finalVideoUrl = await getDownloadURL(snapshot.ref);
       }
 
-      const finalData = { ...formData, imageUrls: finalImageUrls, videoUrl: finalVideoUrl, updatedAt: new Date() };
+      const finalData = { 
+        ...formData, 
+        imageUrls: finalImageUrls, 
+        videoUrl: finalVideoUrl, 
+        lookbookFitImageUrl: finalLookbookFitImageUrl,
+        updatedAt: new Date() 
+      };
       delete finalData.imageUrl; // Remove legacy field
 
       // 2. Save to Firestore
@@ -261,6 +295,35 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               ))}
             </div>
             <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>* 여러 장을 한 번에 선택(드래그)할 수 있습니다. 새 사진을 선택하면 기존 사진을 덮어씁니다.</p>
+          </div>
+
+          {/* 🎯 세로형 메인 룩북 모델 피팅 사진 (9:16) */}
+          <div style={{ padding: '1rem', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }}>
+            <label style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#0f172a' }}>
+              <span style={{ fontSize: '1.1rem' }}>🎯</span> 메인 룩북 전신 모델 피팅 사진 (9:16 세로형)
+              <span style={{ fontSize: '0.8rem', color: '#2563eb', fontWeight: 'normal' }}>* 선택사항</span>
+            </label>
+            <input type="file" accept="image/*" onChange={handleLookbookFitChange} style={{ width: '100%', marginBottom: '0.5rem' }} />
+            
+            {(lookbookFitPreviewUrl || formData.lookbookFitImageUrl) && (
+              <div style={{ position: 'relative', display: 'inline-block', marginTop: '0.5rem' }}>
+                <img 
+                  src={lookbookFitPreviewUrl || formData.lookbookFitImageUrl} 
+                  alt="lookbook-fit-preview" 
+                  style={{ width: '108px', height: '192px', objectFit: 'cover', borderRadius: '6px', border: '2px solid #2563eb' }} 
+                />
+                <button 
+                  type="button" 
+                  onClick={handleRemoveLookbookFit}
+                  style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}
+                >
+                  &times;
+                </button>
+              </div>
+            )}
+            <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.5rem 0 0 0' }}>
+              * 메인 화면의 <strong>MAIN SELECTION</strong> 룩북 카드(Look 01 등)에 9:16 세로 비율로 최우선 표시됩니다.
+            </p>
           </div>
           <div>
             <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#1e293b' }}>가격</label>

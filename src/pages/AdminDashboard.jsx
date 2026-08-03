@@ -121,7 +121,7 @@ export default function AdminDashboard() {
     if (window.confirm("이 배너 사진을 삭제하시겠습니까?")) {
       try {
         const updatedUrls = heroImageUrls.filter(url => url !== urlToDelete);
-        await setDoc(doc(db, 'settings', 'main'), { heroImageUrls: updatedUrls }, { merge: true });
+        await setDoc(doc(db, 'settings', 'main'), { heroImageUrls: updatedUrls, heroImageUrl: null }, { merge: true });
         setHeroImageUrls(updatedUrls);
       } catch (error) {
         console.error("Error deleting hero image:", error);
