@@ -326,8 +326,8 @@
 .admin-modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -338,13 +338,15 @@
 .admin-modal-content {
   background: var(--admin-canvas);
   border: 1px solid var(--admin-hairline-soft);
-  border-radius: var(--admin-radius-none);
-  padding: 2.5rem;
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
   width: 100%;
-  maxWidth: 720px;
-  maxHeight: 90vh;
+  max-width: 860px;
+  max-height: 88vh;
   overflow-y: auto;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  position: relative;
+  overscroll-behavior: contain;
 }
 
 /* Responsive Adjustments */

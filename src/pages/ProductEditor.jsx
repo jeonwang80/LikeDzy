@@ -30,6 +30,13 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   const quillRefKo = useRef(null);
   const quillRefEn = useRef(null);
   const quillRefVi = useRef(null);
+  const modalContentRef = useRef(null);
+
+  const scrollToTop = () => {
+    if (modalContentRef.current) {
+      modalContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const imageHandler = (quillRef) => {
     const input = document.createElement('input');
@@ -275,10 +282,61 @@ export default function ProductEditor({ product, onClose, onSaved }) {
 
   return (
     <div className="admin-modal-overlay">
-      <div className="admin-modal-content">
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b' }}>{product ? '상품 수정' : '새 상품 추가'}</h2>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+      <div className="admin-modal-content" ref={modalContentRef}>
+        {/* 상단 Sticky 고정 헤더 */}
+        <div style={{
+          position: 'sticky',
+          top: '-2rem',
+          backgroundColor: '#ffffff',
+          zIndex: 30,
+          paddingTop: '0.25rem',
+          paddingBottom: '0.75rem',
+          marginBottom: '1.25rem',
+          borderBottom: '1px solid #e2e8f0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 'bold', color: '#1e293b' }}>
+            {product ? '✏️ 상품 정보 & 이미지 수정' : '➕ 새 상품 추가'}
+          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <button 
+              type="button" 
+              onClick={scrollToTop} 
+              style={{
+                padding: '6px 14px',
+                fontSize: '0.8rem',
+                background: '#eff6ff',
+                color: '#2563eb',
+                border: '1px solid #bfdbfe',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              ⬆️ 맨 위로 (사진업로드 구역)
+            </button>
+            <button 
+              type="button" 
+              onClick={onClose} 
+              style={{
+                background: '#f1f5f9',
+                border: 'none',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                fontSize: '1.2rem',
+                cursor: 'pointer',
+                color: '#64748b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              &times;
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -429,11 +487,28 @@ export default function ProductEditor({ product, onClose, onSaved }) {
             <textarea placeholder="Hướng dẫn kích thước" value={formData.vi.sizeGuide} onChange={e => handleChange('vi', 'sizeGuide', e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px', minHeight: '60px' }} />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
-            <button type="button" onClick={onClose} disabled={loading} style={{ padding: '0.75rem 1.5rem', background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>취소</button>
-            <button type="submit" disabled={loading} style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-              {loading ? '저장 중...' : '저장하기'}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+            <button 
+              type="button" 
+              onClick={scrollToTop} 
+              style={{
+                padding: '0.75rem 1.25rem',
+                background: '#eff6ff',
+                color: '#2563eb',
+                border: '1px solid #bfdbfe',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              ⬆️ 맨 위로 (사진업로드 구역)
             </button>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button type="button" onClick={onClose} disabled={loading} style={{ padding: '0.75rem 1.5rem', background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>취소</button>
+              <button type="submit" disabled={loading} style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                {loading ? '저장 중...' : '저장하기'}
+              </button>
+            </div>
           </div>
         </form>
       </div>
