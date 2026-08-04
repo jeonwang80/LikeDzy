@@ -6,10 +6,10 @@ import './FeaturedProducts.css';
 
 // 상단 MAIN SELECTION 전용 깔끔한 배경의 룩북 전신 모델 피팅 이미지
 const MODEL_FIT_IMAGES = [
-  '/models/model_1.png?v=user_upload_1',
-  '/models/model_2.png',
-  '/models/model_3.png',
-  '/models/model_4.png'
+  '/models/model_1.png?v=20260804_v2',
+  '/models/model_2.png?v=20260804_v2',
+  '/models/model_3.png?v=20260804_v2',
+  '/models/model_4.png?v=20260804_v2'
 ];
 
 function stripHtml(html) {
