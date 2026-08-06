@@ -298,6 +298,26 @@
   overflow: hidden;
 }
 
+.hero-slide-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 1.2s ease-out;
+  transform: scale(1.02);
+  pointer-events: none;
+}
+
+.hero-slide-img.active {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
 .hero-slide {
   position: absolute;
   top: 0;
@@ -316,6 +336,7 @@
   opacity: 1;
   transform: scale(1);
 }
+
 
 /* 화살표 컨트롤 */
 .hero-slider-arrow {

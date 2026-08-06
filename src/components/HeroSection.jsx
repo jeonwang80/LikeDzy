@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import './HeroSection.css';
 
@@ -15,34 +15,34 @@ export default function HeroSection() {
   const [heroTitleSize, setHeroTitleSize] = useState('md');
   const [heroSubtitle, setHeroSubtitle] = useState('');
   const [heroSubtitleSize, setHeroSubtitleSize] = useState('md');
-  const [loading, setLoading] = useState(true);
 
-  // Firestore에서 메인 배너 이미지 및 텍스트 설정 가져오기
+  // Firestore에서 메인 배너 이미지 및 텍스트 설정 실시간 구독 (onSnapshot)
   useEffect(() => {
-    const fetchHeroSettings = async () => {
-      try {
-        const docSnap = await getDoc(doc(db, 'settings', 'main'));
+    const unsub = onSnapshot(
+      doc(db, 'settings', 'main'),
+      (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
+          let urls = [];
           if (data.heroImageUrls && Array.isArray(data.heroImageUrls) && data.heroImageUrls.length > 0) {
-            setHeroImageUrls(data.heroImageUrls);
-          } else if (data.heroImageUrl) {
-            setHeroImageUrls([data.heroImageUrl]);
+            urls = data.heroImageUrls.filter(url => url && typeof url === 'string');
+          } else if (data.heroImageUrl && typeof data.heroImageUrl === 'string') {
+            urls = [data.heroImageUrl];
           }
 
+          setHeroImageUrls(urls);
           if (data.heroTitle !== undefined) setHeroTitle(data.heroTitle);
           if (data.heroTitleSize) setHeroTitleSize(data.heroTitleSize);
           if (data.heroSubtitle !== undefined) setHeroSubtitle(data.heroSubtitle);
           if (data.heroSubtitleSize) setHeroSubtitleSize(data.heroSubtitleSize);
         }
-      } catch (error) {
-        console.error("Error fetching hero settings:", error);
-      } finally {
-        setLoading(false);
+      },
+      (error) => {
+        console.error("Error listening to hero settings:", error);
       }
-    };
+    );
 
-    fetchHeroSettings();
+    return () => unsub();
   }, []);
 
   // 배너 이미지가 여러 장일 경우 자동 슬라이드 (4초 간격)
@@ -251,10 +251,11 @@ export default function HeroSection() {
         {heroImageUrls.length > 0 ? (
           <div className="hero-slider-container">
             {heroImageUrls.map((url, index) => (
-              <div
+              <img
                 key={index}
-                className={`hero-slide ${index === currentSlide ? 'active' : ''}`}
-                style={{ backgroundImage: `url(${url})` }}
+                src={url}
+                alt={`Hero banner ${index + 1}`}
+                className={`hero-slide-img ${index === currentSlide ? 'active' : ''}`}
               />
             ))}
 
@@ -296,4 +297,5 @@ export default function HeroSection() {
     </section>
   );
 }
+
 
