@@ -11,8 +11,6 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
   const [imageFiles, setImageFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
-  const [lookbookFitFile, setLookbookFitFile] = useState(null);
-  const [lookbookFitPreviewUrl, setLookbookFitPreviewUrl] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
   const [baseCurrency, setBaseCurrency] = useState('KRW');
@@ -109,7 +107,6 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       return {
         ...product,
         imageUrls: product.imageUrls || (product.imageUrl ? [product.imageUrl] : []),
-        lookbookFitImageUrl: product.lookbookFitImageUrl || '',
         options: product.options || []
       };
     }
@@ -117,7 +114,6 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       price: '',
       youtubeUrl: '',
       videoUrl: '',
-      lookbookFitImageUrl: '',
       ko: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
       en: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
       vi: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
@@ -181,25 +177,29 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   };
 
   const handleImageChange = (e) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files).slice(0, 8);
-      setImageFiles(files);
-      setPreviewUrls(files.map(file => URL.createObjectURL(file)));
+    if (e.target.files && e.target.files.length > 0) {
+      const currentCount = (formData.imageUrls?.length || 0) + imageFiles.length;
+      const available = 8 - currentCount;
+      if (available <= 0) {
+        alert("이미지는 최대 8장까지 등록할 수 있습니다.");
+        return;
+      }
+      const files = Array.from(e.target.files).slice(0, available);
+      setImageFiles(prev => [...prev, ...files]);
+      setPreviewUrls(prev => [...prev, ...files.map(file => URL.createObjectURL(file))]);
     }
   };
 
-  const handleLookbookFitChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setLookbookFitFile(file);
-      setLookbookFitPreviewUrl(URL.createObjectURL(file));
-    }
+  const handleRemoveExistingImage = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      imageUrls: prev.imageUrls.filter((_, i) => i !== index)
+    }));
   };
 
-  const handleRemoveLookbookFit = () => {
-    setLookbookFitFile(null);
-    setLookbookFitPreviewUrl(null);
-    setFormData(prev => ({ ...prev, lookbookFitImageUrl: '' }));
+  const handleRemoveNewImage = (index) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleVideoChange = (e) => {
@@ -225,13 +225,11 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     setLoading(true);
 
     try {
-      let finalImageUrls = [...formData.imageUrls];
+      let finalImageUrls = [...(formData.imageUrls || [])];
       let finalVideoUrl = formData.videoUrl || '';
-      let finalLookbookFitImageUrl = formData.lookbookFitImageUrl || '';
 
-      // 1. Upload new images if selected (replaces old ones)
+      // 1. Upload newly selected image files and append
       if (imageFiles.length > 0) {
-        finalImageUrls = [];
         for (const file of imageFiles) {
           const imageRef = ref(storage, `products/${Date.now()}_${file.name}`);
           const snapshot = await uploadBytes(imageRef, file);
@@ -240,16 +238,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         }
       }
 
-      // 1.2 Upload lookbook 9:16 fit image if selected
-      if (lookbookFitFile) {
-        const options = { maxSizeMB: 1, maxWidthOrHeight: 1600, useWebWorker: true };
-        const compressedFile = await imageCompression(lookbookFitFile, options).catch(() => lookbookFitFile);
-        const lookbookRef = ref(storage, `products/lookbooks/${Date.now()}_${compressedFile.name}`);
-        const snapshot = await uploadBytes(lookbookRef, compressedFile);
-        finalLookbookFitImageUrl = await getDownloadURL(snapshot.ref);
-      }
-
-      // 1.5 Upload new video if selected
+      // 2. Upload new video if selected
       if (videoFile) {
         const videoRef = ref(storage, `products/videos/${Date.now()}_${videoFile.name}`);
         const snapshot = await uploadBytes(videoRef, videoFile);
@@ -260,10 +249,10 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         ...formData, 
         imageUrls: finalImageUrls, 
         videoUrl: finalVideoUrl, 
-        lookbookFitImageUrl: finalLookbookFitImageUrl,
         updatedAt: new Date() 
       };
       delete finalData.imageUrl; // Remove legacy field
+      delete finalData.lookbookFitImageUrl;
 
       // 2. Save to Firestore
       if (product && product.id) {
@@ -366,96 +355,98 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           
           {/* ========================================================
-              1. 🎯 메인 룩북 9:16 세로형 모델 피팅 이미지 전용 업로드 (신규)
-             ======================================================== */}
-          <div style={{
-            padding: '1.25rem',
-            backgroundColor: '#f0f9ff',
-            border: '2px dashed #0284c7',
-            borderRadius: '12px'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.75rem' }}>
-              <div>
-                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 'bold', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>📸</span> [신규] 메인 룩북 전신 모델 피팅 사진 (9:16 세로형)
-                </h4>
-                <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.82rem', color: '#0284c7', lineHeight: 1.4 }}>
-                  * 메인 쇼핑몰 <strong>MAIN SELECTION</strong> 룩북 화보 카드(Look 01 등)에 9:16 세로 비율로 최우선 표시됩니다.
-                </p>
-              </div>
-              <label style={{
-                padding: '8px 16px',
-                backgroundColor: '#0284c7',
-                color: '#ffffff',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
-                whiteSpace: 'nowrap'
-              }}>
-                + 9:16 세로사진 선택
-                <input type="file" accept="image/*" onChange={handleLookbookFitChange} style={{ display: 'none' }} />
-              </label>
-            </div>
-
-            {/* 세로 미리보기 영역 */}
-            {(lookbookFitPreviewUrl || formData.lookbookFitImageUrl) ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginTop: '0.75rem', padding: '0.75rem 1rem', backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <img 
-                    src={lookbookFitPreviewUrl || formData.lookbookFitImageUrl} 
-                    alt="lookbook-fit-preview" 
-                    style={{ width: '100px', height: '178px', objectFit: 'cover', borderRadius: '8px', border: '2px solid #0284c7', boxShadow: '0 6px 16px rgba(0,0,0,0.12)' }} 
-                  />
-                  <button 
-                    type="button" 
-                    onClick={handleRemoveLookbookFit}
-                    style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
-                  >
-                    &times;
-                  </button>
-                </div>
-                <div>
-                  <span style={{ display: 'inline-block', padding: '4px 10px', backgroundColor: '#dbeafe', color: '#1d4ed8', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                    ✓ 9:16 메인 룩북 피팅 이미지 등록됨
-                  </span>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#475569', lineHeight: 1.5 }}>
-                    새로운 세로 이미지를 추가하면 메인 화면 룩북 화보 카드가 즉시 해당 9:16 모델 컷으로 업데이트됩니다.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div style={{ padding: '1.25rem', textAlign: 'center', border: '1px dashed #bae6fd', borderRadius: '8px', backgroundColor: '#ffffff', color: '#0369a1', fontSize: '0.85rem' }}>
-                아직 등록된 9:16 세로 룩북 사진이 없습니다. 오른쪽 <strong>[+ 9:16 세로사진 선택]</strong> 버튼을 눌러 모델 전신 컷을 등록해보세요!
-              </div>
-            )}
-          </div>
-
-          {/* ========================================================
-              2. 🖼️ 일반 상품 갤러리 사진 (최대 8장)
+              🖼️ 일반 상품 갤러리 사진 (최대 8장, 개별 삭제 가능)
              ======================================================== */}
           <div style={{ padding: '1.25rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <label style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '0.95rem' }}>🖼️ 일반 상품 갤러리 사진 (최대 8장)</label>
-              <label style={{ padding: '6px 14px', backgroundColor: '#475569', color: '#ffffff', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer' }}>
-                + 상품사진 선택
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <div>
+                <label style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '0.95rem' }}>
+                  🖼️ 상품 갤러리 사진 (최대 8장)
+                </label>
+                <span style={{ fontSize: '0.8rem', color: '#0284c7', fontWeight: 'bold', marginLeft: '0.5rem' }}>
+                  ({(formData.imageUrls?.length || 0) + imageFiles.length} / 8장)
+                </span>
+              </div>
+              
+              <label style={{
+                padding: '7px 16px',
+                backgroundColor: '#0284c7',
+                color: '#ffffff',
+                borderRadius: '6px',
+                fontSize: '0.825rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
+              }}>
+                + 상품사진 추가
                 <input type="file" accept="image/*" multiple onChange={handleImageChange} style={{ display: 'none' }} />
               </label>
             </div>
             
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', overflowX: 'auto', minHeight: '80px', alignItems: 'center' }}>
-              {imageFiles.length === 0 && formData.imageUrls && formData.imageUrls.map((url, idx) => (
-                <img key={idx} src={url} alt={`preview-${idx}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+            <div style={{ display: 'flex', gap: '0.85rem', marginTop: '0.5rem', overflowX: 'auto', padding: '8px 4px', minHeight: '95px', alignItems: 'center' }}>
+              {/* 1. 기존 등록된 이미지 */}
+              {formData.imageUrls && formData.imageUrls.map((url, idx) => (
+                <div key={`existing-${idx}`} style={{ position: 'relative', flexShrink: 0 }}>
+                  <img 
+                    src={url} 
+                    alt={`existing-${idx}`} 
+                    style={{ width: '85px', height: '85px', objectFit: 'cover', borderRadius: '8px', border: '2px solid #cbd5e1' }} 
+                  />
+                  {idx === 0 && (
+                    <span style={{ position: 'absolute', bottom: '4px', left: '4px', background: '#1e293b', color: '#fff', fontSize: '0.65rem', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px' }}>
+                      메인
+                    </span>
+                  )}
+                  <button 
+                    type="button" 
+                    onClick={() => handleRemoveExistingImage(idx)}
+                    style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', fontSize: '0.85rem' }}
+                    title="사진 삭제"
+                  >
+                    &times;
+                  </button>
+                </div>
               ))}
-              {imageFiles.length > 0 && previewUrls.map((url, idx) => (
-                <img key={idx} src={url} alt={`new-preview-${idx}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '6px', border: '2px solid #3b82f6' }} />
-              ))}
+
+              {/* 2. 신규 추가 업로드 대기 이미지 */}
+              {previewUrls.map((url, idx) => {
+                const totalIdx = (formData.imageUrls?.length || 0) + idx;
+                return (
+                  <div key={`new-${idx}`} style={{ position: 'relative', flexShrink: 0 }}>
+                    <img 
+                      src={url} 
+                      alt={`new-${idx}`} 
+                      style={{ width: '85px', height: '85px', objectFit: 'cover', borderRadius: '8px', border: '2px solid #0284c7' }} 
+                    />
+                    {totalIdx === 0 && (
+                      <span style={{ position: 'absolute', bottom: '4px', left: '4px', background: '#0284c7', color: '#fff', fontSize: '0.65rem', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px' }}>
+                        메인
+                      </span>
+                    )}
+                    <span style={{ position: 'absolute', bottom: '4px', right: '4px', background: 'rgba(2, 132, 199, 0.9)', color: '#fff', fontSize: '0.6rem', padding: '1px 4px', borderRadius: '2px' }}>
+                      신규
+                    </span>
+                    <button 
+                      type="button" 
+                      onClick={() => handleRemoveNewImage(idx)}
+                      style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', fontSize: '0.85rem' }}
+                      title="사진 삭제"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                );
+              })}
+
               {(!formData.imageUrls || formData.imageUrls.length === 0) && imageFiles.length === 0 && (
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>등록된 일반 상품 사진이 없습니다.</span>
+                <div style={{ padding: '1rem', width: '100%', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', border: '1px dashed #cbd5e1', borderRadius: '8px', backgroundColor: '#ffffff' }}>
+                  등록된 상품 사진이 없습니다. 오른쪽 <strong>[+ 상품사진 추가]</strong> 버튼을 눌러 사진을 추가하세요.
+                </div>
               )}
             </div>
-            <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0.5rem 0 0 0' }}>* 드래그하여 여러 장 선택 가능하며, 새로 선택 시 기존 갤러리 사진을 덮어씁니다.</p>
+            <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0.5rem 0 0 0' }}>
+              * 각 사진 우측 상단의 🔴 빨간색 <strong>[✕]</strong> 버튼을 클릭하여 원하지 않는 특정 사진만 선택 삭제할 수 있습니다.
+            </p>
           </div>
           <div>
             <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#1e293b' }}>가격</label>
