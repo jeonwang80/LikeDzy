@@ -224,10 +224,11 @@ const CollectionItem = ({ product, onProductSelect, isWishlisted, onToggleWishli
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
-  const activeColor = product.colorSwatches[selectedColorIdx] || product.colorSwatches[0];
+  const activeColor = product.colorSwatches?.[selectedColorIdx] || product.colorSwatches?.[0];
+  const colorImg = activeColor?.imageUrl || product.images?.[selectedColorIdx];
   const mainImage = (isHovered && product.images.length > 1) 
-    ? product.images[1] 
-    : (product.images[selectedColorIdx] || product.images[0] || '/models/model_1.png');
+    ? (product.images[1] !== colorImg ? product.images[1] : product.images[0])
+    : (colorImg || product.images?.[0] || '/models/model_1.png');
 
   return (
     <div 

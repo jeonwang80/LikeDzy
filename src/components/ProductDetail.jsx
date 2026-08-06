@@ -51,10 +51,18 @@ export default function ProductDetail({ product, onBack }) {
 
   // Options & Swatches
   const hasOptions = product.options && product.options.length > 0;
-  const colorSwatches = product.colors && product.colors.length > 0 
-    ? product.colors 
-    : DEFAULT_COLOR_PALETTES[0];
+  const colorSwatches = product.colorSwatches && product.colorSwatches.length > 0
+    ? product.colorSwatches
+    : (product.colors && product.colors.length > 0 ? product.colors : DEFAULT_COLOR_PALETTES[0]);
+
   const activeColor = colorSwatches[selectedColorIdx] || colorSwatches[0];
+  const activeColorImg = activeColor?.imageUrl || images[selectedColorIdx];
+
+  // Reorder images so selected color image is displayed first in gallery
+  const displayImages = useMemo(() => {
+    if (!activeColorImg || !images.includes(activeColorImg)) return images;
+    return [activeColorImg, ...images.filter(img => img !== activeColorImg)];
+  }, [images, activeColorImg]);
 
   // Sizes pill array (from product options or default Alo Yoga sizes)
   const sizes = hasOptions 
@@ -120,7 +128,7 @@ export default function ProductDetail({ product, onBack }) {
               LEFT COLUMN: Multiple Product Photos Grid (Alo Yoga Style)
              ======================================================== */}
           <div className="alo-detail-gallery">
-            {images.map((imgUrl, idx) => (
+            {displayImages.map((imgUrl, idx) => (
               <div 
                 key={idx} 
                 className="alo-detail-img-frame"

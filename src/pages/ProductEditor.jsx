@@ -101,6 +101,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       return {
         ...product,
         imageUrls: product.imageUrls || (product.imageUrl ? [product.imageUrl] : []),
+        colorSwatches: product.colorSwatches || (product.colors || []),
         options: product.options || []
       };
     }
@@ -112,6 +113,9 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       en: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
       vi: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
       imageUrls: [],
+      colorSwatches: [
+        { name: 'Black', colorHex: '#111111', imageUrl: '' }
+      ],
       prices: { KRW: 0, USD: 0, VND: 0 }
     };
   });
@@ -194,6 +198,31 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   const handleRemoveNewImage = (index) => {
     setImageFiles(prev => prev.filter((_, i) => i !== index));
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddColorSwatch = () => {
+    setFormData(prev => ({
+      ...prev,
+      colorSwatches: [
+        ...(prev.colorSwatches || []),
+        { name: '', colorHex: '#111111', imageUrl: prev.imageUrls?.[0] || '' }
+      ]
+    }));
+  };
+
+  const handleColorSwatchChange = (index, field, value) => {
+    setFormData(prev => {
+      const updated = [...(prev.colorSwatches || [])];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, colorSwatches: updated };
+    });
+  };
+
+  const handleRemoveColorSwatch = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      colorSwatches: prev.colorSwatches.filter((_, i) => i !== index)
+    }));
   };
 
   const handleVideoChange = (e) => {
@@ -424,6 +453,93 @@ export default function ProductEditor({ product, onClose, onSaved }) {
             <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0.5rem 0 0 0' }}>
               * 각 사진 우측 상단의 🔴 빨간색 <strong>[✕]</strong> 버튼을 클릭하여 원하지 않는 특정 사진만 선택 삭제할 수 있습니다.
             </p>
+          </div>
+
+          {/* ========================================================
+              🎨 색상 옵션별 이미지 매핑 (Color Swatches & Image Mapping)
+             ======================================================== */}
+          <div style={{ padding: '1.25rem', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <div>
+                <label style={{ fontWeight: 'bold', color: '#166534', fontSize: '0.95rem' }}>
+                  🎨 색상 옵션 및 사진 매핑 (Color Swatches)
+                </label>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: '#15803d' }}>
+                  * 고객이 색상 칩(●)을 선택할 때 자동으로 전환될 색상별 대표 사진을 연결하세요.
+                </p>
+              </div>
+              <button 
+                type="button" 
+                onClick={handleAddColorSwatch}
+                style={{ padding: '6px 14px', backgroundColor: '#16a34a', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.825rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)' }}
+              >
+                + 색상 추가
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+              {formData.colorSwatches && formData.colorSwatches.map((swatch, idx) => {
+                const allPhotos = [...(formData.imageUrls || []), ...previewUrls];
+                return (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', backgroundColor: '#ffffff', border: '1px solid #dcfce7', borderRadius: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input 
+                        type="color" 
+                        value={swatch.colorHex || '#111111'} 
+                        onChange={e => handleColorSwatchChange(idx, 'colorHex', e.target.value)}
+                        style={{ width: '32px', height: '32px', border: 'none', borderRadius: '50%', cursor: 'pointer', background: 'none' }}
+                        title="색상 칩 선택"
+                      />
+                      <input 
+                        type="text" 
+                        value={swatch.name || ''} 
+                        onChange={e => handleColorSwatchChange(idx, 'name', e.target.value)} 
+                        placeholder="색상명 (예: Navy, Black)" 
+                        style={{ padding: '6px 10px', fontSize: '0.85rem', border: '1px solid #cbd5e1', borderRadius: '4px', width: '140px' }}
+                      />
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: '220px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <label style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 'bold', whiteSpace: 'nowrap' }}>연결 사진:</label>
+                      <select 
+                        value={swatch.imageUrl || ''} 
+                        onChange={e => handleColorSwatchChange(idx, 'imageUrl', e.target.value)}
+                        style={{ flex: 1, padding: '6px 10px', fontSize: '0.85rem', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#ffffff' }}
+                      >
+                        <option value="">-- 갤러리 사진 선택 --</option>
+                        {allPhotos.map((url, pIdx) => (
+                          <option key={pIdx} value={url}>
+                            🖼️ {pIdx + 1}번째 사진 {pIdx === 0 ? '(대표 메인)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {swatch.imageUrl && (
+                      <img 
+                        src={swatch.imageUrl} 
+                        alt={swatch.name} 
+                        style={{ width: '38px', height: '38px', objectFit: 'cover', borderRadius: '4px', border: '2px solid #16a34a' }} 
+                      />
+                    )}
+
+                    <button 
+                      type="button" 
+                      onClick={() => handleRemoveColorSwatch(idx)}
+                      style={{ background: '#ef4444', color: '#ffffff', border: 'none', borderRadius: '4px', padding: '4px 10px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                );
+              })}
+
+              {(!formData.colorSwatches || formData.colorSwatches.length === 0) && (
+                <div style={{ padding: '0.75rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem', backgroundColor: '#ffffff', border: '1px dashed #cbd5e1', borderRadius: '6px' }}>
+                  등록된 색상 옵션이 없습니다. 오른쪽 <strong>[+ 색상 추가]</strong> 버튼을 눌러 색상별 사진을 연결해보세요!
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#1e293b' }}>가격</label>
