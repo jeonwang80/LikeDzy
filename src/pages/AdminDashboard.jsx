@@ -17,6 +17,9 @@ export default function AdminDashboard() {
   const [heroSubtitle, setHeroSubtitle] = useState('');
   const [heroSubtitleSize, setHeroSubtitleSize] = useState('md');
   const [heroTextLoading, setHeroTextLoading] = useState(false);
+  const [adminEmails, setAdminEmails] = useState(['jeonwang80@gmail.com']);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [adminSaving, setAdminSaving] = useState(false);
 
   const fetchProducts = async () => {
     try {
@@ -94,10 +97,71 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchAdminEmails = async () => {
+    try {
+      const docSnap = await getDoc(doc(db, 'settings', 'admin'));
+      if (docSnap.exists() && Array.isArray(docSnap.data()?.adminEmails)) {
+        setAdminEmails(docSnap.data().adminEmails);
+      }
+    } catch (error) {
+      console.error("Error fetching admin emails:", error);
+    }
+  };
+
+  const handleAddAdminEmail = async (e) => {
+    e.preventDefault();
+    const trimmed = newAdminEmail.trim().toLowerCase();
+    if (!trimmed) return;
+    if (!trimmed.includes('@')) {
+      alert("올바른 이메일 형식을 입력하세요.");
+      return;
+    }
+    if (adminEmails.map(e => e.toLowerCase()).includes(trimmed)) {
+      alert("이미 등록되어 있는 어드민 계정입니다.");
+      return;
+    }
+
+    setAdminSaving(true);
+    try {
+      const updatedList = [...adminEmails, trimmed];
+      await setDoc(doc(db, 'settings', 'admin'), { adminEmails: updatedList }, { merge: true });
+      setAdminEmails(updatedList);
+      setNewAdminEmail('');
+      alert(`[${trimmed}] 계정이 어드민 승인 목록에 추가되었습니다.`);
+    } catch (error) {
+      console.error("Error adding admin email:", error);
+      alert("어드민 계정 추가 중 오류가 발생했습니다.");
+    } finally {
+      setAdminSaving(false);
+    }
+  };
+
+  const handleRemoveAdminEmail = async (emailToDelete) => {
+    if (emailToDelete === 'jeonwang80@gmail.com') {
+      alert("마스터 어드민 계정은 삭제할 수 없습니다.");
+      return;
+    }
+    if (window.confirm(`[${emailToDelete}] 계정의 어드민 권한을 해제하시겠습니까?`)) {
+      setAdminSaving(true);
+      try {
+        const updatedList = adminEmails.filter(e => e.toLowerCase() !== emailToDelete.toLowerCase());
+        await setDoc(doc(db, 'settings', 'admin'), { adminEmails: updatedList }, { merge: true });
+        setAdminEmails(updatedList);
+        alert(`[${emailToDelete}] 계정이 어드민 목록에서 삭제되었습니다.`);
+      } catch (error) {
+        console.error("Error removing admin email:", error);
+        alert("삭제 중 오류가 발생했습니다.");
+      } finally {
+        setAdminSaving(false);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
     fetchHeroImage();
     fetchSplashImage();
+    fetchAdminEmails();
   }, []);
 
   const handleEdit = (product) => {
@@ -216,6 +280,75 @@ export default function AdminDashboard() {
     <div>
       <div className="admin-header">
         <h1 className="admin-title">대시보드 & 메인 관리</h1>
+      </div>
+
+      {/* 🔐 Admin Whitelist Account Management */}
+      <div className="admin-card" style={{ border: '2px solid #0284c7', backgroundColor: '#f0f9ff' }}>
+        <h2 className="admin-card-title" style={{ color: '#0369a1', borderBottomColor: '#bae6fd' }}>
+          <span>🔐 어드민 승인 계정 관리 (Admin Authorization)</span>
+        </h2>
+        <p style={{ fontSize: '0.875rem', color: '#0369a1', marginTop: '-0.5rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+          * 이곳에 등록된 이메일 계정만 LikeDzy 관리자 페이지(<code>/#/admin</code>)에 로그인 및 접근할 수 있습니다.
+        </p>
+
+        <form onSubmit={handleAddAdminEmail} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+          <input 
+            type="email" 
+            value={newAdminEmail} 
+            onChange={e => setNewAdminEmail(e.target.value)} 
+            placeholder="추가할 어드민 이메일 주소 입력 (예: manager@likedzy.com)" 
+            className="admin-input"
+            style={{ flex: 1, minWidth: '280px', backgroundColor: '#ffffff', border: '1px solid #7dd3fc' }}
+            required
+          />
+          <button 
+            type="submit" 
+            disabled={adminSaving} 
+            className="admin-btn-primary"
+            style={{ backgroundColor: '#0284c7', color: '#ffffff', whiteSpace: 'nowrap' }}
+          >
+            {adminSaving ? '처리 중...' : '+ 승인 계정 추가'}
+          </button>
+        </form>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', marginRight: '0.5rem' }}>
+            현재 승인된 어드민 목록 ({adminEmails.length}명):
+          </span>
+          {adminEmails.map((email, idx) => (
+            <div 
+              key={idx} 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '0.5rem', 
+                backgroundColor: '#ffffff', 
+                border: '1px solid #bae6fd', 
+                padding: '5px 12px', 
+                borderRadius: '20px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+              }}
+            >
+              <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#0f172a' }}>
+                👤 {email}
+              </span>
+              {email.toLowerCase() === 'jeonwang80@gmail.com' ? (
+                <span style={{ fontSize: '0.68rem', background: '#e0f2fe', color: '#0369a1', padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                  마스터
+                </span>
+              ) : (
+                <button 
+                  type="button" 
+                  onClick={() => handleRemoveAdminEmail(email)}
+                  style={{ background: '#ef4444', color: '#ffffff', border: 'none', borderRadius: '50%', width: '18px', height: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}
+                  title="어드민 권한 삭제"
+                >
+                  &times;
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Hero Banner Management */}
