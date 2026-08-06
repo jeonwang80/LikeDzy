@@ -9,15 +9,61 @@ export default function HeroSection() {
   const canvasRef = useRef(null);
   const mouseRef = useRef({ x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5 });
 
-  // 🩶 모노톤 회색 심플 & 모던 키네틱 캔버스 엔진
+  const [heroImageUrls, setHeroImageUrls] = useState([]);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [heroTitle, setHeroTitle] = useState('');
+  const [heroTitleSize, setHeroTitleSize] = useState('md');
+  const [heroSubtitle, setHeroSubtitle] = useState('');
+  const [heroSubtitleSize, setHeroSubtitleSize] = useState('md');
+  const [loading, setLoading] = useState(true);
+
+  // Firestore에서 메인 배너 이미지 및 텍스트 설정 가져오기
   useEffect(() => {
+    const fetchHeroSettings = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'settings', 'main'));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.heroImageUrls && Array.isArray(data.heroImageUrls) && data.heroImageUrls.length > 0) {
+            setHeroImageUrls(data.heroImageUrls);
+          } else if (data.heroImageUrl) {
+            setHeroImageUrls([data.heroImageUrl]);
+          }
+
+          if (data.heroTitle !== undefined) setHeroTitle(data.heroTitle);
+          if (data.heroTitleSize) setHeroTitleSize(data.heroTitleSize);
+          if (data.heroSubtitle !== undefined) setHeroSubtitle(data.heroSubtitle);
+          if (data.heroSubtitleSize) setHeroSubtitleSize(data.heroSubtitleSize);
+        }
+      } catch (error) {
+        console.error("Error fetching hero settings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHeroSettings();
+  }, []);
+
+  // 배너 이미지가 여러 장일 경우 자동 슬라이드 (4초 간격)
+  useEffect(() => {
+    if (heroImageUrls.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroImageUrls.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [heroImageUrls.length]);
+
+  // 🩶 이미지 미등록 시 사용될 모노톤 회색 심플 & 모던 키네틱 캔버스 엔진
+  useEffect(() => {
+    if (heroImageUrls.length > 0) return; // 이미지 등록 시 캔버스 미실행
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     let animationFrameId;
 
-    let width = (canvas.width = canvas.parentElement.clientWidth);
-    let height = (canvas.height = canvas.parentElement.clientHeight);
+    let width = (canvas.width = canvas.parentElement?.clientWidth || 300);
+    let height = (canvas.height = canvas.parentElement?.clientHeight || 240);
 
     const handleResize = () => {
       if (!canvas.parentElement) return;
@@ -33,11 +79,10 @@ export default function HeroSection() {
       mouseRef.current.targetX = x;
       mouseRef.current.targetY = y;
     };
-    canvas.parentElement.addEventListener('mousemove', handleMouseMove);
+    canvas.parentElement?.addEventListener('mousemove', handleMouseMove);
 
     let angle = 0;
 
-    // 회색 파티클 노드 (Monochrome Kinetic Particles)
     const nodes = Array.from({ length: 40 }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
@@ -47,7 +92,6 @@ export default function HeroSection() {
       alpha: 0.2 + Math.random() * 0.5
     }));
 
-    // 모노톤 기하학적 데이지 아웃라인 렌더링 함수
     const drawMonochromeDaisyOutline = (cx, cy, scale, rot, alpha = 1) => {
       ctx.save();
       ctx.translate(cx, cy);
@@ -59,7 +103,6 @@ export default function HeroSection() {
       const petalL = 48;
       const petalW = 12;
 
-      // 1. 꽃잎 아웃라인 (Silver & Slate Gray Lines)
       ctx.strokeStyle = `rgba(209, 213, 219, ${0.55 * alpha})`;
       ctx.lineWidth = 1.2;
 
@@ -73,7 +116,6 @@ export default function HeroSection() {
         ctx.restore();
       }
 
-      // 2. 중심 수술 아웃라인 링 (Double Ring)
       ctx.beginPath();
       ctx.arc(0, 0, innerR, 0, Math.PI * 2);
       ctx.strokeStyle = `rgba(243, 244, 246, ${0.9 * alpha})`;
@@ -89,14 +131,12 @@ export default function HeroSection() {
       ctx.restore();
     };
 
-    // 애니메이션 렌더링 루프
     const render = () => {
       mouseRef.current.x += (mouseRef.current.targetX - mouseRef.current.x) * 0.04;
       mouseRef.current.y += (mouseRef.current.targetY - mouseRef.current.y) * 0.04;
 
       ctx.clearRect(0, 0, width, height);
 
-      // 모던 차콜 회색 모노톤 배경 그라데이션
       const bgGrad = ctx.createLinearGradient(0, 0, width, height);
       bgGrad.addColorStop(0, '#111215');
       bgGrad.addColorStop(0.5, '#18191e');
@@ -104,7 +144,6 @@ export default function HeroSection() {
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, width, height);
 
-      // 미니멀 그리드 (회색 와이어)
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
       ctx.lineWidth = 1;
       const gSize = 60;
@@ -126,7 +165,6 @@ export default function HeroSection() {
       const centerX = width * 0.5 + (mouseRef.current.x - 0.5) * 70;
       const centerY = height * 0.5 + (mouseRef.current.y - 0.5) * 35;
 
-      // 1. 기하학적 키네틱 파동 & 타원 궤도 선 (Monochrome Waves)
       ctx.save();
       ctx.translate(centerX, centerY);
 
@@ -143,7 +181,6 @@ export default function HeroSection() {
       });
       ctx.restore();
 
-      // 2. 파티클 연결선 (Kinetic Gray Net)
       nodes.forEach((n, i) => {
         n.x += n.vx;
         n.y += n.vy;
@@ -170,7 +207,6 @@ export default function HeroSection() {
         }
       });
 
-      // 3. 궤도 회전 미니 모노톤 데이지 아웃라인
       const miniOrbitR = [150, 240, 310];
       miniOrbitR.forEach((r, idx) => {
         const a = angle * (idx % 2 === 0 ? 0.8 : -0.6) + (idx * Math.PI * 0.6);
@@ -179,7 +215,6 @@ export default function HeroSection() {
         drawMonochromeDaisyOutline(mx, my, 0.35 - idx * 0.05, a * 1.5, 0.6);
       });
 
-      // 4. 중앙 시그니처 메인 모노톤 기하학 데이지
       const mainScale = Math.min(width, height) * 0.0036;
       drawMonochromeDaisyOutline(centerX, centerY, Math.max(0.65, Math.min(mainScale, 1.1)), angle, 0.95);
 
@@ -195,24 +230,70 @@ export default function HeroSection() {
         canvas.parentElement.removeEventListener('mousemove', handleMouseMove);
       }
     };
-  }, []);
+  }, [heroImageUrls.length]);
+
+  const handlePrevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + heroImageUrls.length) % heroImageUrls.length);
+  };
+
+  const handleNextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % heroImageUrls.length);
+  };
+
+  // 표시할 제목 및 서브타이틀
+  const displayTitle = heroTitle || 'PREMIUM WOVEN SPORTSWEAR';
+  const displaySubtitle = heroSubtitle || '프리미엄 우븐 스포츠웨어의 새로운 기준';
 
   return (
     <section className="hero-section-wide">
-      {/* 모노톤 심플 & 모던 키네틱 캔버스 배너 */}
-      <div className="hero-wide-banner empty-banner monochrome-hero">
-        <canvas ref={canvasRef} className="hero-geometric-canvas" />
+      {/* 이미지 존재 시 이미지 슬라이더, 없을 시 모노톤 키네틱 캔버스 */}
+      <div className={`hero-wide-banner ${heroImageUrls.length === 0 ? 'empty-banner monochrome-hero' : 'has-images'}`}>
+        {heroImageUrls.length > 0 ? (
+          <div className="hero-slider-container">
+            {heroImageUrls.map((url, index) => (
+              <div
+                key={index}
+                className={`hero-slide ${index === currentSlide ? 'active' : ''}`}
+                style={{ backgroundImage: `url(${url})` }}
+              />
+            ))}
+
+            {/* 슬라이드 2개 이상 시 컨트롤 화살표 및 인디케이터 */}
+            {heroImageUrls.length > 1 && (
+              <>
+                <button className="hero-slider-arrow prev" onClick={handlePrevSlide} aria-label="Previous Slide">
+                  ❮
+                </button>
+                <button className="hero-slider-arrow next" onClick={handleNextSlide} aria-label="Next Slide">
+                  ❯
+                </button>
+                <div className="hero-slider-dots">
+                  {heroImageUrls.map((_, index) => (
+                    <span
+                      key={index}
+                      className={`hero-dot ${index === currentSlide ? 'active' : ''}`}
+                      onClick={() => setCurrentSlide(index)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <canvas ref={canvasRef} className="hero-geometric-canvas" />
+        )}
       </div>
 
-      {/* 히어로 타이틀 문구 */}
+      {/* 히어로 타이틀 문구 (어드민 설정 텍스트 동적 적용) */}
       <div className="hero-content-area">
-        <h1 className="hero-title size-md">
-          PREMIUM WOVEN SPORTSWEAR
+        <h1 className={`hero-title size-${heroTitleSize}`}>
+          {displayTitle}
         </h1>
-        <p className="hero-subtitle size-md">
-          프리미엄 우븐 스포츠웨어의 새로운 기준
+        <p className={`hero-subtitle size-${heroSubtitleSize}`}>
+          {displaySubtitle}
         </p>
       </div>
     </section>
   );
 }
+
