@@ -279,45 +279,45 @@
    메인 배너 이미지 슬라이더 스타일 (동적 이미지 적용)
    ========================================================================== */
 .hero-wide-banner.has-images {
-  height: 85vh;
-  min-height: 650px;
+  width: 100%;
+  height: auto;
+  min-height: auto;
+  max-height: none;
   background-color: #0b0c0e;
   position: relative;
   overflow: hidden;
 }
 
-@media (max-width: 768px) {
-  .hero-wide-banner.has-images {
-    height: 70vh;
-    min-height: 450px;
-  }
-}
-
 .hero-slider-container {
   position: relative;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  height: auto;
 }
 
 .hero-slide-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.hero-slide-img.active {
+  opacity: 1;
+  position: relative;
+  width: 100%;
+  height: auto;
+  pointer-events: auto;
+}
+
+.hero-slide-img:not(.active) {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center top;
-  opacity: 0;
-  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 1.2s ease-out;
-  transform: scale(1.02);
-  pointer-events: none;
-}
-
-.hero-slide-img.active {
-  opacity: 1;
-  transform: scale(1);
-  pointer-events: auto;
 }
 
 .hero-slide {
