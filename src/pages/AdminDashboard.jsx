@@ -39,19 +39,23 @@ export default function AdminDashboard() {
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
     if (targetIndex < 0 || targetIndex >= products.length) return;
 
-    const currentProduct = products[currentIndex];
-    const targetProduct = products[targetIndex];
+    const updatedProducts = [...products];
+    const temp = updatedProducts[currentIndex];
+    updatedProducts[currentIndex] = updatedProducts[targetIndex];
+    updatedProducts[targetIndex] = temp;
 
-    const currentOrder = currentProduct.orderIndex !== undefined ? currentProduct.orderIndex : currentIndex;
-    const targetOrder = targetProduct.orderIndex !== undefined ? targetProduct.orderIndex : targetIndex;
+    // Immediate UI update
+    setProducts(updatedProducts);
 
     try {
-      await updateDoc(doc(db, 'products', currentProduct.id), { orderIndex: targetOrder });
-      await updateDoc(doc(db, 'products', targetProduct.id), { orderIndex: currentOrder });
-      fetchProducts();
+      const batchPromises = updatedProducts.map((p, idx) => 
+        setDoc(doc(db, 'products', p.id), { orderIndex: idx }, { merge: true })
+      );
+      await Promise.all(batchPromises);
     } catch (error) {
       console.error("Error updating order:", error);
-      alert("순서 변경 실패");
+      alert("순서 변경 중 오류 발생: " + (error.message || error));
+      fetchProducts();
     }
   };
 
