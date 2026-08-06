@@ -1,30 +1,37 @@
-/* Alo Yoga Style Storefront & Collection Grid CSS */
+/* Alo Yoga Style Storefront & Collection Grid CSS - 100% Proportion Match */
 
 .collection-view-container {
-  padding: 6rem 1.25rem 5rem 1.25rem;
+  padding: 5rem 1rem 4rem 1rem;
   background-color: #FFFFFF;
   color: #111111;
   min-height: 100vh;
-  max-width: 1440px;
+  width: 100%;
+  max-width: 1800px; /* Matched Alo Yoga full-width canvas */
   margin: 0 auto;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 @media (min-width: 768px) {
   .collection-view-container {
-    padding: 7rem 3rem 6rem 3rem;
+    padding: 6rem 2.5rem 5rem 2.5rem;
+  }
+}
+
+@media (min-width: 1400px) {
+  .collection-view-container {
+    padding: 6rem 3.5rem 6rem 3.5rem;
   }
 }
 
 /* 1. Collection Header */
 .collection-header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 2.25rem;
 }
 
 .collection-title {
   font-family: var(--font-display, -apple-system, sans-serif);
-  font-size: clamp(1.6rem, 4vw, 2.5rem);
+  font-size: clamp(1.6rem, 3.5vw, 2.5rem);
   font-weight: 700;
   letter-spacing: 0.5px;
   margin: 0 0 0.5rem 0;
@@ -33,10 +40,10 @@
 }
 
 .collection-subtitle {
-  font-size: clamp(0.85rem, 1.8vw, 0.95rem);
+  font-size: clamp(0.85rem, 1.5vw, 0.95rem);
   color: #666666;
   margin: 0 auto;
-  max-width: 600px;
+  max-width: 640px;
   line-height: 1.5;
   font-weight: 400;
 }
@@ -44,12 +51,13 @@
 /* 2. Filter & Sort Section */
 .collection-filter-section {
   margin-bottom: 2rem;
+  width: 100%;
 }
 
 .collection-filter-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   overflow-x: auto;
   padding-bottom: 8px;
   scrollbar-width: none; /* Firefox */
@@ -67,10 +75,10 @@
   background-color: #FAFAFA;
   color: #111111;
   border-radius: 999px;
-  padding: 8px 18px;
-  font-size: 0.725rem;
+  padding: 9px 20px;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
   white-space: nowrap;
   cursor: pointer;
@@ -105,7 +113,7 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   padding: 8px 0;
   z-index: 30;
-  min-width: 170px;
+  min-width: 180px;
   display: flex;
   flex-direction: column;
 }
@@ -130,29 +138,30 @@
 .collection-count-badge {
   text-align: center;
   color: #666666;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  margin-top: 1.25rem;
+  margin-top: 1.5rem;
 }
 
-/* 3. Product Cards Grid */
+/* 3. Product Cards Grid (Proportionally matched with Alo Yoga) */
 .collection-grid-alo {
   display: grid;
   grid-template-columns: repeat(2, 1fr); /* Mobile default 2 columns */
-  gap: 24px 12px;
+  gap: 24px 10px;
+  width: 100%;
 }
 
 @media (min-width: 640px) {
   .collection-grid-alo {
     grid-template-columns: repeat(3, 1fr);
-    gap: 32px 16px;
+    gap: 32px 14px;
   }
 }
 
 @media (min-width: 1024px) {
   .collection-grid-alo {
     grid-template-columns: repeat(4, 1fr); /* Alo Yoga 4 columns desktop */
-    gap: 40px 20px;
+    gap: 44px 20px;
   }
 }
 
@@ -163,15 +172,16 @@
   cursor: pointer;
   position: relative;
   user-select: none;
+  width: 100%;
 }
 
-/* 3:4 Tall Image Frame */
+/* Alo Yoga Tall Image Ratio (3:4.2 aspect ratio = ~0.714) */
 .alo-card-media {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 4;
-  background-color: #F4F4F4;
-  border-radius: 4px;
+  aspect-ratio: 3 / 4.1;
+  background-color: #F3F3F3;
+  border-radius: 2px;
   overflow: hidden;
 }
 
@@ -179,6 +189,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center center;
   transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
@@ -189,14 +200,14 @@
 /* Wishlist Heart Icon (Top Right) */
 .alo-wishlist-btn {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   width: 32px;
   height: 32px;
   border-radius: 50%;
   background: transparent;
   border: none;
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   color: #111111;
   display: flex;
   align-items: center;
@@ -218,12 +229,12 @@
 /* Quick Bag Icon (Bottom Right Floating Button) */
 .alo-quick-bag-btn {
   position: absolute;
-  bottom: 8px;
-  right: 8px;
+  bottom: 10px;
+  right: 10px;
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(4px);
   border: 1px solid rgba(0, 0, 0, 0.08);
   display: flex;
@@ -242,25 +253,26 @@
   transform: scale(1.08);
 }
 
-/* Color Swatches */
+/* Color Swatches (Exact Alo Yoga Circles below image) */
 .alo-color-swatches {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-top: 10px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   height: 20px;
 }
 
 .alo-swatch-circle {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.2);
   padding: 0;
   cursor: pointer;
   outline: none;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .alo-swatch-circle.selected {
@@ -270,7 +282,7 @@
 
 .alo-swatch-more {
   font-size: 0.7rem;
-  color: #777777;
+  color: #666666;
   font-weight: 500;
   margin-left: 2px;
 }
@@ -288,12 +300,12 @@
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.5px;
-  padding: 3px 6px;
+  padding: 3px 7px;
   border-radius: 2px;
   text-transform: uppercase;
 }
 
-/* Card Details */
+/* Card Details Typography */
 .alo-card-details {
   display: flex;
   flex-direction: column;
@@ -302,7 +314,7 @@
 }
 
 .alo-product-title {
-  font-size: 0.875rem;
+  font-size: 0.875rem; /* 14px */
   font-weight: 600;
   color: #111111;
   margin: 0;
@@ -315,14 +327,14 @@
 }
 
 .alo-color-title {
-  font-size: 0.775rem;
+  font-size: 0.775rem; /* 12.5px */
   color: #666666;
   margin: 0;
   font-weight: 400;
 }
 
 .alo-product-price {
-  font-size: 0.875rem;
+  font-size: 0.875rem; /* 14px */
   font-weight: 600;
   color: #111111;
   margin: 2px 0 0 0;
@@ -333,11 +345,13 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
+  width: 100%;
 }
 
 @media (min-width: 1024px) {
   .collection-loading-skeleton {
     grid-template-columns: repeat(4, 1fr);
+    gap: 30px;
   }
 }
 
@@ -349,11 +363,11 @@
 
 .skeleton-img {
   width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 3 / 4.1;
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   animation: loading 1.5s infinite;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .skeleton-line {
