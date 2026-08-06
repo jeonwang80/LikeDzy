@@ -1,4 +1,3 @@
-/* 메인 히어로 섹션 스타일 - 고정 와이드 이미지 뷰 */
 .hero-section-wide {
   position: relative;
   width: 100%;
@@ -6,6 +5,13 @@
   flex-direction: column;
   background-color: var(--colors-canvas);
   color: var(--colors-ink);
+  padding-top: 72px; /* 상단 Fixed 헤더 바와 배너 이미지 겹침 방지 */
+}
+
+@media (max-width: 768px) {
+  .hero-section-wide {
+    padding-top: 60px;
+  }
 }
 
 /* 50% 높이 축소된 와이드 배너 프레임 */
