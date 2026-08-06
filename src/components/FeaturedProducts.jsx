@@ -53,6 +53,9 @@ export default function FeaturedProducts({ onProductSelect, onViewAll }) {
         const querySnapshot = await getDocs(collection(db, 'products'));
         const productsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setProducts(productsList.sort((a, b) => {
+          const orderA = a.orderIndex !== undefined ? a.orderIndex : 999;
+          const orderB = b.orderIndex !== undefined ? b.orderIndex : 999;
+          if (orderA !== orderB) return orderA - orderB;
           const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
           const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
           return timeB - timeA;

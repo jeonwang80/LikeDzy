@@ -126,7 +126,10 @@ export default function CollectionList({ onProductSelect }) {
       if (sortBy === 'price-asc') return a.numericPrice - b.numericPrice;
       if (sortBy === 'price-desc') return b.numericPrice - a.numericPrice;
       if (sortBy === 'name') return a.name.localeCompare(b.name);
-      // default: newest
+      // default: custom orderIndex first, then newest
+      const orderA = a.orderIndex !== undefined ? a.orderIndex : 999;
+      const orderB = b.orderIndex !== undefined ? b.orderIndex : 999;
+      if (orderA !== orderB) return orderA - orderB;
       const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
       const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
       return timeB - timeA;

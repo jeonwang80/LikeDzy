@@ -22,9 +22,36 @@ export default function AdminDashboard() {
     try {
       const querySnapshot = await getDocs(collection(db, 'products'));
       const productsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setProducts(productsList.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis()));
+      setProducts(productsList.sort((a, b) => {
+        const orderA = a.orderIndex !== undefined ? a.orderIndex : 999;
+        const orderB = b.orderIndex !== undefined ? b.orderIndex : 999;
+        if (orderA !== orderB) return orderA - orderB;
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return timeB - timeA;
+      }));
     } catch (error) {
       console.error("Error fetching products:", error);
+    }
+  };
+
+  const handleMoveOrder = async (currentIndex, direction) => {
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= products.length) return;
+
+    const currentProduct = products[currentIndex];
+    const targetProduct = products[targetIndex];
+
+    const currentOrder = currentProduct.orderIndex !== undefined ? currentProduct.orderIndex : currentIndex;
+    const targetOrder = targetProduct.orderIndex !== undefined ? targetProduct.orderIndex : targetIndex;
+
+    try {
+      await updateDoc(doc(db, 'products', currentProduct.id), { orderIndex: targetOrder });
+      await updateDoc(doc(db, 'products', targetProduct.id), { orderIndex: currentOrder });
+      fetchProducts();
+    } catch (error) {
+      console.error("Error updating order:", error);
+      alert("순서 변경 실패");
     }
   };
 
@@ -318,9 +345,9 @@ export default function AdminDashboard() {
               <tr>
                 <th>상품명 (KO)</th>
                 <th>카테고리</th>
-                <th>메인 룩북 컷 (9:16)</th>
+                <th style={{ textAlign: 'center' }}>진열 순서</th>
                 <th>가격</th>
-                <th>관리</th>
+                <th style={{ textAlign: 'right' }}>관리</th>
               </tr>
             </thead>
             <tbody>
@@ -329,7 +356,7 @@ export default function AdminDashboard() {
                   <td colSpan="5" style={{ padding: '3rem', textAlign: 'center', color: '#707072' }}>등록된 상품이 없습니다.</td>
                 </tr>
               ) : (
-                products.map(product => {
+                products.map((product, idx) => {
                   const displayImage = (product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls[0] : product.imageUrl;
                   return (
                     <tr key={product.id}>
@@ -340,28 +367,50 @@ export default function AdminDashboard() {
                         </div>
                       </td>
                       <td>{product.ko?.category || '-'}</td>
-                      <td>
-                        {product.lookbookFitImageUrl ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <img 
-                              src={product.lookbookFitImageUrl} 
-                              alt="lookbook-fit" 
-                              style={{ width: '30px', height: '53px', objectFit: 'cover', borderRadius: '4px', border: '1.5px solid #2563eb' }} 
-                            />
-                            <span style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 'bold' }}>✓ 세로 룩북 등록됨</span>
-                          </div>
-                        ) : (
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b', minWidth: '24px' }}>
+                            #{idx + 1}
+                          </span>
                           <button 
-                            onClick={() => handleEdit(product)} 
-                            style={{ padding: '4px 10px', fontSize: '0.75rem', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
+                            disabled={idx === 0} 
+                            onClick={() => handleMoveOrder(idx, 'up')}
+                            style={{ 
+                              padding: '4px 8px', 
+                              fontSize: '0.8rem', 
+                              background: idx === 0 ? '#f1f5f9' : '#ffffff', 
+                              border: '1px solid #cbd5e1', 
+                              borderRadius: '4px', 
+                              cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                              color: idx === 0 ? '#94a3b8' : '#0284c7',
+                              fontWeight: 'bold'
+                            }}
+                            title="위로 이동"
                           >
-                            + 9:16 룩북사진 추가
+                            ▲ 위로
                           </button>
-                        )}
+                          <button 
+                            disabled={idx === products.length - 1} 
+                            onClick={() => handleMoveOrder(idx, 'down')}
+                            style={{ 
+                              padding: '4px 8px', 
+                              fontSize: '0.8rem', 
+                              background: idx === products.length - 1 ? '#f1f5f9' : '#ffffff', 
+                              border: '1px solid #cbd5e1', 
+                              borderRadius: '4px', 
+                              cursor: idx === products.length - 1 ? 'not-allowed' : 'pointer',
+                              color: idx === products.length - 1 ? '#94a3b8' : '#0284c7',
+                              fontWeight: 'bold'
+                            }}
+                            title="아래로 이동"
+                          >
+                            ▼ 아래로
+                          </button>
+                        </div>
                       </td>
                       <td style={{ fontWeight: '600' }}>{product.price || '-'}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                           <button onClick={() => handleEdit(product)} className="admin-btn-secondary" style={{ height: '36px', padding: '6px 16px', fontSize: '0.85rem' }}>수정 & 이미지 변경</button>
                           <button onClick={() => handleDelete(product.id)} className="admin-btn-danger" style={{ height: '36px', padding: '6px 16px', fontSize: '0.85rem' }}>삭제</button>
                         </div>
