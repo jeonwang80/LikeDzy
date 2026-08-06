@@ -133,7 +133,7 @@ export default function CollectionList({ onProductSelect }) {
     });
 
   return (
-    <div className="collection-view-container">
+    <div id="collection" className="collection-view-container">
       {/* 1. Header Title & Subtitle */}
       <div className="collection-header">
         <h1 className="collection-title">

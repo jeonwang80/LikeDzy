@@ -28,14 +28,48 @@ export default function Header({ onNavigateHome }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleNavClick = (type, e) => {
+    e.preventDefault();
+    setMobileMenuOpen(false);
+
+    if (type === 'collection') {
+      navigate('/?view=collection');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (type === 'shop') {
+      if (window.location.pathname !== '/' || window.location.search !== '') {
+        navigate('/');
+        setTimeout(() => {
+          const el = document.getElementById('featured-products');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+          else window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
+      } else {
+        const el = document.getElementById('featured-products');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        else window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } else if (type === 'about') {
+      if (window.location.pathname !== '/' || window.location.search !== '') {
+        navigate('/');
+        setTimeout(() => {
+          const el = document.getElementById('about');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      } else {
+        const el = document.getElementById('about');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
+
   return (
     <header className="header" style={{ padding: scrolled ? '1rem 5%' : '1.5rem 5%' }}>
       <div className="header-logo" style={{ cursor: 'pointer' }} onClick={handleLogoClick}>LikeDzy</div>
       
       <nav className={`header-nav ${mobileMenuOpen ? 'open' : ''}`}>
-        <a href="/#collection" onClick={() => setMobileMenuOpen(false)}>{t('nav.shop')}</a>
-        <a href="/#collection" onClick={() => setMobileMenuOpen(false)}>{t('nav.collection')}</a>
-        <a href="/#about" onClick={() => setMobileMenuOpen(false)}>{t('nav.about')}</a>
+        <a href="/#featured-products" onClick={(e) => handleNavClick('shop', e)}>{t('nav.shop')}</a>
+        <a href="/?view=collection" onClick={(e) => handleNavClick('collection', e)}>{t('nav.collection')}</a>
+        <a href="/#about" onClick={(e) => handleNavClick('about', e)}>{t('nav.about')}</a>
       </nav>
 
       <div className="header-actions">

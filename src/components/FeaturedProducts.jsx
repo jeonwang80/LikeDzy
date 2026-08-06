@@ -96,7 +96,7 @@ export default function FeaturedProducts({ onProductSelect, onViewAll }) {
   });
 
   return (
-    <section className="editorial-section" style={{ padding: '4rem 2.5rem 5rem 2.5rem', maxWidth: '1800px', margin: '0 auto', width: '100%' }}>
+    <section id="featured-products" className="editorial-section" style={{ padding: '4rem 2.5rem 5rem 2.5rem', maxWidth: '1800px', margin: '0 auto', width: '100%' }}>
       <div className="collection-header" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
         <h2 className="collection-title">FEATURED SELECTION</h2>
         <p className="collection-subtitle">Discover our signature line-up designed for movement & style.</p>
