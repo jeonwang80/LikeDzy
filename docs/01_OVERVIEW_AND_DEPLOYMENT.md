@@ -72,16 +72,41 @@ LikeDzy/
 ## 4. 깃허브 & 배포 워크플로우 (GitHub & Deployment Workflow)
 
 ### 4.1 Git 브랜치 전략
-- **`main` 브랜치**: 배포 가능한 안정 버전 (Vercel 자동 배포 트리거).
-- **작업 브랜치**: 기능 개발 및 수정 시 로컬 검증 후 `main`에 커밋/푸시.
+- **로컬 브랜치**: `master` (기본 작업 브랜치)
+- **GitHub 리모트 브랜치**: `origin/main`, `origin/master` 두 개가 존재
+- **⚠️ Vercel 배포 대상 브랜치: `master`**
+  - Vercel은 **`master` 브랜치**를 감시하여 자동 빌드/배포를 수행합니다.
+  - 운영 배포 시 반드시 `git push origin master` 명령을 사용해야 합니다.
+  - `git push origin master:main` 만 실행하면 `main` 브랜치에만 푸시되어 **Vercel 배포가 트리거되지 않습니다.**
 
-### 4.2 Vercel 프론트엔드 배포
+### 4.2 운영 배포 명령 (필수 순서)
+```bash
+# 1. 빌드 확인
+cmd /c "npm run build"
+
+# 2. 커밋
+cmd /c "git add . && git commit -m \"feat/fix: 변경 사항 설명\""
+
+# 3. 운영 배포 (master 브랜치 푸시 — Vercel 자동 배포 트리거)
+cmd /c "git push origin master"
+
+# 4. main 브랜치 동기화 (선택, 권장)
+cmd /c "git push origin master:main"
+
+# 5. ⚡ Git 웹훅 누락/미동작 시 Vercel CLI 직통 강제 배포 (즉시 프로덕션 반영)
+cmd /c "npx vercel --prod --yes"
+```
+
+### 4.3 Vercel 프론트엔드 배포 & 트러블슈팅
 - **연동 레포지토리**: `jeonwang80/LikeDzy`
+- **배포 감시 브랜치**: `master`
 - **Build Command**: `npm run build`
 - **Output Directory**: `dist`
 - **Router Handling**: `HashRouter` 사용으로 SPA 라우팅 새로고침 시 404 방지.
+- **⚡ Vercel Git 웹훅 미동작 트러블슈팅**:
+  - Vercel 대시보드에서 Git 연동 재설정 등의 이유로 `git push` 푸시 후에도 Vercel 자동 빌드가 시작되지 않을 때는 `npx vercel --prod --yes` 커맨드를 실행하여 프로덕션 서버로 수동 직통 강제 배포를 완료합니다.
 
-### 4.3 Firebase 백엔드 & Cloud Functions 배포
+### 4.4 Firebase 백엔드 & Cloud Functions 배포
 - **Firebase Project ID**: `likedzy-store`
 - **Cloud Functions 배포 명령**:
   ```bash
