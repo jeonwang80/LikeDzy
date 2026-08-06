@@ -31,12 +31,6 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   const quillRefVi = useRef(null);
   const modalContentRef = useRef(null);
 
-  const scrollToTop = () => {
-    if (modalContentRef.current) {
-      modalContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
   const imageHandler = (quillRef) => {
     const input = document.createElement('input');
     input.setAttribute('type', 'file');
@@ -313,23 +307,6 @@ export default function ProductEditor({ product, onClose, onSaved }) {
             {product ? '✏️ 상품 정보 & 이미지 수정' : '➕ 새 상품 추가'}
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <button 
-              type="button" 
-              onClick={scrollToTop} 
-              style={{
-                padding: '6px 14px',
-                fontSize: '0.8rem',
-                background: '#0284c7',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '20px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)'
-              }}
-            >
-              ⬆️ 이미지 등록 구역 (맨 위로)
-            </button>
             <button 
               type="button" 
               onClick={onClose} 
