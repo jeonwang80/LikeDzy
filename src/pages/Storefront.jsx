@@ -17,6 +17,7 @@ export default function Storefront() {
   // URL에서 view 파라미터 추출
   const searchParams = new URLSearchParams(location.search);
   const viewMode = searchParams.get('view') || 'home'; 
+  const selectedCategoryCode = searchParams.get('category') || '';
   
   const [selectedProduct, setSelectedProduct] = useState(null);
 
@@ -57,12 +58,14 @@ export default function Storefront() {
 
   const handleProductSelect = (product) => {
     setSelectedProduct(product);
-    navigate('/?view=product');
+    const categoryQuery = product.fromCategory ? `&category=${encodeURIComponent(product.fromCategory)}` : '';
+    navigate(`/?view=product${categoryQuery}`);
   };
 
   const handleBackFromProduct = () => {
     if (selectedProduct?.fromCollection) {
-      navigate('/?view=collection');
+      const categoryQuery = selectedProduct.fromCategory ? `&category=${encodeURIComponent(selectedProduct.fromCategory)}` : '';
+      navigate(`/?view=collection${categoryQuery}`);
     } else {
       navigate('/');
     }
@@ -77,7 +80,7 @@ export default function Storefront() {
         )}
         
         {viewMode === 'collection' && (
-          <CollectionList onProductSelect={(product) => handleProductSelect({ ...product, fromCollection: true })} />
+          <CollectionList onProductSelect={(product) => handleProductSelect({ ...product, fromCollection: true, fromCategory: selectedCategoryCode })} />
         )}
 
         {viewMode === 'home' && (

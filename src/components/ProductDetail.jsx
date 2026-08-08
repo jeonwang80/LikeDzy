@@ -10,6 +10,14 @@ import {
 } from '../utils/productPresentation';
 import './CollectionList.css';
 
+const normalizeImageList = (values) => ([...new Set(
+  values
+    .flat(Infinity)
+    .filter((value) => typeof value === 'string' && value.trim())
+    .map((value) => getSafeImageUrl(value))
+    .filter((value) => value !== FALLBACK_PRODUCT_IMAGE)
+)]);
+
 export default function ProductDetail({ product, onBack }) {
   const { language } = useLanguage();
   const { addToCart, setIsCartOpen } = useCart();
@@ -34,16 +42,21 @@ export default function ProductDetail({ product, onBack }) {
 
   const images = useMemo(() => {
     if (!product) return [];
-    const candidates = product.imageUrls?.length
-      ? product.imageUrls
-      : product.images?.length
-        ? product.images
-        : [product.imageUrl];
-    const safeImages = candidates
-      .map((url) => getSafeImageUrl(url))
-      .filter((url) => url !== FALLBACK_PRODUCT_IMAGE);
+    const swatches = product.colorSwatches?.length ? product.colorSwatches : (product.colors || []);
+    const swatchImages = swatches.flatMap((swatch) => [
+      swatch.imageUrl,
+      swatch.hoverImageUrl,
+      swatch.imageUrls || [],
+      swatch.images || [],
+    ]);
+    const allRegisteredImages = normalizeImageList([
+      product.imageUrls || [],
+      product.images || [],
+      product.imageUrl,
+      swatchImages,
+    ]);
 
-    return safeImages.length ? safeImages : [FALLBACK_PRODUCT_IMAGE];
+    return allRegisteredImages.length ? allRegisteredImages : [FALLBACK_PRODUCT_IMAGE];
   }, [product]);
 
   // Options & Swatches
@@ -54,55 +67,31 @@ export default function ProductDetail({ product, onBack }) {
 
   const activeColor = colorSwatches[selectedColorIdx] || colorSwatches[0] || null;
 
-  // Filter and order images strictly for the selected active color
+  // Show every photo assigned to the selected color without mixing other color groups.
   const displayImages = useMemo(() => {
     if (!activeColor) return images;
-    
-    // 1. Find all photos assigned specifically to activeColor
-    let colorPhotos = images.filter(url => {
-      if (activeColor.imageUrls && activeColor.imageUrls.includes(url)) return true;
-      if (activeColor.imageUrl && activeColor.imageUrl === url) return true;
-      if (activeColor.hoverImageUrl && activeColor.hoverImageUrl === url) return true;
 
-      const mapped = (product?.colorSwatches || []).find(s =>
-        (s.imageUrl && s.imageUrl === url) || 
-        (s.hoverImageUrl && s.hoverImageUrl === url) || 
-        (s.imageUrls && s.imageUrls.includes(url))
-      );
-      return mapped && mapped.name === activeColor.name;
-    });
+    const activeColorImages = normalizeImageList([
+      activeColor.imageUrl,
+      activeColor.hoverImageUrl,
+      activeColor.imageUrls || [],
+      activeColor.images || [],
+    ]).filter((imageUrl) => images.includes(imageUrl));
 
-    // 2. Fallback if no photos explicitly assigned to this color yet:
-    if (colorPhotos.length === 0) {
-      const fallbackLead = activeColor.imageUrl 
-        || (images.length > selectedColorIdx ? images[selectedColorIdx] : images[0]);
-      if (fallbackLead && images.includes(fallbackLead)) {
-        return [fallbackLead, ...images.filter(img => img !== fallbackLead)];
-      }
-      return images;
+    if (activeColorImages.length === 0) {
+      const fallbackLead = images[selectedColorIdx] || images[0];
+      return fallbackLead ? [fallbackLead] : images;
     }
 
-    // 3. Sort colorPhotos so 대표 1 (primary) is 1st, 대표 2 (hover) is 2nd
-    const primary = activeColor.imageUrl;
-    const hover = activeColor.hoverImageUrl;
-    const sorted = [...colorPhotos];
-
-    if (primary && sorted.includes(primary)) {
-      const idxP = sorted.indexOf(primary);
-      sorted.splice(idxP, 1);
-      sorted.unshift(primary);
+    // With one color, unassigned product-level images also belong to that color.
+    if (colorSwatches.length <= 1) {
+      const activeImageSet = new Set(activeColorImages);
+      return [...activeColorImages, ...images.filter((imageUrl) => !activeImageSet.has(imageUrl))];
     }
 
-    if (hover && sorted.includes(hover) && hover !== primary) {
-      const idxH = sorted.indexOf(hover);
-      sorted.splice(idxH, 1);
-      const targetIdx = sorted.includes(primary) ? 1 : 0;
-      sorted.splice(targetIdx, 0, hover);
-    }
-
-    // Return ONLY photos belonging to this selected color
-    return sorted;
-  }, [product, activeColor, selectedColorIdx, images]);
+    // With multiple colors, use only images explicitly mapped to the active color.
+    return activeColorImages;
+  }, [activeColor, colorSwatches.length, selectedColorIdx, images]);
 
   if (!product) return null;
 
@@ -174,7 +163,7 @@ export default function ProductDetail({ product, onBack }) {
           <div className="alo-detail-gallery">
             {displayImages.map((imgUrl, idx) => (
               <div 
-                key={idx} 
+                key={`${imgUrl}-${idx}`}
                 className="alo-detail-img-frame"
                 onClick={() => setZoomImage(imgUrl)}
               >
