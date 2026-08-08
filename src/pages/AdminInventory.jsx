@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import ProductEditor from './ProductEditor';
 
 function InventoryModal({ product, onClose }) {
   const [options, setOptions] = useState(product.options || []);
