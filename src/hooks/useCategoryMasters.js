@@ -2,9 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../firebase';
 
-export function formatCategoryPath(category) {
+export function getCategoryName(category, level, language = 'ko') {
   if (!category) return '';
-  return [category.level1Name, category.level2Name, category.level3Name]
+  const languageSuffix = language === 'en' ? 'En' : language === 'vi' ? 'Vi' : 'Ko';
+  return category[`level${level}Name${languageSuffix}`]
+    || category[`level${level}NameKo`]
+    || category[`level${level}Name`]
+    || category[`level${level}Code`]
+    || '';
+}
+
+export function formatCategoryPath(category, language = 'ko') {
+  if (!category) return '';
+  return [1, 2, 3].map((level) => getCategoryName(category, level, language))
     .filter(Boolean)
     .join(' / ');
 }

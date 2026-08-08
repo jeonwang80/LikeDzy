@@ -9,146 +9,220 @@ import {
 } from 'firebase/firestore';
 import AdminAuthorization from '../components/AdminAuthorization';
 import { db } from '../firebase';
-import { formatCategoryPath, useCategoryMasters } from '../hooks/useCategoryMasters';
+import { useCategoryMasters } from '../hooks/useCategoryMasters';
 
-const EMPTY_FORM = {
-  level1Code: '',
-  level1Name: '',
-  level2Code: '',
-  level2Name: '',
-  level3Code: '',
-  level3Name: '',
-  active: true,
-  sortOrder: 100,
-};
+const LEVELS = [1, 2, 3];
+const NAME_FIELDS = ['Ko', 'En', 'Vi'];
 
 const normalizeCode = (value) => value.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-const buildCategoryCode = (form) => (
-  [form.level1Code, form.level2Code, form.level3Code]
-    .map(normalizeCode)
+const buildCategoryCode = (row) => (
+  LEVELS.map((level) => normalizeCode(row[`level${level}Code`] || ''))
     .filter(Boolean)
     .join('-')
 );
 
+const createRowKey = () => `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const createEmptyRow = (sortOrder = 100) => ({
+  rowKey: createRowKey(),
+  id: null,
+  level1Code: '',
+  level1NameKo: '',
+  level1NameEn: '',
+  level1NameVi: '',
+  level2Code: '',
+  level2NameKo: '',
+  level2NameEn: '',
+  level2NameVi: '',
+  level3Code: '',
+  level3NameKo: '',
+  level3NameEn: '',
+  level3NameVi: '',
+  active: true,
+  sortOrder,
+  dirty: false,
+});
+
+const categoryToRow = (category) => ({
+  rowKey: category.id,
+  id: category.id,
+  level1Code: category.level1Code || '',
+  level1NameKo: category.level1NameKo || category.level1Name || '',
+  level1NameEn: category.level1NameEn || '',
+  level1NameVi: category.level1NameVi || '',
+  level2Code: category.level2Code || '',
+  level2NameKo: category.level2NameKo || category.level2Name || '',
+  level2NameEn: category.level2NameEn || '',
+  level2NameVi: category.level2NameVi || '',
+  level3Code: category.level3Code || '',
+  level3NameKo: category.level3NameKo || category.level3Name || '',
+  level3NameEn: category.level3NameEn || '',
+  level3NameVi: category.level3NameVi || '',
+  active: category.active !== false,
+  sortOrder: category.sortOrder ?? 100,
+  dirty: false,
+});
+
+const isBlankRow = (row) => (
+  LEVELS.every((level) => (
+    !row[`level${level}Code`]
+    && NAME_FIELDS.every((language) => !row[`level${level}Name${language}`])
+  ))
+);
+
+const buildPayload = (row) => {
+  const payload = {
+    code: buildCategoryCode(row),
+    active: row.active !== false,
+    sortOrder: Number(row.sortOrder) || 0,
+    updatedAt: serverTimestamp(),
+  };
+
+  LEVELS.forEach((level) => {
+    const codeField = `level${level}Code`;
+    const koField = `level${level}NameKo`;
+    const enField = `level${level}NameEn`;
+    const viField = `level${level}NameVi`;
+    payload[codeField] = normalizeCode(row[codeField] || '');
+    payload[koField] = (row[koField] || '').trim();
+    payload[enField] = (row[enField] || '').trim();
+    payload[viField] = (row[viField] || '').trim();
+    payload[`level${level}Name`] = payload[koField] || payload[enField] || payload[codeField];
+  });
+
+  return payload;
+};
+
 export default function AdminMasterData() {
   const { categories, loading, error } = useCategoryMasters();
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [editingId, setEditingId] = useState(null);
+  const [rowEdits, setRowEdits] = useState({});
+  const [newRows, setNewRows] = useState(() => [createEmptyRow(100)]);
   const [searchTerm, setSearchTerm] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const combinedCode = buildCategoryCode(form);
-  const filteredCategories = useMemo(() => {
+  const rows = useMemo(() => ([
+    ...categories.map((category) => rowEdits[category.id] || categoryToRow(category)),
+    ...newRows,
+  ]), [categories, newRows, rowEdits]);
+
+  const visibleRows = useMemo(() => {
     const queryText = searchTerm.trim().toLowerCase();
-    if (!queryText) return categories;
-    return categories.filter((category) => (
-      `${category.code || ''} ${formatCategoryPath(category)}`.toLowerCase().includes(queryText)
+    if (!queryText) return rows;
+    return rows.filter((row) => (
+      !row.id
+      || `${buildCategoryCode(row)} ${LEVELS.flatMap((level) => NAME_FIELDS.map((language) => row[`level${level}Name${language}`] || '')).join(' ')}`
+        .toLowerCase()
+        .includes(queryText)
     ));
-  }, [categories, searchTerm]);
+  }, [rows, searchTerm]);
 
   const activeCount = categories.filter((category) => category.active !== false).length;
+  const dirtyRows = rows.filter((row) => row.dirty && !isBlankRow(row));
 
-  const updateField = (field, value) => {
-    setForm((previous) => ({ ...previous, [field]: value }));
-  };
-
-  const resetForm = () => {
-    setForm(EMPTY_FORM);
-    setEditingId(null);
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    const requiredFields = [
-      form.level1Code,
-      form.level1Name,
-      form.level2Code,
-      form.level2Name,
-      form.level3Code,
-      form.level3Name,
-    ];
-    if (requiredFields.some((value) => !String(value).trim())) {
-      alert('1·2·3차 코드와 명칭을 모두 입력해 주세요.');
-      return;
-    }
-
-    const duplicate = categories.some((category) => (
-      category.code === combinedCode && category.id !== editingId
-    ));
-    if (duplicate) {
-      alert(`[${combinedCode}] 카테고리는 이미 등록되어 있습니다.`);
-      return;
-    }
-
-    const payload = {
-      code: combinedCode,
-      level1Code: normalizeCode(form.level1Code),
-      level1Name: form.level1Name.trim(),
-      level2Code: normalizeCode(form.level2Code),
-      level2Name: form.level2Name.trim(),
-      level3Code: normalizeCode(form.level3Code),
-      level3Name: form.level3Name.trim(),
-      active: form.active !== false,
-      sortOrder: Number(form.sortOrder) || 0,
-      updatedAt: serverTimestamp(),
+  const updateRow = (rowKey, field, value) => {
+    const currentRow = rows.find((row) => row.rowKey === rowKey);
+    if (!currentRow) return;
+    const updatedRow = {
+      ...currentRow,
+      [field]: field.endsWith('Code') ? normalizeCode(value) : value,
+      dirty: true,
     };
+    if (currentRow.id) {
+      setRowEdits((previousEdits) => ({ ...previousEdits, [currentRow.id]: updatedRow }));
+    } else {
+      setNewRows((previousRows) => previousRows.map((row) => (row.rowKey === rowKey ? updatedRow : row)));
+    }
+  };
+
+  const addRow = () => {
+    const highestOrder = rows.reduce((maximum, row) => Math.max(maximum, Number(row.sortOrder) || 0), 0);
+    setNewRows((previousRows) => [...previousRows, createEmptyRow(highestOrder + 100)]);
+    window.setTimeout(() => document.querySelector('.admin-category-sheet tbody tr:last-child input')?.focus(), 0);
+  };
+
+  const validateRows = (targetRows) => {
+    for (const row of targetRows) {
+      const missingCode = LEVELS.some((level) => !row[`level${level}Code`]?.trim());
+      const missingKoreanName = LEVELS.some((level) => !row[`level${level}NameKo`]?.trim());
+      if (missingCode || missingKoreanName) {
+        return '1·2·3차 코드와 한글 명칭은 필수 입력 항목입니다.';
+      }
+    }
+
+    const completeCodes = rows
+      .filter((row) => LEVELS.every((level) => row[`level${level}Code`]?.trim()))
+      .map(buildCategoryCode);
+    const duplicateCode = completeCodes.find((code, index) => completeCodes.indexOf(code) !== index);
+    if (duplicateCode) return `[${duplicateCode}] 코드가 중복되었습니다.`;
+    return '';
+  };
+
+  const saveRows = async (selectedRows = dirtyRows) => {
+    const targetRows = selectedRows.filter((row) => !isBlankRow(row));
+    if (targetRows.length === 0) return;
+    const validationMessage = validateRows(targetRows);
+    if (validationMessage) {
+      alert(validationMessage);
+      return;
+    }
 
     setSaving(true);
     try {
-      if (editingId) {
-        await updateDoc(doc(db, 'categoryMasters', editingId), payload);
-      } else {
-        await addDoc(collection(db, 'categoryMasters'), {
-          ...payload,
-          createdAt: serverTimestamp(),
-        });
+      const savedRows = [];
+      for (const row of targetRows) {
+        const payload = buildPayload(row);
+        if (row.id) {
+          await updateDoc(doc(db, 'categoryMasters', row.id), payload);
+          savedRows.push({ rowKey: row.rowKey, id: row.id });
+        } else {
+          const createdDocument = await addDoc(collection(db, 'categoryMasters'), {
+            ...payload,
+            createdAt: serverTimestamp(),
+          });
+          savedRows.push({ rowKey: row.rowKey, id: createdDocument.id });
+        }
       }
-      resetForm();
+
+      const savedRowKeys = new Set(savedRows.map((row) => row.rowKey));
+      const savedDocumentIds = new Set(savedRows.map((row) => row.id));
+      setNewRows((previousRows) => previousRows.filter((row) => !savedRowKeys.has(row.rowKey)));
+      setRowEdits((previousEdits) => Object.fromEntries(
+        Object.entries(previousEdits).filter(([id]) => !savedDocumentIds.has(id)),
+      ));
     } catch (saveError) {
-      console.error('Category master save error:', saveError);
+      console.error('Category grid save error:', saveError);
       alert('카테고리 저장에 실패했습니다. Firestore 권한을 확인해 주세요.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleEdit = (category) => {
-    setEditingId(category.id);
-    setForm({
-      level1Code: category.level1Code || '',
-      level1Name: category.level1Name || '',
-      level2Code: category.level2Code || '',
-      level2Name: category.level2Name || '',
-      level3Code: category.level3Code || '',
-      level3Name: category.level3Name || '',
-      active: category.active !== false,
-      sortOrder: category.sortOrder ?? 100,
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleToggleActive = async (category) => {
-    try {
-      await updateDoc(doc(db, 'categoryMasters', category.id), {
-        active: category.active === false,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (toggleError) {
-      console.error('Category active status update error:', toggleError);
-      alert('사용 상태 변경에 실패했습니다.');
+  const deleteRow = async (row) => {
+    if (!row.id) {
+      setNewRows((previousRows) => previousRows.filter((item) => item.rowKey !== row.rowKey));
+      return;
     }
-  };
+    if (!window.confirm(`[${buildCategoryCode(row)}] 카테고리를 삭제할까요?\n기존 상품에 저장된 코드는 유지됩니다.`)) return;
 
-  const handleDelete = async (category) => {
-    if (!window.confirm(`[${category.code}] 카테고리를 삭제할까요?\n기존 상품에 저장된 코드는 유지됩니다.`)) return;
     try {
-      await deleteDoc(doc(db, 'categoryMasters', category.id));
-      if (editingId === category.id) resetForm();
+      await deleteDoc(doc(db, 'categoryMasters', row.id));
+      setRowEdits((previousEdits) => {
+        const nextEdits = { ...previousEdits };
+        delete nextEdits[row.id];
+        return nextEdits;
+      });
     } catch (deleteError) {
-      console.error('Category master delete error:', deleteError);
+      console.error('Category grid delete error:', deleteError);
       alert('카테고리 삭제에 실패했습니다.');
     }
+  };
+
+  const resetChanges = () => {
+    if (dirtyRows.length > 0 && !window.confirm('저장하지 않은 변경사항을 모두 취소할까요?')) return;
+    const highestOrder = categories.reduce((maximum, category) => Math.max(maximum, Number(category.sortOrder) || 0), 0);
+    setRowEdits({});
+    setNewRows([createEmptyRow(highestOrder + 100 || 100)]);
   };
 
   return (
@@ -157,7 +231,7 @@ export default function AdminMasterData() {
         <div>
           <span className="admin-page-eyebrow">MASTER DATA / CATEGORY</span>
           <h1>기준정보</h1>
-          <p>상품 분류에 사용할 3레벨 카테고리 코드와 명칭을 관리합니다.</p>
+          <p>분류 코드와 한국어·영어·베트남어 명칭을 스프레드시트 방식으로 관리합니다.</p>
         </div>
         <span className="admin-page-count">{activeCount} ACTIVE / {categories.length} TOTAL</span>
       </header>
@@ -167,110 +241,111 @@ export default function AdminMasterData() {
           <span>CATEGORY CODE RULE</span>
           <strong>MAN <i>—</i> TOP <i>—</i> FW</strong>
         </div>
-        <p>각 레벨의 영문·숫자 코드를 조합해 상품 분류 코드가 자동 생성됩니다.</p>
+        <p>각 행에서 3레벨 코드와 다국어 명칭, 표시 순서를 한 번에 입력하고 저장합니다.</p>
       </section>
 
       <AdminAuthorization />
 
-      <div className="admin-master-layout">
-        <form className="admin-card admin-master-form" onSubmit={handleSubmit}>
-          <div className="admin-master-form-header">
-            <div>
-              <span>{editingId ? 'EDIT CATEGORY' : 'NEW CATEGORY'}</span>
-              <h2>{editingId ? '카테고리 수정' : '카테고리 등록'}</h2>
-            </div>
-            {editingId && <button type="button" className="admin-inline-link" onClick={resetForm}>신규 등록으로 전환</button>}
+      <section className="admin-card admin-category-sheet-card">
+        <div className="admin-category-sheet-toolbar">
+          <div>
+            <span>CATEGORY SPREADSHEET</span>
+            <h2>카테고리 그리드 관리</h2>
+            <p>입력 칸은 Tab 키로 연속 이동할 수 있습니다. 한글 명칭과 코드는 필수입니다.</p>
           </div>
-
-          {[1, 2, 3].map((level) => (
-            <fieldset className="admin-category-level" key={level}>
-              <legend><span>0{level}</span> {level}차 분류</legend>
-              <label>
-                <span>코드</span>
-                <input
-                  className="admin-input admin-code-input"
-                  value={form[`level${level}Code`]}
-                  onChange={(event) => updateField(`level${level}Code`, normalizeCode(event.target.value))}
-                  placeholder={level === 1 ? 'MAN' : level === 2 ? 'TOP' : 'FW'}
-                  maxLength={12}
-                />
-              </label>
-              <label>
-                <span>명칭</span>
-                <input
-                  className="admin-input"
-                  value={form[`level${level}Name`]}
-                  onChange={(event) => updateField(`level${level}Name`, event.target.value)}
-                  placeholder={level === 1 ? '남성' : level === 2 ? '상의' : '기능성 웨어'}
-                  maxLength={40}
-                />
-              </label>
-            </fieldset>
-          ))}
-
-          <div className="admin-category-preview">
-            <span>자동 생성 코드</span>
-            <strong>{combinedCode || 'LEVEL1-LEVEL2-LEVEL3'}</strong>
-            <small>{[form.level1Name, form.level2Name, form.level3Name].filter(Boolean).join(' / ') || '각 레벨의 명칭을 입력해 주세요.'}</small>
-          </div>
-
-          <div className="admin-master-form-footer">
-            <label className="admin-form-field">
-              <span>정렬 순서</span>
-              <input className="admin-input" type="number" value={form.sortOrder} onChange={(event) => updateField('sortOrder', event.target.value)} />
-            </label>
-            <label className="admin-master-active-toggle">
-              <span><strong>사용 상태</strong><small>상품 등록 화면에 표시</small></span>
-              <input type="checkbox" checked={form.active} onChange={(event) => updateField('active', event.target.checked)} />
-            </label>
-          </div>
-
-          <div className="admin-master-form-actions">
-            <button type="button" className="admin-btn-secondary" onClick={resetForm}>초기화</button>
-            <button type="submit" className="admin-btn-primary" disabled={saving}>{saving ? '저장 중...' : editingId ? '수정 저장' : '카테고리 등록'}</button>
-          </div>
-        </form>
-
-        <section className="admin-card admin-master-list-card">
-          <div className="admin-master-list-header">
-            <div><span>REGISTERED CATEGORY</span><h2>카테고리 목록</h2></div>
+          <div className="admin-category-sheet-actions">
             <label className="admin-search-box">
               <span>SEARCH</span>
-              <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="코드 또는 명칭 검색" />
+              <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="코드 또는 다국어 명칭 검색" />
               {searchTerm && <button type="button" onClick={() => setSearchTerm('')} aria-label="검색어 지우기">×</button>}
             </label>
+            <button type="button" className="admin-btn-secondary" onClick={addRow}>+ 행 추가</button>
+            <button type="button" className="admin-btn-primary" onClick={() => saveRows()} disabled={saving || dirtyRows.length === 0}>
+              {saving ? '저장 중...' : `변경사항 저장${dirtyRows.length ? ` (${dirtyRows.length})` : ''}`}
+            </button>
           </div>
+        </div>
 
-          {loading ? (
-            <div className="admin-empty-state">카테고리 기준정보를 불러오고 있습니다.</div>
-          ) : error ? (
-            <div className="admin-empty-state error">카테고리 정보를 불러오지 못했습니다. Firestore 권한을 확인해 주세요.</div>
-          ) : filteredCategories.length === 0 ? (
-            <div className="admin-empty-state">등록된 카테고리가 없습니다. 왼쪽 등록 양식에서 첫 카테고리를 추가해 주세요.</div>
-          ) : (
-            <div className="admin-master-list">
-              <div className="admin-master-list-head"><span>코드 / 분류명</span><span>순서</span><span>상태</span><span>관리</span></div>
-              {filteredCategories.map((category) => (
-                <article className={category.active === false ? 'inactive' : ''} key={category.id}>
-                  <div className="admin-master-category-info">
-                    <strong>{category.code}</strong>
-                    <span>{formatCategoryPath(category)}</span>
-                    <small>{category.level1Code} / {category.level2Code} / {category.level3Code}</small>
-                  </div>
-                  <span className="admin-master-order">{category.sortOrder ?? 0}</span>
-                  <button type="button" className={`admin-master-status ${category.active === false ? '' : 'active'}`} onClick={() => handleToggleActive(category)}>
-                    {category.active === false ? '미사용' : '사용'}
-                  </button>
-                  <div className="admin-master-row-actions">
-                    <button type="button" onClick={() => handleEdit(category)}>수정</button>
-                    <button type="button" className="danger" onClick={() => handleDelete(category)}>삭제</button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
+        {loading ? (
+          <div className="admin-empty-state">카테고리 기준정보를 불러오고 있습니다.</div>
+        ) : error ? (
+          <div className="admin-empty-state error">카테고리 정보를 불러오지 못했습니다. Firestore 권한을 확인해 주세요.</div>
+        ) : (
+          <div className="admin-category-sheet-scroll">
+            <table className="admin-category-sheet">
+              <colgroup>
+                <col className="order" />
+                <col className="combined-code" />
+                {LEVELS.flatMap((level) => [
+                  <col className="level-code" key={`${level}-code-width`} />,
+                  <col className="level-name" key={`${level}-ko-width`} />,
+                  <col className="level-name" key={`${level}-en-width`} />,
+                  <col className="level-name" key={`${level}-vi-width`} />,
+                ])}
+                <col className="active" />
+                <col className="manage" />
+              </colgroup>
+              <thead>
+                <tr className="admin-category-sheet-groups">
+                  <th rowSpan="2">순서</th>
+                  <th rowSpan="2">통합 코드</th>
+                  <th colSpan="4">1차 분류</th>
+                  <th colSpan="4">2차 분류</th>
+                  <th colSpan="4">3차 분류</th>
+                  <th rowSpan="2">사용</th>
+                  <th rowSpan="2">관리</th>
+                </tr>
+                <tr>
+                  {LEVELS.flatMap((level) => [
+                    <th key={`${level}-code`}>CODE *</th>,
+                    <th key={`${level}-ko`}>한국어 *</th>,
+                    <th key={`${level}-en`}>ENGLISH</th>,
+                    <th key={`${level}-vi`}>TIẾNG VIỆT</th>,
+                  ])}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleRows.map((row) => (
+                  <tr className={`${row.dirty ? 'dirty' : ''} ${row.active === false ? 'inactive' : ''}`} key={row.rowKey}>
+                    <td className="admin-category-order-cell">
+                      <input type="number" value={row.sortOrder} onChange={(event) => updateRow(row.rowKey, 'sortOrder', event.target.value)} aria-label="정렬 순서" />
+                    </td>
+                    <td className="admin-category-code-preview"><code>{buildCategoryCode(row) || '—'}</code>{row.dirty && !isBlankRow(row) && <small>미저장</small>}</td>
+                    {LEVELS.flatMap((level) => [
+                      <td className="code" key={`${row.rowKey}-${level}-code`}>
+                        <input value={row[`level${level}Code`]} onChange={(event) => updateRow(row.rowKey, `level${level}Code`, event.target.value)} placeholder={level === 1 ? 'MAN' : level === 2 ? 'TOP' : 'FW'} maxLength="12" aria-label={`${level}차 코드`} />
+                      </td>,
+                      ...NAME_FIELDS.map((language) => (
+                        <td key={`${row.rowKey}-${level}-${language}`}>
+                          <input
+                            value={row[`level${level}Name${language}`]}
+                            onChange={(event) => updateRow(row.rowKey, `level${level}Name${language}`, event.target.value)}
+                            placeholder={language === 'Ko' ? '한글 명칭' : language === 'En' ? 'English name' : 'Tên tiếng Việt'}
+                            maxLength="60"
+                            aria-label={`${level}차 ${language} 명칭`}
+                          />
+                        </td>
+                      )),
+                    ])}
+                    <td className="admin-category-active-cell">
+                      <input type="checkbox" checked={row.active} onChange={(event) => updateRow(row.rowKey, 'active', event.target.checked)} aria-label="사용 여부" />
+                    </td>
+                    <td className="admin-category-row-actions">
+                      <button type="button" className="save" disabled={saving || !row.dirty || isBlankRow(row)} onClick={() => saveRows([row])}>저장</button>
+                      <button type="button" className="delete" disabled={saving} onClick={() => deleteRow(row)}>삭제</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="admin-category-sheet-footer">
+          <span>{visibleRows.length} ROWS · {dirtyRows.length} UNSAVED</span>
+          <button type="button" className="admin-inline-link" onClick={resetChanges}>변경 취소</button>
+        </div>
+      </section>
     </div>
   );
 }

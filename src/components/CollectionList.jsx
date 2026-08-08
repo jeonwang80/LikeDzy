@@ -5,7 +5,7 @@ import { db } from '../firebase';
 import { useLanguage } from '../i18n/LanguageContext';
 import { presentProduct, sortProducts } from '../utils/productPresentation';
 import ProductCard from './ProductCard';
-import { formatCategoryPath, useCategoryMasters } from '../hooks/useCategoryMasters';
+import { formatCategoryPath, getCategoryName, useCategoryMasters } from '../hooks/useCategoryMasters';
 import './CollectionList.css';
 
 const LEGACY_CATEGORIES = ['TOPS', 'BOTTOMS', 'OUTERWEAR', 'ACC'];
@@ -32,15 +32,15 @@ export default function CollectionList({ onProductSelect }) {
   const selectedCategoryLabel = useMemo(() => {
     if (selectedCategory === 'ALL') return t('collection.title');
     const exactCategory = categoryMasters.find((category) => category.code === selectedCategory);
-    if (exactCategory) return formatCategoryPath(exactCategory);
+    if (exactCategory) return formatCategoryPath(exactCategory, language);
 
     const codeParts = selectedCategory.split('-');
     const matchingCategory = categoryMasters.find((category) => category.code?.startsWith(`${selectedCategory}-`));
     if (!matchingCategory) return selectedCategory;
-    if (codeParts.length === 1) return matchingCategory.level1Name || selectedCategory;
-    if (codeParts.length === 2) return [matchingCategory.level1Name, matchingCategory.level2Name].filter(Boolean).join(' / ');
+    if (codeParts.length === 1) return getCategoryName(matchingCategory, 1, language) || selectedCategory;
+    if (codeParts.length === 2) return [1, 2].map((level) => getCategoryName(matchingCategory, level, language)).filter(Boolean).join(' / ');
     return selectedCategory;
-  }, [categoryMasters, selectedCategory, t]);
+  }, [categoryMasters, language, selectedCategory, t]);
 
   const categoryFilters = useMemo(() => {
     const topLevelCategories = [];
@@ -48,7 +48,7 @@ export default function CollectionList({ onProductSelect }) {
     categoryMasters.forEach((category) => {
       if (!category.level1Code || registeredCodes.has(category.level1Code)) return;
       registeredCodes.add(category.level1Code);
-      topLevelCategories.push({ code: category.level1Code, label: category.level1Name || category.level1Code });
+      topLevelCategories.push({ code: category.level1Code, label: getCategoryName(category, 1, language) });
     });
 
     const baseFilters = topLevelCategories.length > 0
@@ -59,7 +59,7 @@ export default function CollectionList({ onProductSelect }) {
       return [{ code: selectedCategory, label: selectedCategoryLabel }, ...baseFilters];
     }
     return baseFilters;
-  }, [categoryMasters, selectedCategory, selectedCategoryLabel]);
+  }, [categoryMasters, language, selectedCategory, selectedCategoryLabel]);
 
   const handleCategoryFilter = (categoryCode) => {
     const params = new URLSearchParams(location.search);

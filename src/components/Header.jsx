@@ -5,10 +5,10 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { useCategoryMasters } from '../hooks/useCategoryMasters';
+import { getCategoryName, useCategoryMasters } from '../hooks/useCategoryMasters';
 import './Header.css';
 
-const buildCategoryTree = (categories) => {
+const buildCategoryTree = (categories, language) => {
   const level1Map = new Map();
 
   categories.forEach((category) => {
@@ -17,7 +17,7 @@ const buildCategoryTree = (categories) => {
     if (!level1Map.has(category.level1Code)) {
       level1Map.set(category.level1Code, {
         code: category.level1Code,
-        name: category.level1Name || category.level1Code,
+        name: getCategoryName(category, 1, language),
         groups: new Map(),
       });
     }
@@ -26,14 +26,14 @@ const buildCategoryTree = (categories) => {
     if (!level1.groups.has(category.level2Code)) {
       level1.groups.set(category.level2Code, {
         code: `${category.level1Code}-${category.level2Code}`,
-        name: category.level2Name || category.level2Code,
+        name: getCategoryName(category, 2, language),
         items: [],
       });
     }
 
     level1.groups.get(category.level2Code).items.push({
       code: category.code,
-      name: category.level3Name || category.level3Code,
+      name: getCategoryName(category, 3, language),
     });
   });
 
@@ -58,7 +58,7 @@ export default function Header({ onNavigateHome }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
-  const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
+  const categoryTree = useMemo(() => buildCategoryTree(categories, language), [categories, language]);
   const activeMegaCategory = categoryTree.find((category) => category.code === activeMegaCode);
 
   useEffect(() => {
