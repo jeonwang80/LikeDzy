@@ -524,76 +524,127 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               <div className="alo-detail-gallery" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                 
                 {/* Existing Photos */}
-                {formData.imageUrls && formData.imageUrls.map((imgUrl, idx) => (
-                  <div key={`existing-${idx}`} className="visual-image-card">
-                    <img 
-                      src={imgUrl} 
-                      alt={`Gallery ${idx + 1}`} 
-                      style={{ width: '100%', height: '320px', objectFit: 'cover', display: 'block' }} 
-                    />
-                    
-                    {idx === 0 ? (
-                      <span className="alo-model-tag" style={{ background: '#111111', color: '#fff', padding: '4px 10px', fontSize: '0.7rem' }}>
-                        대표 이미지
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleMakeMainImage(imgUrl)}
-                        style={{
+                {formData.imageUrls && formData.imageUrls.map((imgUrl, idx) => {
+                  const matchedSwatches = (formData.colorSwatches || []).filter(swatch => swatch.imageUrl === imgUrl);
+                  return (
+                    <div key={`existing-${idx}`} className="visual-image-card">
+                      <img 
+                        src={imgUrl} 
+                        alt={`Gallery ${idx + 1}`} 
+                        style={{ width: '100%', height: '320px', objectFit: 'cover', display: 'block' }} 
+                      />
+                      
+                      {idx === 0 ? (
+                        <span className="alo-model-tag" style={{ background: '#111111', color: '#fff', padding: '4px 10px', fontSize: '0.7rem' }}>
+                          대표 이미지
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleMakeMainImage(imgUrl)}
+                          style={{
+                            position: 'absolute',
+                            bottom: '8px',
+                            left: '8px',
+                            background: 'rgba(0,0,0,0.7)',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '4px 10px',
+                            borderRadius: '4px',
+                            fontSize: '0.7rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          대표 지정
+                        </button>
+                      )}
+
+                      {/* Connected Color Circle Badges Overlay */}
+                      {matchedSwatches.length > 0 && (
+                        <div style={{
                           position: 'absolute',
                           bottom: '8px',
-                          left: '8px',
-                          background: 'rgba(0,0,0,0.7)',
-                          color: '#fff',
-                          border: 'none',
-                          padding: '4px 10px',
-                          borderRadius: '4px',
-                          fontSize: '0.7rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        대표 지정
-                      </button>
-                    )}
+                          right: '8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                          alignItems: 'flex-end',
+                          zIndex: 10
+                        }}>
+                          {matchedSwatches.map((swatch, sIdx) => (
+                            <span 
+                              key={sIdx}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                                color: '#ffffff',
+                                padding: '4px 9px',
+                                borderRadius: '9999px',
+                                fontSize: '0.725rem',
+                                fontWeight: 700,
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
+                                backdropFilter: 'blur(4px)',
+                                border: '1px solid rgba(255, 255, 255, 0.25)'
+                              }}
+                            >
+                              <span 
+                                style={{ 
+                                  width: '12px', 
+                                  height: '12px', 
+                                  borderRadius: '50%', 
+                                  backgroundColor: swatch.colorHex || '#111111',
+                                  border: '1.5px solid #ffffff',
+                                  boxSizing: 'border-box',
+                                  display: 'inline-block'
+                                }} 
+                              />
+                              {swatch.name || 'Color'}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
-                    <div className="visual-image-overlay-toolbar">
-                      <div className="visual-img-btn-group">
+                      <div className="visual-image-overlay-toolbar">
+                        <div className="visual-img-btn-group">
+                          <button 
+                            type="button" 
+                            className="visual-img-action-btn" 
+                            onClick={() => handleMoveExistingImage(idx, -1)}
+                            disabled={idx === 0}
+                            title="위로 이동"
+                          >
+                            위로
+                          </button>
+                          <button 
+                            type="button" 
+                            className="visual-img-action-btn" 
+                            onClick={() => handleMoveExistingImage(idx, 1)}
+                            disabled={idx === (formData.imageUrls.length - 1)}
+                            title="아래로 이동"
+                          >
+                            아래로
+                          </button>
+                        </div>
+                        
                         <button 
                           type="button" 
-                          className="visual-img-action-btn" 
-                          onClick={() => handleMoveExistingImage(idx, -1)}
-                          disabled={idx === 0}
-                          title="위로 이동"
+                          className="visual-img-action-btn danger" 
+                          onClick={() => handleRemoveExistingImage(idx)}
+                          title="사진 삭제"
                         >
-                          위로
-                        </button>
-                        <button 
-                          type="button" 
-                          className="visual-img-action-btn" 
-                          onClick={() => handleMoveExistingImage(idx, 1)}
-                          disabled={idx === (formData.imageUrls.length - 1)}
-                          title="아래로 이동"
-                        >
-                          아래로
+                          삭제
                         </button>
                       </div>
-                      
-                      <button 
-                        type="button" 
-                        className="visual-img-action-btn danger" 
-                        onClick={() => handleRemoveExistingImage(idx)}
-                        title="사진 삭제"
-                      >
-                        삭제
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {/* Newly Picked Photos */}
                 {previewUrls.map((url, idx) => {
                   const totalIdx = (formData.imageUrls?.length || 0) + idx;
+                  const matchedSwatches = (formData.colorSwatches || []).filter(swatch => swatch.imageUrl === url);
                   return (
                     <div key={`new-${idx}`} className="visual-image-card" style={{ borderColor: '#0284c7' }}>
                       <img 
@@ -604,6 +655,53 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                       <span className="alo-model-tag" style={{ background: '#0284c7', color: '#fff', padding: '4px 10px', fontSize: '0.7rem' }}>
                         신규 업로드 예정
                       </span>
+
+                      {/* Connected Color Circle Badges Overlay */}
+                      {matchedSwatches.length > 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '8px',
+                          right: '8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                          alignItems: 'flex-end',
+                          zIndex: 10
+                        }}>
+                          {matchedSwatches.map((swatch, sIdx) => (
+                            <span 
+                              key={sIdx}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                                color: '#ffffff',
+                                padding: '4px 9px',
+                                borderRadius: '9999px',
+                                fontSize: '0.725rem',
+                                fontWeight: 700,
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
+                                backdropFilter: 'blur(4px)',
+                                border: '1px solid rgba(255, 255, 255, 0.25)'
+                              }}
+                            >
+                              <span 
+                                style={{ 
+                                  width: '12px', 
+                                  height: '12px', 
+                                  borderRadius: '50%', 
+                                  backgroundColor: swatch.colorHex || '#111111',
+                                  border: '1.5px solid #ffffff',
+                                  boxSizing: 'border-box',
+                                  display: 'inline-block'
+                                }} 
+                              />
+                              {swatch.name || 'Color'}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       <div className="visual-image-overlay-toolbar">
                         <span style={{ color: 'white', fontSize: '0.75rem', fontWeight: 'bold' }}>#{totalIdx + 1}</span>
