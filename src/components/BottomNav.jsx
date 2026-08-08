@@ -16,6 +16,8 @@ export default function BottomNav() {
     return null;
   }
 
+  const isActive = (path) => location.pathname === path;
+
   return (
     <div className="bottom-nav-container">
       <nav className="bottom-nav">
