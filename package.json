@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@gradio/client": "^2.2.0",
     "browser-image-compression": "^2.0.2",
     "firebase": "^12.12.1",
     "react": "^19.2.5",

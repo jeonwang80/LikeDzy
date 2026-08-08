@@ -248,13 +248,22 @@
 
 /* 동적 텍스트 영역 (좌/우 여백 화이트 배경으로 통일) */
 .hero-content-area {
-  padding: 2rem 5% 2.5rem 5%;
+  padding: 3rem 5% 4.5rem 5%;
   background-color: var(--colors-canvas);
   color: var(--colors-ink);
   text-align: left;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
+}
+
+.hero-eyebrow {
+  margin: 0 0 1rem;
+  color: var(--colors-mute);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
 }
 
 .hero-title {
@@ -279,6 +288,19 @@
   color: var(--colors-charcoal);
   line-height: 1.5;
   max-width: 680px;
+}
+
+@media (max-width: 768px) {
+  .hero-content-area {
+    padding: 2.25rem 20px 3.5rem;
+  }
+
+  .hero-title.size-sm,
+  .hero-title.size-md,
+  .hero-title.size-lg,
+  .hero-title.size-xl {
+    font-size: clamp(2.7rem, 14vw, 4.2rem);
+  }
 }
 
 /* ==========================================================================

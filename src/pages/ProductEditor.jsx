@@ -96,13 +96,15 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   };
   
   const defaultPerk1 = 'Complimentary Shipping Over ₩50,000 & Free Returns';
-  const defaultPerk2 = 'Premium Organic Cotton Blend';
+  const defaultPerk2 = 'Weather-ready performance fabric';
 
   const [formData, setFormData] = useState(() => {
     if (product) {
       return {
         ...product,
         isBestSeller: product.isBestSeller !== undefined ? product.isBestSeller : false,
+        isFeatured: product.isFeatured !== undefined ? product.isFeatured : false,
+        isNew: product.isNew !== undefined ? product.isNew : false,
         imageUrls: product.imageUrls || (product.imageUrl ? [product.imageUrl] : []),
         colorSwatches: product.colorSwatches || (product.colors || []),
         options: product.options || [
@@ -143,12 +145,14 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     }
     return {
       isBestSeller: false,
+      isFeatured: false,
+      isNew: false,
       price: '',
       youtubeUrl: '',
       videoUrl: '',
-      ko: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
-      en: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
-      vi: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
+      ko: { name: '', category: 'OUTERWEAR', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
+      en: { name: '', category: 'OUTERWEAR', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
+      vi: { name: '', category: 'OUTERWEAR', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
       imageUrls: [],
       colorSwatches: [
         { name: 'Black', colorHex: '#111111', imageUrl: '', hoverImageUrl: '', imageUrls: [] }
@@ -816,9 +820,17 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               {/* RIGHT COLUMN: Specs & Simple Color Swatches */}
               <div className="alo-detail-buy-panel">
                 
-                {/* Category & BEST SELLER Checkbox */}
+                {/* Storefront visibility and badge controls */}
                 <div className="alo-detail-header-meta">
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.55rem', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', backgroundColor: '#ecfdf5', padding: '3px 10px', borderRadius: '9999px', border: '1px solid #a7f3d0', fontSize: '0.68rem', fontWeight: 800 }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.isFeatured || false}
+                        onChange={e => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
+                      />
+                      MAIN FEATURED
+                    </label>
                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', backgroundColor: '#f1f5f9', padding: '3px 10px', borderRadius: '9999px', border: '1px solid #cbd5e1' }}>
                       <input 
                         type="checkbox" 
@@ -831,11 +843,20 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                       </span>
                     </label>
 
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', backgroundColor: '#fff7ed', padding: '3px 10px', borderRadius: '9999px', border: '1px solid #fed7aa', fontSize: '0.68rem', fontWeight: 800 }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.isNew || false}
+                        onChange={e => setFormData(prev => ({ ...prev, isNew: e.target.checked }))}
+                      />
+                      NEW
+                    </label>
+
                     <input
                       type="text"
                       value={currentLangData.category || ''}
                       onChange={e => handleChange(activeLang, 'category', e.target.value)}
-                      placeholder="카테고리 (예: Apparel)"
+                      placeholder="카테고리 (TOPS / BOTTOMS / OUTERWEAR / ACC)"
                       className="visual-editable-field"
                       style={{
                         border: '1px dashed #cbd5e1',
@@ -1194,7 +1215,16 @@ export default function ProductEditor({ product, onClose, onSaved }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               
-              <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isFeatured || false}
+                    onChange={e => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  <span>메인 추천 상품</span>
+                </label>
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
                   <input 
                     type="checkbox" 
@@ -1203,6 +1233,15 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                     style={{ width: '18px', height: '18px' }}
                   />
                   <span>BEST SELLER 설정</span>
+                </label>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isNew || false}
+                    onChange={e => setFormData(prev => ({ ...prev, isNew: e.target.checked }))}
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  <span>NEW 배지</span>
                 </label>
               </div>
 

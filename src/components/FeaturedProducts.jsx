@@ -1,339 +1,105 @@
-import React, { useEffect, useState } from 'react';
-import { useLanguage } from '../i18n/LanguageContext';
-import { collection, getDocs } from 'firebase/firestore';
+import React, { useEffect, useMemo, useState } from 'react';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useLanguage } from '../i18n/LanguageContext';
+import { presentProduct, sortProducts } from '../utils/productPresentation';
+import ProductCard from './ProductCard';
 import './FeaturedProducts.css';
-import './CollectionList.css'; // Shared Alo Yoga styles
+import './CollectionList.css';
 
-const DEFAULT_COLOR_PALETTES = [
-  [
-    { name: 'Gravel', colorHex: '#C5B49F' },
-    { name: 'Ivory', colorHex: '#F3EFEA' },
-    { name: 'Navy', colorHex: '#1B2A4A' },
-    { name: 'Black', colorHex: '#111111' }
-  ],
-  [
-    { name: 'Dune Grass', colorHex: '#A3B18A' },
-    { name: 'Black', colorHex: '#111111' },
-    { name: 'Cherry', colorHex: '#721B24' },
-    { name: 'Heather Gray', colorHex: '#9E9E9E' }
-  ],
-  [
-    { name: 'White Heather', colorHex: '#EAEAEA' },
-    { name: 'Espresso', colorHex: '#3D2314' },
-    { name: 'Midnight', colorHex: '#141E30' }
-  ]
-];
+const FEATURED_LIMIT = 8;
 
 export default function FeaturedProducts({ onProductSelect, onViewAll }) {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [wishlist, setWishlist] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('likedzy_wishlist') || '[]');
-    } catch (e) {
+    } catch {
       return [];
     }
   });
 
-  const toggleWishlist = (productId, e) => {
-    e.stopPropagation();
-    setWishlist(prev => {
-      const exists = prev.includes(productId);
-      const updated = exists ? prev.filter(id => id !== productId) : [...prev, productId];
-      localStorage.setItem('likedzy_wishlist', JSON.stringify(updated));
-      return updated;
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'products'),
+      (snapshot) => {
+        const nextProducts = snapshot.docs.map((productDoc) => ({
+          id: productDoc.id,
+          ...productDoc.data(),
+        }));
+        setProducts(sortProducts(nextProducts));
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error listening to products:', error);
+        setLoading(false);
+      },
+    );
+
+    return unsubscribe;
+  }, []);
+
+  const featuredProducts = useMemo(() => {
+    const presented = products.map((product) => presentProduct(product, language));
+    const selected = presented.filter((product) => product.isFeatured || product.isBestSeller);
+    const selectedIds = new Set(selected.map((product) => product.id));
+    const fallback = presented.filter((product) => !selectedIds.has(product.id));
+    return [...selected, ...fallback].slice(0, FEATURED_LIMIT);
+  }, [language, products]);
+
+  const toggleWishlist = (productId, event) => {
+    event.stopPropagation();
+    setWishlist((current) => {
+      const next = current.includes(productId)
+        ? current.filter((id) => id !== productId)
+        : [...current, productId];
+      localStorage.setItem('likedzy_wishlist', JSON.stringify(next));
+      return next;
     });
   };
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'products'));
-        const productsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setProducts(productsList.sort((a, b) => {
-          const orderA = a.orderIndex !== undefined ? a.orderIndex : 999;
-          const orderB = b.orderIndex !== undefined ? b.orderIndex : 999;
-          if (orderA !== orderB) return orderA - orderB;
-          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-          return timeB - timeA;
-        }));
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProducts();
-  }, []);
-
-  const formattedProducts = products.map((product, idx) => {
-    const langData = product[language] || product.ko || {};
-    let displayPrice = product.price;
-    if (product.prices) {
-      if (language === 'ko') displayPrice = `₩${product.prices.KRW?.toLocaleString()}`;
-      else if (language === 'en') displayPrice = `$${product.prices.USD?.toLocaleString()}`;
-      else if (language === 'vi') displayPrice = `₫${product.prices.VND?.toLocaleString()}`;
-    } else if (typeof product.price === 'number') {
-      displayPrice = `₩${product.price.toLocaleString()}`;
-    }
-
-    const colorSwatches = (product.colorSwatches && product.colorSwatches.length > 0)
-      ? product.colorSwatches 
-      : (product.colors && product.colors.length > 0 ? product.colors : []);
-
-    const isBestSeller = product.isBestSeller || idx % 2 === 0;
-
-    return {
-      ...product,
-      name: langData.name || product.name || 'LikeDzy Selection',
-      category: langData.category || product.category || 'COLLECTION',
-      displayPrice,
-      images: product.imageUrls || (product.imageUrl ? [product.imageUrl] : []),
-      colorSwatches,
-      isBestSeller,
-      badgeText: isBestSeller ? 'BEST SELLER' : (idx % 3 === 0 ? 'NEW' : null)
-    };
-  });
-
   return (
-    <section id="featured-products" className="editorial-section" style={{ padding: '4rem 2.5rem 5rem 2.5rem', maxWidth: '1800px', margin: '0 auto', width: '100%' }}>
-      <div className="collection-header" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-        <h2 className="collection-title">FEATURED SELECTION</h2>
-        <p className="collection-subtitle">Discover our signature line-up designed for movement & style.</p>
-      </div>
+    <section id="featured-products" className="editorial-section outdoor-featured-section">
+      <header className="outdoor-section-header">
+        <p className="outdoor-section-kicker">{t('home.featuredKicker')}</p>
+        <h2 className="collection-title">{t('home.featuredTitle')}</h2>
+        <p className="collection-subtitle">{t('home.featuredSubtitle')}</p>
+      </header>
 
       {loading ? (
         <div className="collection-loading-skeleton">
-          {[1, 2, 3, 4].map(n => (
-            <div key={n} className="skeleton-card">
-              <div className="skeleton-img"></div>
-              <div className="skeleton-line short"></div>
-              <div className="skeleton-line long"></div>
+          {[1, 2, 3, 4].map((item) => (
+            <div key={item} className="skeleton-card">
+              <div className="skeleton-img" />
+              <div className="skeleton-line short" />
+              <div className="skeleton-line long" />
             </div>
           ))}
         </div>
       ) : (
         <div className="collection-grid-alo">
-          {formattedProducts.map(product => (
-            <AloProductCard 
-              key={product.id} 
-              product={product} 
+          {featuredProducts.map((product, index) => (
+            <ProductCard
+              key={product.id}
+              product={product}
               onProductSelect={onProductSelect}
               isWishlisted={wishlist.includes(product.id)}
-              onToggleWishlist={(e) => toggleWishlist(product.id, e)}
+              onToggleWishlist={(event) => toggleWishlist(product.id, event)}
+              priority={index < 4}
             />
           ))}
         </div>
       )}
 
       {onViewAll && (
-        <div style={{ textAlign: 'center', marginTop: '3.5rem' }}>
-          <button className="pill-btn active" style={{ padding: '12px 32px', fontSize: '0.85rem' }} onClick={onViewAll}>
-            VIEW ALL COLLECTION &rarr;
+        <div className="outdoor-view-all-wrap">
+          <button type="button" className="outdoor-view-all-btn" onClick={onViewAll}>
+            {t('home.viewCollection')} <span aria-hidden="true">↗</span>
           </button>
         </div>
       )}
     </section>
   );
 }
-
-const getSafeImageUrl = (url, fallback = '/models/model_1.png') => {
-  if (!url || typeof url !== 'string') return fallback;
-  const trimmed = url.trim();
-  if (trimmed.startsWith('blob:')) return fallback;
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('/')) {
-    return trimmed;
-  }
-  return fallback;
-};
-
-const AloProductCard = ({ product, onProductSelect, isWishlisted, onToggleWishlist }) => {
-  const [selectedColorIdx, setSelectedColorIdx] = useState(0);
-  const [isHovered, setIsHovered] = useState(false);
-
-  // Preload all product images into browser memory on mount for 0ms instant switching
-  useEffect(() => {
-    const urlsToPreload = new Set();
-    if (product.colorSwatches && product.colorSwatches.length > 0) {
-      product.colorSwatches.forEach(swatch => {
-        if (swatch.imageUrl) urlsToPreload.add(swatch.imageUrl);
-        if (swatch.hoverImageUrl) urlsToPreload.add(swatch.hoverImageUrl);
-        if (swatch.imageUrls) swatch.imageUrls.forEach(u => urlsToPreload.add(u));
-      });
-    }
-    if (product.images) product.images.forEach(u => urlsToPreload.add(u));
-
-    urlsToPreload.forEach(url => {
-      if (url && typeof url === 'string' && !url.startsWith('blob:')) {
-        const img = new Image();
-        img.src = url;
-      }
-    });
-  }, [product]);
-
-  const activeColor = product.colorSwatches?.[selectedColorIdx] || product.colorSwatches?.[0];
-  
-  // Gather all available product image URLs and filter out fallback model_1.png when clothing photos exist
-  const allProductImages = [
-    ...(activeColor?.imageUrls || []),
-    ...(product.images || []),
-    product.imageUrl
-  ].filter(u => u && typeof u === 'string' && !u.startsWith('blob:'));
-
-  const clothingImages = allProductImages.filter(u => !u.includes('model_1.png'));
-
-  // 1. Primary Image Resolution: Prefer actual product clothing photo over model_1.png
-  let primaryImg = '';
-  if (activeColor?.imageUrl && !activeColor.imageUrl.includes('model_1.png')) {
-    primaryImg = activeColor.imageUrl;
-  } else if (activeColor?.hoverImageUrl && !activeColor.hoverImageUrl.includes('model_1.png')) {
-    primaryImg = activeColor.hoverImageUrl;
-  } else if (clothingImages.length > 0) {
-    primaryImg = clothingImages[0];
-  } else if (allProductImages.length > 0) {
-    primaryImg = allProductImages[0];
-  } else {
-    primaryImg = '/models/model_1.png';
-  }
-
-  // 2. Sequential Hover Image Resolution
-  let hoverImg = activeColor?.hoverImageUrl;
-  if (hoverImg && hoverImg.includes('model_1.png')) hoverImg = '';
-
-  if (!hoverImg || hoverImg === primaryImg) {
-    const candidateHover = clothingImages.find(img => img !== primaryImg);
-    if (candidateHover) {
-      hoverImg = candidateHover;
-    } else if (allProductImages.length > 1) {
-      hoverImg = allProductImages.find(img => img !== primaryImg) || primaryImg;
-    }
-  }
-  if (!hoverImg) hoverImg = primaryImg;
-
-  const safePrimaryImg = getSafeImageUrl(primaryImg);
-  const safeHoverImg = getSafeImageUrl(hoverImg);
-  const hasDistinctHover = safeHoverImg && safeHoverImg !== safePrimaryImg;
-
-  return (
-    <div 
-      className="alo-product-card" 
-      onClick={() => onProductSelect(product)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Media Container with Dual Layer Image Stack for Instant 0ms Hover */}
-      <div className="alo-card-media" style={{ position: 'relative', overflow: 'hidden' }}>
-        
-        {/* Layer 1: Primary Image */}
-        <img 
-          src={safePrimaryImg} 
-          alt={product.name} 
-          className="alo-card-img" 
-          loading="eager" 
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-            objectPosition: 'center',
-            padding: '0.4rem',
-            transition: 'opacity 0.15s ease-in-out',
-            opacity: (isHovered && hasDistinctHover) ? 0 : 1
-          }}
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = '/models/model_1.png';
-          }}
-        />
-
-        {/* Layer 2: Pre-rendered Hover Image for Instant Hardware Accelerated Crossfade */}
-        {hasDistinctHover && (
-          <img 
-            src={safeHoverImg} 
-            alt={`${product.name} - hover`} 
-            className="alo-card-img" 
-            loading="eager" 
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              objectPosition: 'center',
-              padding: '0.4rem',
-              transition: 'opacity 0.15s ease-in-out',
-              opacity: isHovered ? 1 : 0
-            }}
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = '/models/model_1.png';
-            }}
-          />
-        )}
-
-        <button 
-          className={`alo-wishlist-btn ${isWishlisted ? 'active' : ''}`}
-          onClick={onToggleWishlist}
-          aria-label="Wishlist"
-        >
-          {isWishlisted ? '♥' : '♡'}
-        </button>
-
-        <button 
-          className="alo-quick-bag-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            onProductSelect(product);
-          }}
-          aria-label="Quick Shop"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <path d="M16 10a4 4 0 0 1-8 0"></path>
-          </svg>
-        </button>
-      </div>
-
-      {product.colorSwatches && product.colorSwatches.length > 0 && (
-        <div className="alo-color-swatches" onClick={(e) => e.stopPropagation()}>
-          {product.colorSwatches.slice(0, 4).map((swatch, idx) => (
-            <button
-              key={idx}
-              className={`alo-swatch-circle ${selectedColorIdx === idx ? 'selected' : ''}`}
-              style={{ backgroundColor: swatch.colorHex || '#ccc' }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedColorIdx(idx);
-              }}
-              title={swatch.name}
-            />
-          ))}
-          {product.colorSwatches.length > 4 && (
-            <span className="alo-swatch-more">+{product.colorSwatches.length - 4}</span>
-          )}
-        </div>
-      )}
-
-      {product.badgeText && (
-        <div className="alo-badge-wrapper">
-          <span className="alo-badge-pill">{product.badgeText}</span>
-        </div>
-      )}
-
-      <div className="alo-card-details">
-        <h3 className="alo-product-title">{product.name}</h3>
-        {activeColor?.name && (
-          <p className="alo-color-title">{activeColor.name}</p>
-        )}
-        <p className="alo-product-price">{product.displayPrice}</p>
-      </div>
-    </div>
-  );
-};

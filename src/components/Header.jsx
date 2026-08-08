@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -15,6 +15,7 @@ export default function Header({ onNavigateHome }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -68,11 +69,13 @@ export default function Header({ onNavigateHome }) {
     e.preventDefault();
     setMobileMenuOpen(false);
 
+    const isHomeView = location.pathname === '/' && !location.search;
+
     if (type === 'collection') {
       navigate('/?view=collection');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (type === 'shop') {
-      if (window.location.pathname !== '/' || window.location.search !== '') {
+      if (!isHomeView) {
         navigate('/');
         setTimeout(() => {
           const el = document.getElementById('featured-products');
@@ -85,7 +88,7 @@ export default function Header({ onNavigateHome }) {
         else window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } else if (type === 'about') {
-      if (window.location.pathname !== '/' || window.location.search !== '') {
+      if (!isHomeView) {
         navigate('/');
         setTimeout(() => {
           const el = document.getElementById('about');

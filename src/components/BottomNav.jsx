@@ -10,6 +10,8 @@ export default function BottomNav() {
   const { currentUser } = useAuth();
   
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+  const searchParams = new URLSearchParams(location.search);
+  const viewMode = searchParams.get('view') || 'home';
 
   // 현재 경로가 어드민이면 쇼핑몰 하단 네비게이션 숨김
   if (location.pathname.startsWith('/admin')) {
@@ -21,15 +23,15 @@ export default function BottomNav() {
   return (
     <div className="bottom-nav-container">
       <nav className="bottom-nav">
-        <Link to="/" className={`bottom-nav-item ${isActive('/') ? 'active' : ''}`}>
-          <svg viewBox="0 0 24 24" fill={isActive('/') ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+        <Link to="/" className={`bottom-nav-item ${isActive('/') && viewMode === 'home' ? 'active' : ''}`}>
+          <svg viewBox="0 0 24 24" fill={isActive('/') && viewMode === 'home' ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
           </svg>
           <span>홈</span>
         </Link>
         
-        <Link to="/#collection" className="bottom-nav-item">
+        <Link to="/?view=collection" className={`bottom-nav-item ${viewMode === 'collection' ? 'active' : ''}`}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="3" width="7" height="7"></rect>
             <rect x="14" y="3" width="7" height="7"></rect>

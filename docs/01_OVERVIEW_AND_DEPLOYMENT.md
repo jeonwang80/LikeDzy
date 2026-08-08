@@ -1,131 +1,51 @@
-# 🚀 01. 시스템 개요 & 깃허브/배포 구성 (Overview & Deployment)
+# 01. 개요와 배포
 
-본 문서는 **LikeDzy** 쇼핑몰 및 관리자 웹 플랫폼의 기술 스택, 전체 디렉토리 구조, GitHub 관리 정책, Vercel 프론트엔드 배포 및 Firebase 백엔드 설정 환경을 설명합니다.
+## 기술 구성
 
----
+- React 19 + Vite 8
+- React Router `HashRouter`
+- React Context: 인증, 장바구니, 언어
+- Firebase: Auth, Firestore, Storage, Cloud Functions
+- Vercel: 정적 프런트엔드 배포
+- Vanilla CSS: 공통 토큰과 컴포넌트별 반응형 스타일
 
-## 1. 프로젝트 개요 (System Overview)
+## 주요 디렉터리
 
-- **프로젝트 명**: LikeDzy (나이키 스타일의 감각적인 프리미엄 E-Commerce 웹 서비스)
-- **주요 기능**:
-  - **스토어프론트 (Storefront)**: 트렌디한 히어로 섹션, 컬렉션/추천 상품, 상품 상세 모달, Q&A/리뷰 관리, 장바구니/옵션 수량 체크, 포트원 카드 결제.
-  - **AI 가상 피팅 (Virtual Try-On)**: HuggingFace IDM-VTON AI 모델과 연결되어 착용 사진 업로드 시 상품 옷을 AI로 자연스럽게 합성 피팅.
-  - **관리자 대시보드 (Admin Suite)**: 상품 등록/수정/삭제, 옵션별 재고/히스토리 관리, 주문 상태 변경, Q&A/리뷰 답변 및 관리, 스플래시/히어로 배너 설정, 일별 방문자 통계.
-
----
-
-## 2. 기술 스택 (Tech Stack)
-
-| 구분 | 사용 기술 / 라이브러리 | 용도 및 특징 |
-| :--- | :--- | :--- |
-| **Frontend Framework** | React 19.2, Vite 8.0 | 초고속 HMR 및 최신 컴포넌트 렌더링 |
-| **Routing** | React Router v7 (`HashRouter`) | 클라이언트 사이드 라우팅 및 탭 관리 |
-| **State Management** | React Context API (`AuthContext`, `CartContext`) | 인증 상태 및 장바구니/주문 상태 관리 |
-| **Styling** | Vanilla CSS + CSS Variables | Nike 스타일의 화이트(라이트 모드) 기반 디자인 시스템 |
-| **Backend & DB** | Firebase Firestore | NoSQL 실시간 문서 데이터베이스 |
-| **Authentication** | Firebase Auth | 이메일/비밀번호 및 구글 소셜 로그인 지원 |
-| **Storage** | Firebase Storage | 상품 이미지, 히어로/스플래시 이미지 업로드 |
-| **Serverless Logic** | Firebase Cloud Functions | 포트원 결제 위변조 검증(`verifyPayment`) 및 자동 재고 차감 |
-| **AI Integration** | `@gradio/client` (v2.2.0) | `yisol/IDM-VTON` AI 서비스 가상 피팅 인터페이스 연동 |
-| **Image Compression** | `browser-image-compression` | 상품 및 이미지 업로드 시 브라우저 단 용량 압축 |
-| **Deployment** | Vercel (Front) + Firebase (Back) | GitHub main 브랜치 푸시 시 자동 지속 배포 |
-
----
-
-## 3. 디렉토리 구조 (Directory Map)
-
-```
+```text
 LikeDzy/
-├── .env.local             # 외부 API 및 환경 변수 설정 (Git 미커밋, .gitignore에 포함)
-├── .firebaserc            # Firebase 프로젝트 매핑 정보 (likedzy-store)
-├── firebase.json          # Firebase Firestore/Functions/Hosting 규격 설정
-├── package.json           # 의존성 패키지 및 스크립트 정의
-├── vite.config.js         # Vite 빌드 설정
-├── DESIGN-nike.md         # Nike 스타일 디자인 레퍼런스 문서
-├── docs/                  # 🌟 전체 웹 시스템 구조도 및 아키텍쳐 문서
-│   ├── README.md
-│   ├── 01_OVERVIEW_AND_DEPLOYMENT.md
-│   ├── 02_COMPONENT_HIERARCHY.md
-│   ├── 03_BUSINESS_LOGIC_AND_STATE.md
-│   ├── 04_CSS_DESIGN_SYSTEM.md
-│   └── 05_DATABASE_SCHEMA.md
-├── functions/             # Firebase Cloud Functions (Serverless Backend)
-│   ├── index.js           # verifyPayment 결제 검증 함수
-│   └── package.json
-├── public/                # 파비콘 및 정적 에셋
-└── src/
-    ├── main.jsx           # 엔트리 포인트 (Provider 계층: Language > Auth > Cart)
-    ├── App.jsx            # 라우팅 메인 루트
-    ├── App.css            # 글로벌 앱 스타일
-    ├── admin.css          # 관리자 대시보드 전용 스타일
-    ├── index.css          # 디자인 시스템 변수 & 전역 스타일
-    ├── firebase.js        # Firebase SDK 초기화 (db, auth, storage)
-    ├── assets/            # 이미지 및 아이콘 자원
-    ├── components/        # 공용/스토어프론트 컴포넌트 (19개 파일: 11 JSX + 5 CSS + 3 기타)
-    ├── context/           # React Context (AuthContext, CartContext)
-    ├── i18n/              # 다국어 지원 (LanguageContext, translations.js)
-    └── pages/             # 페이지 레벨 컴포넌트 (12개)
+├─ src/
+│  ├─ components/        스토어프론트 공용 UI
+│  ├─ pages/             고객/관리자 화면
+│  ├─ context/           AuthContext, CartContext
+│  ├─ i18n/              언어 상태와 번역
+│  ├─ utils/             상품 표시값 정규화
+│  ├─ firebase.js        Firebase 클라이언트 초기화
+│  ├─ admin.css          관리자 화면 스타일
+│  └─ index.css          전역 토큰과 공통 스타일
+├─ functions/            결제 검증 Cloud Functions
+├─ public/               런타임 정적 자산
+├─ docs/                 개발 문서
+├─ firebase.json
+├─ vercel.json
+└─ vite.config.js
 ```
 
----
+루트의 `DESIGN-nike.md`와 파일명에 `golf`가 포함된 일부 이미지는 과거 레퍼런스/원본 자산입니다. 현재 화면 카피와 코드의 디자인 방향은 일반 아웃도어입니다. 데이터·자산 교체가 끝나면 별도 정리합니다.
 
-## 4. 깃허브 & 배포 워크플로우 (GitHub & Deployment Workflow)
+## 로컬에서 운영까지
 
-### 4.1 Git 브랜치 전략
-- **로컬 브랜치**: `master` (기본 작업 브랜치)
-- **GitHub 리모트 브랜치**: `origin/main`, `origin/master` 두 개가 존재
-- **⚠️ Vercel 배포 대상 브랜치: `master`**
-  - Vercel은 **`master` 브랜치**를 감시하여 자동 빌드/배포를 수행합니다.
-  - 운영 배포 시 반드시 `git push origin master` 명령을 사용해야 합니다.
-  - `git push origin master:main` 만 실행하면 `main` 브랜치에만 푸시되어 **Vercel 배포가 트리거되지 않습니다.**
+1. 기능 브랜치에서 `npm run dev -- --host 127.0.0.1`로 작업합니다.
+2. 데스크톱과 모바일 화면을 확인합니다.
+3. `npm run lint`와 `npm run build`를 통과시킵니다.
+4. 변경 내용을 리뷰하고 커밋합니다.
+5. 승인 후 `master`에 반영합니다.
+6. Vercel이 `master`를 감시하므로 푸시 전 운영 배포 여부를 확인합니다.
 
-### 4.2 운영 배포 명령 (필수 순서)
-```bash
-# 1. 빌드 확인
-cmd /c "npm run build"
+Firebase 배포와 데이터 수정은 프런트엔드 배포와 분리합니다. 환경값은 로컬 환경 파일이나 Vercel 환경 변수로 관리하며 문서와 커밋에 실제 키를 기록하지 않습니다.
 
-# 2. 커밋
-cmd /c "git add . && git commit -m \"feat/fix: 변경 사항 설명\""
+## 현재 보류 범위
 
-# 3. 운영 배포 (master 브랜치 푸시 — Vercel 자동 배포 트리거)
-cmd /c "git push origin master"
-
-# 4. main 브랜치 동기화 (선택, 권장)
-cmd /c "git push origin master:main"
-
-# 5. ⚡ Git 웹훅 누락/미동작 시 Vercel CLI 직통 강제 배포 (즉시 프로덕션 반영)
-cmd /c "npx vercel --prod --yes"
-```
-
-### 4.3 Vercel 프론트엔드 배포 & 트러블슈팅
-- **연동 레포지토리**: `jeonwang80/LikeDzy`
-- **배포 감시 브랜치**: `master`
-- **Build Command**: `npm run build`
-- **Output Directory**: `dist`
-- **Router Handling**: `HashRouter` 사용으로 SPA 라우팅 새로고침 시 404 방지.
-- **⚡ Vercel Git 웹훅 미동작 트러블슈팅**:
-  - Vercel 대시보드에서 Git 연동 재설정 등의 이유로 `git push` 푸시 후에도 Vercel 자동 빌드가 시작되지 않을 때는 `npx vercel --prod --yes` 커맨드를 실행하여 프로덕션 서버로 수동 직통 강제 배포를 완료합니다.
-
-### 4.4 Firebase 백엔드 & Cloud Functions 배포
-- **Firebase Project ID**: `likedzy-store`
-- **Cloud Functions 배포 명령**:
-  ```bash
-  cd functions
-  firebase deploy --only functions
-  ```
-- **Firestore Security Rules**: [05_DATABASE_SCHEMA.md](file:///c:/Users/JeonWang/OneDrive/Antigravity/LikeDzy/docs/05_DATABASE_SCHEMA.md) 참조.
-
----
-
-## 5. 환경 변수 관리 (Environment Variables)
-
-`.env.local` 파일 예시 (프로젝트 루트):
-```env
-# Firebase 클라이언트 SDK 환경변수 (필요시)
-VITE_FIREBASE_API_KEY=AIzaSyDK_a3nr437qsYzccMzPESSSltbjA6SXI4
-VITE_FIREBASE_AUTH_DOMAIN=likedzy-store.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=likedzy-store
-
-# Gradio AI HuggingFace 엔드포인트
-VITE_GRADIO_TRYON_MODEL=yisol/IDM-VTON
-```
+- 주문 처리 흐름 고도화
+- 재고 차감/복원 정책 변경
+- 리뷰 및 Q&A 기능 확장
+- Firebase 스키마/보안 규칙 변경

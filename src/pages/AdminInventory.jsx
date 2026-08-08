@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, getDocs, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductEditor from './ProductEditor';
 
@@ -28,7 +28,7 @@ function InventoryModal({ product, onClose }) {
     setLoading(true);
     try {
       const originalOptions = product.options || [];
-      const updatedOptions = options.map((opt, idx) => {
+      const updatedOptions = options.map((opt) => {
         const originalOpt = originalOptions.find(o => o.name === opt.name);
         const originalStock = originalOpt ? originalOpt.stock : 0;
         const diff = opt.stock - originalStock;

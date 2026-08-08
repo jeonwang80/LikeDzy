@@ -1,13 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, deleteDoc, doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
-import ProductEditor from './ProductEditor';
 
 export default function AdminDashboard() {
-  const [products, setProducts] = useState([]);
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [heroImageUrls, setHeroImageUrls] = useState([]);
   const [heroLoading, setHeroLoading] = useState(false);
   const [splashImageUrl, setSplashImageUrl] = useState(null);
@@ -20,47 +16,6 @@ export default function AdminDashboard() {
   const [adminEmails, setAdminEmails] = useState(['jeonwang80@gmail.com']);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [adminSaving, setAdminSaving] = useState(false);
-
-  const fetchProducts = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, 'products'));
-      const productsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setProducts(productsList.sort((a, b) => {
-        const orderA = a.orderIndex !== undefined ? a.orderIndex : 999;
-        const orderB = b.orderIndex !== undefined ? b.orderIndex : 999;
-        if (orderA !== orderB) return orderA - orderB;
-        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-        return timeB - timeA;
-      }));
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    }
-  };
-
-  const handleMoveOrder = async (currentIndex, direction) => {
-    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-    if (targetIndex < 0 || targetIndex >= products.length) return;
-
-    const updatedProducts = [...products];
-    const temp = updatedProducts[currentIndex];
-    updatedProducts[currentIndex] = updatedProducts[targetIndex];
-    updatedProducts[targetIndex] = temp;
-
-    // Immediate UI update
-    setProducts(updatedProducts);
-
-    try {
-      const batchPromises = updatedProducts.map((p, idx) => 
-        setDoc(doc(db, 'products', p.id), { orderIndex: idx }, { merge: true })
-      );
-      await Promise.all(batchPromises);
-    } catch (error) {
-      console.error("Error updating order:", error);
-      alert("순서 변경 중 오류 발생: " + (error.message || error));
-      fetchProducts();
-    }
-  };
 
   const fetchHeroImage = async () => {
     try {
@@ -158,33 +113,10 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    fetchProducts();
     fetchHeroImage();
     fetchSplashImage();
     fetchAdminEmails();
   }, []);
-
-  const handleEdit = (product) => {
-    setEditingProduct(product);
-    setIsEditorOpen(true);
-  };
-
-  const handleAddNew = () => {
-    setEditingProduct(null);
-    setIsEditorOpen(true);
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm("정말 이 상품을 삭제하시겠습니까?")) {
-      try {
-        await deleteDoc(doc(db, 'products', id));
-        fetchProducts();
-      } catch (error) {
-        console.error("Error deleting product:", error);
-        alert("삭제에 실패했습니다.");
-      }
-    }
-  };
 
   const handleHeroUpload = async (e) => {
     const files = Array.from(e.target.files);

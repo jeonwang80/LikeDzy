@@ -116,7 +116,7 @@ export default function ProductQnA({ productId }) {
                     </span>
                     <button 
                       onClick={() => handleDeleteClick(qna)}
-                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)' }}
+                      style={{ border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)' }}
                     >
                       삭제
                     </button>

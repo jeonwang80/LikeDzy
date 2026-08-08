@@ -24,7 +24,7 @@ export default function Signup() {
       setLoading(true);
       await signup(email, password);
       navigate('/');
-    } catch (err) {
+    } catch {
       setError('회원가입에 실패했습니다.');
     }
     setLoading(false);
@@ -36,7 +36,7 @@ export default function Signup() {
       setLoading(true);
       await loginWithGoogle();
       navigate('/');
-    } catch (err) {
+    } catch {
       setError('구글 연동에 실패했습니다.');
     }
     setLoading(false);

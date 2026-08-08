@@ -22,7 +22,7 @@ export default function Login() {
       setLoading(true);
       await login(email, password);
       navigate('/');
-    } catch (err) {
+    } catch {
       setError('로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');
     }
     setLoading(false);
@@ -35,7 +35,7 @@ export default function Login() {
       setLoading(true);
       await loginWithGoogle();
       navigate('/');
-    } catch (err) {
+    } catch {
       setError('구글 로그인에 실패했습니다.');
     }
     setLoading(false);
@@ -51,7 +51,7 @@ export default function Login() {
       await resetPassword(resetEmail);
       setSuccessMsg(`[${resetEmail}] 주소로 비밀번호 재설정 이메일이 발송되었습니다.`);
       setIsResetting(false);
-    } catch (err) {
+    } catch {
       setError('비밀번호 재설정 이메일 발송 실패. 이메일 주소를 확인해주세요.');
     }
     setLoading(false);

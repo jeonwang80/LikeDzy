@@ -10,16 +10,18 @@ export default function IntroSplash({ onComplete }) {
 
   useEffect(() => {
     let isMounted = true;
+    let zoomTimer;
+    let hideTimer;
     
     const startAnimations = () => {
       if (!isMounted) return;
       setStage('entering');
       
-      const zoomTimer = setTimeout(() => {
+      zoomTimer = setTimeout(() => {
         if (isMounted) setStage('zooming');
       }, 1000); // 1초 대기 후 줌인
 
-      const hideTimer = setTimeout(() => {
+      hideTimer = setTimeout(() => {
         if (isMounted) {
           setStage('hidden');
           if (onComplete) onComplete();
@@ -58,6 +60,8 @@ export default function IntroSplash({ onComplete }) {
 
     return () => {
       isMounted = false;
+      clearTimeout(zoomTimer);
+      clearTimeout(hideTimer);
     };
   }, [onComplete]);
 

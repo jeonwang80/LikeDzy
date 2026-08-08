@@ -31,9 +31,9 @@ export default function HeroSection() {
           }
 
           setHeroImageUrls(urls);
-          if (data.heroTitle !== undefined) setHeroTitle(data.heroTitle);
+          if (data.heroTitle !== undefined) setHeroTitle(String(data.heroTitle).trim());
           if (data.heroTitleSize) setHeroTitleSize(data.heroTitleSize);
-          if (data.heroSubtitle !== undefined) setHeroSubtitle(data.heroSubtitle);
+          if (data.heroSubtitle !== undefined) setHeroSubtitle(String(data.heroSubtitle).trim());
           if (data.heroSubtitleSize) setHeroSubtitleSize(data.heroSubtitleSize);
         }
       },
@@ -241,8 +241,8 @@ export default function HeroSection() {
   };
 
   // 표시할 제목 및 서브타이틀
-  const displayTitle = heroTitle || 'PREMIUM WOVEN SPORTSWEAR';
-  const displaySubtitle = heroSubtitle || '프리미엄 우븐 스포츠웨어의 새로운 기준';
+  const displayTitle = heroTitle || t('hero.title');
+  const displaySubtitle = heroSubtitle || t('hero.subtitle');
 
   return (
     <section className="hero-section-wide">
@@ -287,6 +287,7 @@ export default function HeroSection() {
 
       {/* 히어로 타이틀 문구 (어드민 설정 텍스트 동적 적용) */}
       <div className="hero-content-area">
+        <p className="hero-eyebrow">LIKEDZY / TECHNICAL OUTDOOR 2026</p>
         <h1 className={`hero-title size-${heroTitleSize}`}>
           {displayTitle}
         </h1>

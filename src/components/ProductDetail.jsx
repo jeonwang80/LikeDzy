@@ -3,34 +3,11 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { useCart } from '../context/CartContext';
 import ProductReviews from './ProductReviews';
 import ProductQnA from './ProductQnA';
+import { formatProductPrice, getSafeImageUrl } from '../utils/productPresentation';
 import './CollectionList.css';
 
-const DEFAULT_COLOR_PALETTES = [
-  [
-    { name: 'Gravel', colorHex: '#C5B49F' },
-    { name: 'Ivory', colorHex: '#F3EFEA' },
-    { name: 'Navy', colorHex: '#1B2A4A' },
-    { name: 'Black', colorHex: '#111111' }
-  ],
-  [
-    { name: 'Dune Grass', colorHex: '#A3B18A' },
-    { name: 'Black', colorHex: '#111111' },
-    { name: 'Cherry', colorHex: '#721B24' },
-  ]
-];
-
-const getSafeImageUrl = (url, fallback = '/models/model_1.png') => {
-  if (!url || typeof url !== 'string') return fallback;
-  const trimmed = url.trim();
-  if (trimmed.startsWith('blob:')) return fallback;
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('/')) {
-    return trimmed;
-  }
-  return fallback;
-};
-
 export default function ProductDetail({ product, onBack }) {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const { addToCart, setIsCartOpen } = useCart();
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [selectedSizeIdx, setSelectedSizeIdx] = useState(0);
@@ -40,7 +17,7 @@ export default function ProductDetail({ product, onBack }) {
     try {
       const saved = JSON.parse(localStorage.getItem('likedzy_wishlist') || '[]');
       return saved.includes(product?.id);
-    } catch (e) {
+    } catch {
       return false;
     }
   });
@@ -51,18 +28,18 @@ export default function ProductDetail({ product, onBack }) {
     window.scrollTo(0, 0);
   }, []);
 
-  if (!product) return null;
-
-  // Prepare images array
-  const images = product.imageUrls && product.imageUrls.length > 0 
-    ? product.imageUrls 
-    : (product.images && product.images.length > 0 ? product.images : [product.imageUrl || '/models/model_1.png']);
+  const images = useMemo(() => {
+    if (!product) return [];
+    if (product.imageUrls?.length) return product.imageUrls;
+    if (product.images?.length) return product.images;
+    return [product.imageUrl || '/models/model_1.png'];
+  }, [product]);
 
   // Options & Swatches
-  const hasOptions = product.options && product.options.length > 0;
-  const colorSwatches = (product.colorSwatches && product.colorSwatches.length > 0)
+  const hasOptions = product?.options && product.options.length > 0;
+  const colorSwatches = (product?.colorSwatches && product.colorSwatches.length > 0)
     ? product.colorSwatches
-    : (product.colors && product.colors.length > 0 ? product.colors : []);
+    : (product?.colors && product.colors.length > 0 ? product.colors : []);
 
   const activeColor = colorSwatches[selectedColorIdx] || colorSwatches[0] || null;
 
@@ -76,7 +53,7 @@ export default function ProductDetail({ product, onBack }) {
       if (activeColor.imageUrl && activeColor.imageUrl === url) return true;
       if (activeColor.hoverImageUrl && activeColor.hoverImageUrl === url) return true;
 
-      const mapped = (product.colorSwatches || []).find(s => 
+      const mapped = (product?.colorSwatches || []).find(s =>
         (s.imageUrl && s.imageUrl === url) || 
         (s.hoverImageUrl && s.hoverImageUrl === url) || 
         (s.imageUrls && s.imageUrls.includes(url))
@@ -116,6 +93,8 @@ export default function ProductDetail({ product, onBack }) {
     return sorted;
   }, [product, activeColor, selectedColorIdx, images]);
 
+  if (!product) return null;
+
   // Sizes pill array (from product options or default Alo Yoga sizes)
   const sizes = hasOptions 
     ? product.options.map(opt => ({ name: opt.name, stock: opt.stock }))
@@ -130,22 +109,14 @@ export default function ProductDetail({ product, onBack }) {
   // Language specific fields
   const langData = product[language] || product.ko || {};
   const name = langData.name || product.name || '';
-  const category = langData.category || product.category || 'COLLECTION';
   const fabric = langData.fabric || product.fabric || '';
   const description = langData.description || product.description || '';
   const sizeGuide = langData.sizeGuide || product.sizeGuide || '';
   const perk1 = langData.perk1 || product.perk1 || 'Complimentary Shipping Over ₩50,000 & Free Returns';
-  const perk2 = langData.perk2 || product.perk2 || 'Premium Organic Cotton Blend';
+  const perk2 = langData.perk2 || product.perk2 || 'Weather-ready performance fabric';
 
   // Prices formatting
-  let displayPrice = product.price;
-  if (product.prices) {
-    if (language === 'ko') displayPrice = `₩${product.prices.KRW?.toLocaleString()}`;
-    else if (language === 'en') displayPrice = `$${product.prices.USD?.toLocaleString()}`;
-    else if (language === 'vi') displayPrice = `₫${product.prices.VND?.toLocaleString()}`;
-  } else if (typeof product.price === 'number') {
-    displayPrice = `₩${product.price.toLocaleString()}`;
-  }
+  const displayPrice = product.displayPrice || formatProductPrice(product, language);
 
   const toggleWishlist = () => {
     try {
@@ -154,8 +125,8 @@ export default function ProductDetail({ product, onBack }) {
       const updated = exists ? saved.filter(id => id !== product.id) : [...saved, product.id];
       localStorage.setItem('likedzy_wishlist', JSON.stringify(updated));
       setIsWishlisted(!exists);
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -179,7 +150,7 @@ export default function ProductDetail({ product, onBack }) {
         {/* Top Back Navigation */}
         <div style={{ marginBottom: '1.5rem' }}>
           <button className="alo-back-link-btn" onClick={onBack}>
-            ← COLLECTION
+            ← BACK TO COLLECTION
           </button>
         </div>
 
@@ -207,7 +178,7 @@ export default function ProductDetail({ product, onBack }) {
                   }}
                 />
                 {idx === 0 && (
-                  <span className="alo-model-tag">Model is wearing size M</span>
+                  <span className="alo-model-tag">PRODUCT VIEW 01</span>
                 )}
               </div>
             ))}
@@ -225,7 +196,7 @@ export default function ProductDetail({ product, onBack }) {
               <h1 className="alo-detail-title">{name}</h1>
               <div className="alo-detail-price-rating-row">
                 <span className="alo-detail-price-text">{displayPrice}</span>
-                <span className="alo-detail-rating">★★★★★ <small>(182 Reviews)</small></span>
+                <span className="alo-detail-rating">TECHNICAL OUTDOOR</span>
               </div>
             </div>
 
@@ -251,7 +222,7 @@ export default function ProductDetail({ product, onBack }) {
 
             {/* 3. Fit Note Box */}
             <div className="alo-fit-note-box">
-              <strong>Fit:</strong> {sizeGuide || 'Designed for a boxy, relaxed oversized silhouette — size down for a more tailored fit.'}
+                <strong>Fit:</strong> {sizeGuide || 'Designed for unrestricted movement and easy outdoor layering.'}
             </div>
 
             {/* 4. Size Pill Selector Buttons */}
@@ -321,7 +292,7 @@ export default function ProductDetail({ product, onBack }) {
               onClick={() => setActiveTab('reviews')}
               className={`detail-tab-btn ${activeTab === 'reviews' ? 'active' : ''}`}
             >
-              고객 리뷰 (182)
+              고객 리뷰
             </button>
             <button 
               onClick={() => setActiveTab('qna')}
@@ -334,7 +305,7 @@ export default function ProductDetail({ product, onBack }) {
           <div style={{ padding: '2rem 0' }}>
             {activeTab === 'details' && (
               <div className="detail-tab-content">
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem' }}>PRODUCT DETAILS & FABRIC</h3>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem' }}>MATERIAL & PERFORMANCE</h3>
                 {fabric && (
                   <p style={{ color: '#444', lineHeight: 1.7, marginBottom: '1.5rem', whiteSpace: 'pre-wrap' }}>
                     {fabric}
@@ -351,6 +322,22 @@ export default function ProductDetail({ product, onBack }) {
             {activeTab === 'qna' && <ProductQnA productId={product.id} />}
           </div>
         </div>
+      </div>
+
+      <div className="product-mobile-buybar">
+        <div>
+          <span>{name}</span>
+          <strong>{displayPrice}</strong>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const success = handleAddToCart();
+            if (success) setIsCartOpen(true);
+          }}
+        >
+          ADD TO BAG
+        </button>
       </div>
 
       {/* Lightbox Image Modal */}
