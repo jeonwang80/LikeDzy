@@ -108,13 +108,20 @@ export default function AdminMasterData() {
 
   const visibleRows = useMemo(() => {
     const queryText = searchTerm.trim().toLowerCase();
-    if (!queryText) return rows;
-    return rows.filter((row) => (
-      !row.id
-      || `${buildCategoryCode(row)} ${LEVELS.flatMap((level) => NAME_FIELDS.map((language) => row[`level${level}Name${language}`] || '')).join(' ')}`
-        .toLowerCase()
-        .includes(queryText)
-    ));
+    const filteredRows = queryText
+      ? rows.filter((row) => (
+        !row.id
+        || `${buildCategoryCode(row)} ${LEVELS.flatMap((level) => NAME_FIELDS.map((language) => row[`level${level}Name${language}`] || '')).join(' ')}`
+          .toLowerCase()
+          .includes(queryText)
+      ))
+      : rows;
+
+    return [...filteredRows].sort((firstRow, secondRow) => {
+      const orderDifference = (Number(firstRow.sortOrder) || 0) - (Number(secondRow.sortOrder) || 0);
+      if (orderDifference !== 0) return orderDifference;
+      return buildCategoryCode(firstRow).localeCompare(buildCategoryCode(secondRow));
+    });
   }, [rows, searchTerm]);
 
   const activeCount = categories.filter((category) => category.active !== false).length;
