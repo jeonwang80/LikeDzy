@@ -6,9 +6,14 @@ import 'react-quill-new/dist/quill.snow.css';
 import imageCompression from 'browser-image-compression';
 import { db, storage } from '../firebase';
 import '../admin.css';
+import '../components/CollectionList.css';
 
 export default function ProductEditor({ product, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
+  const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'form'
+  const [activeLang, setActiveLang] = useState('ko'); // 'ko' | 'en' | 'vi'
+  const [activeTab, setActiveTab] = useState('details'); // 'details' | 'reviews' | 'qna'
+
   const [imageFiles, setImageFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
   const [videoFile, setVideoFile] = useState(null);
@@ -18,7 +23,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     if (product && product.prices) {
       return product.prices.KRW.toString();
     }
-    return '';
+    return product?.price ? product.price.toString().replace(/[^0-9.]/g, '') : '';
   });
 
   const EXCHANGE_RATES = {
@@ -29,7 +34,6 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   const quillRefKo = useRef(null);
   const quillRefEn = useRef(null);
   const quillRefVi = useRef(null);
-  const modalContentRef = useRef(null);
 
   const imageHandler = (quillRef) => {
     const input = document.createElement('input');
@@ -80,13 +84,8 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     const rawKRW = usd * EXCHANGE_RATES.USD_TO_KRW;
     const rawVND = usd * EXCHANGE_RATES.USD_TO_VND;
 
-    // USD: 0.1 단위 밑으로 버림 (예: 99.47 -> 99.4)
     const flooredUSD = Math.floor(usd * 10) / 10;
-    
-    // KRW: 1000 단위 밑으로 버림 (예: 145300 -> 145000)
     const flooredKRW = Math.floor(rawKRW / 1000) * 1000;
-    
-    // VND: 1000 단위 밑으로 버림 (예: 2453200 -> 2453000)
     const flooredVND = Math.floor(rawVND / 1000) * 1000;
 
     return {
@@ -102,19 +101,35 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         ...product,
         imageUrls: product.imageUrls || (product.imageUrl ? [product.imageUrl] : []),
         colorSwatches: product.colorSwatches || (product.colors || []),
-        options: product.options || []
+        options: product.options || [
+          { name: 'S', stock: 10 },
+          { name: 'M', stock: 10 },
+          { name: 'L', stock: 10 },
+          { name: 'XL', stock: 10 },
+          { name: '2XL', stock: 5 }
+        ],
+        ko: product.ko || { name: product.name || '', category: product.category || '', description: product.description || '', fabric: product.fabric || '', sizeGuide: '' },
+        en: product.en || { name: product.name || '', category: product.category || '', description: product.description || '', fabric: product.fabric || '', sizeGuide: '' },
+        vi: product.vi || { name: product.name || '', category: product.category || '', description: product.description || '', fabric: product.fabric || '', sizeGuide: '' },
       };
     }
     return {
       price: '',
       youtubeUrl: '',
       videoUrl: '',
-      ko: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
-      en: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
-      vi: { name: '', category: '', description: '', fabric: '', sizeGuide: '' },
+      ko: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '' },
+      en: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '' },
+      vi: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '' },
       imageUrls: [],
       colorSwatches: [
         { name: 'Black', colorHex: '#111111', imageUrl: '' }
+      ],
+      options: [
+        { name: 'S', stock: 10 },
+        { name: 'M', stock: 10 },
+        { name: 'L', stock: 10 },
+        { name: 'XL', stock: 10 },
+        { name: '2XL', stock: 5 }
       ],
       prices: { KRW: 0, USD: 0, VND: 0 }
     };
@@ -128,7 +143,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
           [lang]: { ...prev[lang], [field]: value }
         };
         
-        // 한국어 입력 시, 영어/베트남어가 비어있거나 기존 한국어와 같으면 자동으로 복사
+        // If updating KO, mirror to EN/VI if they were identical or blank
         if (lang === 'ko') {
           const oldKoValue = prev.ko[field];
           if (!prev.en[field] || prev.en[field] === oldKoValue) {
@@ -147,7 +162,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   };
 
   const handlePriceChange = (e) => {
-    const value = e.target.value.replace(/[^0-9.]/g, ''); // 숫자와 소수점만 허용
+    const value = e.target.value.replace(/[^0-9.]/g, '');
     setRawPrice(value);
     
     const calculated = calculatePrices(baseCurrency, value);
@@ -200,12 +215,32 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleMoveExistingImage = (fromIndex, direction) => {
+    const toIndex = fromIndex + direction;
+    if (toIndex < 0 || toIndex >= (formData.imageUrls?.length || 0)) return;
+
+    setFormData(prev => {
+      const updated = [...prev.imageUrls];
+      const temp = updated[fromIndex];
+      updated[fromIndex] = updated[toIndex];
+      updated[toIndex] = temp;
+      return { ...prev, imageUrls: updated };
+    });
+  };
+
+  const handleMakeMainImage = (url) => {
+    setFormData(prev => {
+      const filtered = prev.imageUrls.filter(u => u !== url);
+      return { ...prev, imageUrls: [url, ...filtered] };
+    });
+  };
+
   const handleAddColorSwatch = () => {
     setFormData(prev => ({
       ...prev,
       colorSwatches: [
         ...(prev.colorSwatches || []),
-        { name: '', colorHex: '#111111', imageUrl: prev.imageUrls?.[0] || '' }
+        { name: 'New Color', colorHex: '#111111', imageUrl: prev.imageUrls?.[0] || '' }
       ]
     }));
   };
@@ -222,6 +257,31 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     setFormData(prev => ({
       ...prev,
       colorSwatches: prev.colorSwatches.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleAddOption = () => {
+    const name = prompt("추가할 옵션/사이즈명을 입력하세요 (예: 3XL, Custom)", "3XL");
+    if (!name) return;
+    setFormData(prev => ({
+      ...prev,
+      options: [...(prev.options || []), { name: name.toUpperCase(), stock: 10 }]
+    }));
+  };
+
+  const handleOptionStockChange = (index, delta) => {
+    setFormData(prev => {
+      const updated = [...(prev.options || [])];
+      const newStock = Math.max(0, (updated[index].stock || 0) + delta);
+      updated[index] = { ...updated[index], stock: newStock };
+      return { ...prev, options: updated };
+    });
+  };
+
+  const handleRemoveOption = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      options: prev.options.filter((_, i) => i !== index)
     }));
   };
 
@@ -244,14 +304,14 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setLoading(true);
 
     try {
       let finalImageUrls = [...(formData.imageUrls || [])];
       let finalVideoUrl = formData.videoUrl || '';
 
-      // 1. Upload newly selected image files and append
+      // Upload new image files
       if (imageFiles.length > 0) {
         for (const file of imageFiles) {
           const imageRef = ref(storage, `products/${Date.now()}_${file.name}`);
@@ -261,23 +321,31 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         }
       }
 
-      // 2. Upload new video if selected
+      // Upload new video file
       if (videoFile) {
         const videoRef = ref(storage, `products/videos/${Date.now()}_${videoFile.name}`);
         const snapshot = await uploadBytes(videoRef, videoFile);
         finalVideoUrl = await getDownloadURL(snapshot.ref);
       }
 
+      // Fallback top-level name & description from active language
+      const name = formData.ko?.name || formData.en?.name || formData.vi?.name || '신규 상품';
+      const category = formData.ko?.category || 'Apparel';
+      const description = formData.ko?.description || '';
+      const fabric = formData.ko?.fabric || '';
+
       const finalData = { 
         ...formData, 
+        name,
+        category,
+        description,
+        fabric,
         imageUrls: finalImageUrls, 
         videoUrl: finalVideoUrl, 
         updatedAt: new Date() 
       };
-      delete finalData.imageUrl; // Remove legacy field
-      delete finalData.lookbookFitImageUrl;
+      delete finalData.imageUrl;
 
-      // 2. Save to Firestore
       if (product && product.id) {
         await updateDoc(doc(db, 'products', product.id), finalData);
       } else {
@@ -293,366 +361,681 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     }
   };
 
+  const currentLangData = formData[activeLang] || formData.ko;
+  const allPhotos = [...(formData.imageUrls || []), ...previewUrls];
+
   return (
-    <div className="admin-modal-overlay" style={{
-      position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.75)',
-      backdropFilter: 'blur(6px)',
-      zIndex: 9999,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '1rem'
-    }}>
-      <div className="admin-modal-content" ref={modalContentRef} style={{
-        backgroundColor: '#ffffff',
-        border: '1px solid #cbd5e1',
-        borderRadius: '12px',
-        padding: '1.5rem 2rem',
-        width: '100%',
-        maxWidth: '780px',
-        maxHeight: '84vh',
-        overflowY: 'auto',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
-        position: 'relative',
-        overscrollBehavior: 'contain'
-      }}>
-        {/* 상단 Sticky 고정 헤더 */}
-        <div style={{
-          position: 'sticky',
-          top: '-1.5rem',
-          backgroundColor: '#ffffff',
-          zIndex: 40,
-          paddingTop: '0.5rem',
-          paddingBottom: '0.75rem',
-          marginBottom: '1rem',
-          borderBottom: '2px solid #e2e8f0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 'bold', color: '#0f172a' }}>
-            {product ? '✏️ 상품 정보 & 이미지 수정' : '➕ 새 상품 추가'}
-          </h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <button 
-              type="button" 
-              onClick={onClose} 
-              style={{
-                background: '#f1f5f9',
-                border: 'none',
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                fontSize: '1.2rem',
-                cursor: 'pointer',
-                color: '#64748b',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              &times;
-            </button>
+    <div className="product-live-editor-overlay fade-in">
+      
+      {/* ========================================================
+          1. TOP STICKY BUILDER HEADER CONTROL BAR
+         ======================================================== */}
+      <header className="live-builder-header">
+        <div className="live-builder-title">
+          <span style={{ fontSize: '1.4rem' }}>🎨</span>
+          <div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+              {product ? `상품 라이브 비주얼 빌더 (${formData.ko?.name || '편집 중'})` : '➕ 새 상품 비주얼 라이브 빌더'}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              화면 상의 텍스트와 사진을 직접 클릭하여 라이브 미리보기 상태로 편집하세요
+            </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          
-          {/* ========================================================
-              🖼️ 일반 상품 갤러리 사진 (최대 8장, 개별 삭제 가능)
-             ======================================================== */}
-          <div style={{ padding: '1.25rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <div>
-                <label style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '0.95rem' }}>
-                  🖼️ 상품 갤러리 사진 (최대 8장)
-                </label>
-                <span style={{ fontSize: '0.8rem', color: '#0284c7', fontWeight: 'bold', marginLeft: '0.5rem' }}>
-                  ({(formData.imageUrls?.length || 0) + imageFiles.length} / 8장)
-                </span>
-              </div>
-              
-              <label style={{
-                padding: '7px 16px',
-                backgroundColor: '#0284c7',
-                color: '#ffffff',
-                borderRadius: '6px',
-                fontSize: '0.825rem',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
-              }}>
-                + 상품사진 추가
-                <input type="file" accept="image/*" multiple onChange={handleImageChange} style={{ display: 'none' }} />
-              </label>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '0.85rem', marginTop: '0.5rem', overflowX: 'auto', padding: '8px 4px', minHeight: '95px', alignItems: 'center' }}>
-              {/* 1. 기존 등록된 이미지 */}
-              {formData.imageUrls && formData.imageUrls.map((url, idx) => (
-                <div key={`existing-${idx}`} style={{ position: 'relative', flexShrink: 0 }}>
-                  <img 
-                    src={url} 
-                    alt={`existing-${idx}`} 
-                    style={{ width: '85px', height: '85px', objectFit: 'cover', borderRadius: '8px', border: '2px solid #cbd5e1' }} 
-                  />
-                  {idx === 0 && (
-                    <span style={{ position: 'absolute', bottom: '4px', left: '4px', background: '#1e293b', color: '#fff', fontSize: '0.65rem', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px' }}>
-                      메인
-                    </span>
-                  )}
-                  <button 
-                    type="button" 
-                    onClick={() => handleRemoveExistingImage(idx)}
-                    style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', fontSize: '0.85rem' }}
-                    title="사진 삭제"
-                  >
-                    &times;
-                  </button>
-                </div>
-              ))}
-
-              {/* 2. 신규 추가 업로드 대기 이미지 */}
-              {previewUrls.map((url, idx) => {
-                const totalIdx = (formData.imageUrls?.length || 0) + idx;
-                return (
-                  <div key={`new-${idx}`} style={{ position: 'relative', flexShrink: 0 }}>
-                    <img 
-                      src={url} 
-                      alt={`new-${idx}`} 
-                      style={{ width: '85px', height: '85px', objectFit: 'cover', borderRadius: '8px', border: '2px solid #0284c7' }} 
-                    />
-                    {totalIdx === 0 && (
-                      <span style={{ position: 'absolute', bottom: '4px', left: '4px', background: '#0284c7', color: '#fff', fontSize: '0.65rem', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px' }}>
-                        메인
-                      </span>
-                    )}
-                    <span style={{ position: 'absolute', bottom: '4px', right: '4px', background: 'rgba(2, 132, 199, 0.9)', color: '#fff', fontSize: '0.6rem', padding: '1px 4px', borderRadius: '2px' }}>
-                      신규
-                    </span>
-                    <button 
-                      type="button" 
-                      onClick={() => handleRemoveNewImage(idx)}
-                      style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', fontSize: '0.85rem' }}
-                      title="사진 삭제"
-                    >
-                      &times;
-                    </button>
-                  </div>
-                );
-              })}
-
-              {(!formData.imageUrls || formData.imageUrls.length === 0) && imageFiles.length === 0 && (
-                <div style={{ padding: '1rem', width: '100%', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', border: '1px dashed #cbd5e1', borderRadius: '8px', backgroundColor: '#ffffff' }}>
-                  등록된 상품 사진이 없습니다. 오른쪽 <strong>[+ 상품사진 추가]</strong> 버튼을 눌러 사진을 추가하세요.
-                </div>
-              )}
-            </div>
-            <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0.5rem 0 0 0' }}>
-              * 각 사진 우측 상단의 🔴 빨간색 <strong>[✕]</strong> 버튼을 클릭하여 원하지 않는 특정 사진만 선택 삭제할 수 있습니다.
-            </p>
-          </div>
-
-          {/* ========================================================
-              🎨 색상 옵션별 이미지 매핑 (Color Swatches & Image Mapping)
-             ======================================================== */}
-          <div style={{ padding: '1.25rem', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <div>
-                <label style={{ fontWeight: 'bold', color: '#166534', fontSize: '0.95rem' }}>
-                  🎨 색상 옵션 및 사진 매핑 (Color Swatches)
-                </label>
-                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: '#15803d' }}>
-                  * 고객이 색상 칩(●)을 선택할 때 자동으로 전환될 색상별 대표 사진을 연결하세요.
-                </p>
-              </div>
-              <button 
-                type="button" 
-                onClick={handleAddColorSwatch}
-                style={{ padding: '6px 14px', backgroundColor: '#16a34a', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.825rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)' }}
-              >
-                + 색상 추가
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
-              {formData.colorSwatches && formData.colorSwatches.map((swatch, idx) => {
-                const allPhotos = [...(formData.imageUrls || []), ...previewUrls];
-                return (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', backgroundColor: '#ffffff', border: '1px solid #dcfce7', borderRadius: '8px', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <input 
-                        type="color" 
-                        value={swatch.colorHex || '#111111'} 
-                        onChange={e => handleColorSwatchChange(idx, 'colorHex', e.target.value)}
-                        style={{ width: '32px', height: '32px', border: 'none', borderRadius: '50%', cursor: 'pointer', background: 'none' }}
-                        title="색상 칩 선택"
-                      />
-                      <input 
-                        type="text" 
-                        value={swatch.name || ''} 
-                        onChange={e => handleColorSwatchChange(idx, 'name', e.target.value)} 
-                        placeholder="색상명 (예: Navy, Black)" 
-                        style={{ padding: '6px 10px', fontSize: '0.85rem', border: '1px solid #cbd5e1', borderRadius: '4px', width: '140px' }}
-                      />
-                    </div>
-
-                    <div style={{ flex: 1, minWidth: '220px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <label style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 'bold', whiteSpace: 'nowrap' }}>연결 사진:</label>
-                      <select 
-                        value={swatch.imageUrl || ''} 
-                        onChange={e => handleColorSwatchChange(idx, 'imageUrl', e.target.value)}
-                        style={{ flex: 1, padding: '6px 10px', fontSize: '0.85rem', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#ffffff' }}
-                      >
-                        <option value="">-- 갤러리 사진 선택 --</option>
-                        {allPhotos.map((url, pIdx) => (
-                          <option key={pIdx} value={url}>
-                            🖼️ {pIdx + 1}번째 사진 {pIdx === 0 ? '(대표 메인)' : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {swatch.imageUrl && (
-                      <img 
-                        src={swatch.imageUrl} 
-                        alt={swatch.name} 
-                        style={{ width: '38px', height: '38px', objectFit: 'cover', borderRadius: '4px', border: '2px solid #16a34a' }} 
-                      />
-                    )}
-
-                    <button 
-                      type="button" 
-                      onClick={() => handleRemoveColorSwatch(idx)}
-                      style={{ background: '#ef4444', color: '#ffffff', border: 'none', borderRadius: '4px', padding: '4px 10px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
-                    >
-                      삭제
-                    </button>
-                  </div>
-                );
-              })}
-
-              {(!formData.colorSwatches || formData.colorSwatches.length === 0) && (
-                <div style={{ padding: '0.75rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem', backgroundColor: '#ffffff', border: '1px dashed #cbd5e1', borderRadius: '6px' }}>
-                  등록된 색상 옵션이 없습니다. 오른쪽 <strong>[+ 색상 추가]</strong> 버튼을 눌러 색상별 사진을 연결해보세요!
-                </div>
-              )}
-            </div>
-          </div>
-          <div>
-            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#1e293b' }}>가격</label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <select 
-                value={baseCurrency} 
-                onChange={handleCurrencyChange}
-                style={{ padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: 'white' }}
-              >
-                <option value="KRW">KRW (원)</option>
-                <option value="USD">USD (달러)</option>
-                <option value="VND">VND (동)</option>
-              </select>
-              <input 
-                required 
-                placeholder="숫자만 입력하세요"
-                value={rawPrice} 
-                onChange={handlePriceChange} 
-                style={{ flex: 1, padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} 
-              />
-            </div>
-            <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '6px' }}>
-              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#1e293b' }}>
-                직접 영상 업로드 (.mp4) <span style={{ fontSize: '0.8rem', color: '#ef4444' }}>* 추천 (10MB 이하 짧은 영상)</span>
-              </label>
-              <input type="file" accept="video/mp4,video/quicktime" onChange={handleVideoChange} style={{ width: '100%', marginBottom: '0.5rem' }} />
-              
-              {(videoPreviewUrl || formData.videoUrl) && (
-                <div style={{ position: 'relative', display: 'inline-block', marginTop: '0.5rem' }}>
-                  <video 
-                    src={videoPreviewUrl || formData.videoUrl} 
-                    style={{ width: '150px', height: '150px', objectFit: 'cover', borderRadius: '4px', backgroundColor: 'black' }} 
-                    controls 
-                  />
-                  <button 
-                    type="button" 
-                    onClick={handleRemoveVideo}
-                    style={{ position: 'absolute', top: '-10px', right: '-10px', background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}
-                  >
-                    X
-                  </button>
-                </div>
-              )}
-
-              <label style={{ fontWeight: 'bold', display: 'block', margin: '1.5rem 0 0.5rem', color: '#1e293b' }}>
-                유튜브 영상 링크 (대체/서브용)
-              </label>
-              <input 
-                placeholder="예: https://youtube.com/watch?v=..."
-                value={formData.youtubeUrl || ''} 
-                onChange={e => handleChange(null, 'youtubeUrl', e.target.value)} 
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} 
-              />
-            </div>
-            {formData.prices && formData.prices.KRW > 0 && (
-              <div style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '4px', fontSize: '0.9rem', color: '#475569' }}>
-                <div style={{ marginBottom: '0.25rem', fontWeight: 'bold' }}>자동 계산된 가격:</div>
-                <div>🇰🇷 ₩{formData.prices.KRW?.toLocaleString()}</div>
-                <div>🇺🇸 ${formData.prices.USD?.toLocaleString()}</div>
-                <div>🇻🇳 ₫{formData.prices.VND?.toLocaleString()}</div>
-                <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#94a3b8' }}>
-                  * 적용 환율: 1 USD = 1,400 KRW = 25,000 VND
-                </div>
-              </div>
-            )}
-          </div>
-
-          <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0' }} />
-
-          {/* Korean */}
-          <div>
-            <h3 style={{ fontSize: '1.1rem', color: '#2563eb', marginBottom: '0.5rem' }}>한국어 (KO)</h3>
-            <input placeholder="상품명" required value={formData.ko.name} onChange={e => handleChange('ko', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-            <input placeholder="카테고리 (예: Apparel)" value={formData.ko.category} onChange={e => handleChange('ko', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-            <div style={{ marginBottom: '0.5rem', background: 'white', color: 'black', borderRadius: '4px' }}>
-              <ReactQuill ref={quillRefKo} theme="snow" modules={modulesKo} value={formData.ko.description} onChange={val => handleChange('ko', 'description', val)} placeholder="상세페이지 내용을 블로그처럼 예쁘게 꾸며보세요!" />
-            </div>
-            <textarea placeholder="원단 정보 (예: 프리미엄 나일론 88%)" value={formData.ko.fabric} onChange={e => handleChange('ko', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px', minHeight: '60px' }} />
-            <textarea placeholder="사이즈 가이드 (예: 정사이즈 추천)" value={formData.ko.sizeGuide} onChange={e => handleChange('ko', 'sizeGuide', e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px', minHeight: '60px' }} />
-          </div>
-
-          {/* English */}
-          <div>
-            <h3 style={{ fontSize: '1.1rem', color: '#16a34a', marginBottom: '0.5rem' }}>English (EN)</h3>
-            <input placeholder="Product Name" value={formData.en.name} onChange={e => handleChange('en', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-            <input placeholder="Category" value={formData.en.category} onChange={e => handleChange('en', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-            <div style={{ marginBottom: '0.5rem', background: 'white', color: 'black', borderRadius: '4px' }}>
-              <ReactQuill ref={quillRefEn} theme="snow" modules={modulesEn} value={formData.en.description} onChange={val => handleChange('en', 'description', val)} placeholder="Detailed Description" />
-            </div>
-            <textarea placeholder="Fabric Information" value={formData.en.fabric} onChange={e => handleChange('en', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px', minHeight: '60px' }} />
-            <textarea placeholder="Size Guide" value={formData.en.sizeGuide} onChange={e => handleChange('en', 'sizeGuide', e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px', minHeight: '60px' }} />
-          </div>
-
-          {/* Vietnamese */}
-          <div>
-            <h3 style={{ fontSize: '1.1rem', color: '#dc2626', marginBottom: '0.5rem' }}>Tiếng Việt (VI)</h3>
-            <input placeholder="Tên sản phẩm" value={formData.vi.name} onChange={e => handleChange('vi', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-            <input placeholder="Thể loại" value={formData.vi.category} onChange={e => handleChange('vi', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-            <div style={{ marginBottom: '0.5rem', background: 'white', color: 'black', borderRadius: '4px' }}>
-              <ReactQuill ref={quillRefVi} theme="snow" modules={modulesVi} value={formData.vi.description} onChange={val => handleChange('vi', 'description', val)} placeholder="Mô tả chi tiết" />
-            </div>
-            <textarea placeholder="Thông tin vải" value={formData.vi.fabric} onChange={e => handleChange('vi', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px', minHeight: '60px' }} />
-            <textarea placeholder="Hướng dẫn kích thước" value={formData.vi.sizeGuide} onChange={e => handleChange('vi', 'sizeGuide', e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px', minHeight: '60px' }} />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0', gap: '1rem' }}>
-            <button type="button" onClick={onClose} disabled={loading} style={{ padding: '0.75rem 1.5rem', background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>취소</button>
-            <button type="submit" disabled={loading} style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-              {loading ? '저장 중...' : '저장하기'}
+        <div className="live-builder-controls">
+          {/* Mode Switcher */}
+          <div className="live-builder-mode-switcher">
+            <button 
+              type="button" 
+              className={`live-builder-mode-btn ${editorMode === 'visual' ? 'active' : ''}`}
+              onClick={() => setEditorMode('visual')}
+            >
+              🎨 라이브 비주얼 편집
+            </button>
+            <button 
+              type="button" 
+              className={`live-builder-mode-btn ${editorMode === 'form' ? 'active' : ''}`}
+              onClick={() => setEditorMode('form')}
+            >
+              📋 양식 폼 모드
             </button>
           </div>
-        </form>
-      </div>
+
+          {/* Language Tabs */}
+          <div className="live-builder-lang-switcher">
+            <button 
+              type="button" 
+              className={`live-builder-lang-btn ${activeLang === 'ko' ? 'active' : ''}`}
+              onClick={() => setActiveLang('ko')}
+            >
+              🇰🇷 한국어
+            </button>
+            <button 
+              type="button" 
+              className={`live-builder-lang-btn ${activeLang === 'en' ? 'active' : ''}`}
+              onClick={() => setActiveLang('en')}
+            >
+              🇺🇸 English
+            </button>
+            <button 
+              type="button" 
+              className={`live-builder-lang-btn ${activeLang === 'vi' ? 'active' : ''}`}
+              onClick={() => setActiveLang('vi')}
+            >
+              🇻🇳 Tiếng Việt
+            </button>
+          </div>
+
+          {/* Currency Pill */}
+          <div className="live-builder-price-pill">
+            {formData.prices?.KRW > 0 
+              ? `₩${formData.prices.KRW?.toLocaleString()} / $${formData.prices.USD?.toLocaleString()} / ₫${formData.prices.VND?.toLocaleString()}`
+              : '가격 미설정'
+            }
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button 
+              type="button" 
+              onClick={onClose}
+              disabled={loading}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '9999px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                color: '#475569',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              취소
+            </button>
+            <button 
+              type="button" 
+              onClick={handleSubmit}
+              disabled={loading}
+              style={{
+                padding: '8px 20px',
+                borderRadius: '9999px',
+                border: 'none',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+              }}
+            >
+              {loading ? '저장 중...' : '💾 저장 및 반영'}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ========================================================
+          2. MAIN EDITOR WORKSPACE CANVAS
+         ======================================================== */}
+      <main className="product-live-editor-body">
+        
+        {editorMode === 'visual' ? (
+          /* ========================================================
+             🎨 VISUAL LIVE WYSIWYG CANVAS MODE
+             ======================================================== */
+          <div className="visual-canvas-container fade-in">
+            
+            {/* Top Info Banner */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '2rem',
+              padding: '0.75rem 1.25rem',
+              backgroundColor: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: '8px',
+              color: '#1e40af',
+              fontSize: '0.85rem'
+            }}>
+              <span>💡 <strong>라이브 비주얼 모드:</strong> 실제 고객 상품 상세 페이지와 100% 동일한 화면입니다. 점선 테두리 항목을 직접 클릭해서 수정하세요.</span>
+              <span style={{ fontWeight: 'bold' }}>현재 편집 언어: {activeLang === 'ko' ? '🇰🇷 한국어' : activeLang === 'en' ? '🇺🇸 English' : '🇻🇳 Tiếng Việt'}</span>
+            </div>
+
+            {/* Alo Yoga 2-Column Main Layout: Left Multiple Photos Grid + Right Specs Panel */}
+            <div className="alo-detail-layout">
+              
+              {/* ----------------------------------------------------
+                  LEFT COLUMN: Interactive Photo Gallery Grid
+                 ---------------------------------------------------- */}
+              <div className="alo-detail-gallery" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                
+                {/* 1. Existing Uploaded Photos */}
+                {formData.imageUrls && formData.imageUrls.map((imgUrl, idx) => (
+                  <div key={`existing-${idx}`} className="visual-image-card">
+                    <img 
+                      src={imgUrl} 
+                      alt={`Gallery ${idx + 1}`} 
+                      style={{ width: '100%', height: '320px', objectFit: 'cover', display: 'block' }} 
+                    />
+                    
+                    {/* Main Tag */}
+                    {idx === 0 ? (
+                      <span className="alo-model-tag" style={{ background: '#111111', color: '#fff', padding: '4px 10px', fontSize: '0.7rem' }}>
+                        ★ 메인 대표 이미지
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleMakeMainImage(imgUrl)}
+                        style={{
+                          position: 'absolute',
+                          bottom: '8px',
+                          left: '8px',
+                          background: 'rgba(0,0,0,0.7)',
+                          color: '#fff',
+                          border: 'none',
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          fontSize: '0.7rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        대표 지정
+                      </button>
+                    )}
+
+                    {/* Overlay Action Toolbar */}
+                    <div className="visual-image-overlay-toolbar">
+                      <div className="visual-img-btn-group">
+                        <button 
+                          type="button" 
+                          className="visual-img-action-btn" 
+                          onClick={() => handleMoveExistingImage(idx, -1)}
+                          disabled={idx === 0}
+                          title="왼쪽/위로 이동"
+                        >
+                          ◀
+                        </button>
+                        <button 
+                          type="button" 
+                          className="visual-img-action-btn" 
+                          onClick={() => handleMoveExistingImage(idx, 1)}
+                          disabled={idx === (formData.imageUrls.length - 1)}
+                          title="오른쪽/아래로 이동"
+                        >
+                          ▶
+                        </button>
+                      </div>
+                      
+                      <button 
+                        type="button" 
+                        className="visual-img-action-btn danger" 
+                        onClick={() => handleRemoveExistingImage(idx)}
+                        title="사진 삭제"
+                      >
+                        ✕ 삭제
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* 2. Newly Picked Photos Pending Upload */}
+                {previewUrls.map((url, idx) => {
+                  const totalIdx = (formData.imageUrls?.length || 0) + idx;
+                  return (
+                    <div key={`new-${idx}`} className="visual-image-card" style={{ borderColor: '#0284c7' }}>
+                      <img 
+                        src={url} 
+                        alt={`New ${idx + 1}`} 
+                        style={{ width: '100%', height: '320px', objectFit: 'cover', display: 'block' }} 
+                      />
+                      <span className="alo-model-tag" style={{ background: '#0284c7', color: '#fff', padding: '4px 10px', fontSize: '0.7rem' }}>
+                        신규 업로드 예정
+                      </span>
+
+                      <div className="visual-image-overlay-toolbar">
+                        <span style={{ color: 'white', fontSize: '0.75rem', fontWeight: 'bold' }}>#{totalIdx + 1}</span>
+                        <button 
+                          type="button" 
+                          className="visual-img-action-btn danger" 
+                          onClick={() => handleRemoveNewImage(idx)}
+                        >
+                          ✕ 삭제
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* 3. Add Photo Dropzone Card */}
+                {allPhotos.length < 8 && (
+                  <label className="visual-add-photo-card">
+                    <span style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📸</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>+ 상품 사진 추가</span>
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
+                      ({allPhotos.length} / 8장)
+                    </span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      multiple 
+                      onChange={handleImageChange} 
+                      style={{ display: 'none' }} 
+                    />
+                  </label>
+                )}
+
+              </div>
+
+              {/* ----------------------------------------------------
+                  RIGHT COLUMN: Interactive Specs & Purchase Panel
+                 ---------------------------------------------------- */}
+              <div className="alo-detail-buy-panel">
+                
+                {/* 1. Category & Title Editable */}
+                <div className="alo-detail-header-meta">
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '8px' }}>
+                    <span className="alo-badge-pill">BEST SELLER</span>
+                    <input
+                      type="text"
+                      value={currentLangData.category || ''}
+                      onChange={e => handleChange(activeLang, 'category', e.target.value)}
+                      placeholder="카테고리 (예: Apparel, Tops)"
+                      className="visual-editable-field"
+                      style={{
+                        border: '1px dashed #cbd5e1',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        color: '#64748b'
+                      }}
+                    />
+                  </div>
+
+                  {/* Title Field */}
+                  <div className="visual-editable-field" style={{ marginBottom: '1rem' }}>
+                    <input
+                      type="text"
+                      value={currentLangData.name || ''}
+                      onChange={e => handleChange(activeLang, 'name', e.target.value)}
+                      placeholder={`상품명 입력 (${activeLang.toUpperCase()})`}
+                      style={{
+                        width: '100%',
+                        fontSize: '1.75rem',
+                        fontWeight: 800,
+                        border: 'none',
+                        borderBottom: '2px solid #111111',
+                        padding: '4px 0',
+                        outline: 'none',
+                        color: '#111111',
+                        letterSpacing: '-0.02em'
+                      }}
+                    />
+                  </div>
+
+                  {/* Price Row */}
+                  <div className="alo-detail-price-rating-row" style={{ marginTop: '1rem' }}>
+                    <div className="visual-editable-field" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <select 
+                        value={baseCurrency} 
+                        onChange={handleCurrencyChange}
+                        style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}
+                      >
+                        <option value="KRW">KRW (₩)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="VND">VND (₫)</option>
+                      </select>
+
+                      <input 
+                        type="text" 
+                        value={rawPrice} 
+                        onChange={handlePriceChange} 
+                        placeholder="가격 입력 (숫자만)" 
+                        style={{
+                          fontSize: '1.3rem',
+                          fontWeight: 800,
+                          width: '140px',
+                          padding: '4px 8px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px'
+                        }}
+                      />
+                    </div>
+                    <span className="alo-detail-rating">★★★★★ <small>(182 Reviews)</small></span>
+                  </div>
+                </div>
+
+                <div className="alo-detail-divider" />
+
+                {/* 2. Color Swatches Visual Manager */}
+                <div className="alo-detail-option-group" style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div className="alo-option-label" style={{ justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <strong>Color Swatches ({formData.colorSwatches?.length || 0}):</strong>
+                    <button 
+                      type="button" 
+                      onClick={handleAddColorSwatch}
+                      style={{
+                        padding: '4px 10px',
+                        backgroundColor: '#16a34a',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      + 색상 추가
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {formData.colorSwatches && formData.colorSwatches.map((swatch, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fff', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                        <input 
+                          type="color" 
+                          value={swatch.colorHex || '#111111'} 
+                          onChange={e => handleColorSwatchChange(idx, 'colorHex', e.target.value)}
+                          style={{ width: '28px', height: '28px', border: 'none', cursor: 'pointer', background: 'none' }}
+                          title="색상 칩 컬러 지정"
+                        />
+                        <input 
+                          type="text" 
+                          value={swatch.name || ''} 
+                          onChange={e => handleColorSwatchChange(idx, 'name', e.target.value)}
+                          placeholder="색상명"
+                          style={{ width: '90px', padding: '4px 6px', fontSize: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                        />
+                        <select 
+                          value={swatch.imageUrl || ''} 
+                          onChange={e => handleColorSwatchChange(idx, 'imageUrl', e.target.value)}
+                          style={{ flex: 1, padding: '4px 6px', fontSize: '0.78rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                        >
+                          <option value="">-- 연결 사진 선택 --</option>
+                          {allPhotos.map((url, pIdx) => (
+                            <option key={pIdx} value={url}>🖼️ 사진 #{pIdx + 1}</option>
+                          ))}
+                        </select>
+                        <button 
+                          type="button" 
+                          onClick={() => handleRemoveColorSwatch(idx)}
+                          style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '3px 6px', fontSize: '0.7rem', cursor: 'pointer' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. Fit Note Box Editable */}
+                <div className="alo-fit-note-box visual-editable-field">
+                  <strong>Fit Note:</strong>
+                  <input
+                    type="text"
+                    value={currentLangData.sizeGuide || ''}
+                    onChange={e => handleChange(activeLang, 'sizeGuide', e.target.value)}
+                    placeholder="핏 안내 예: Designed for a relaxed oversized fit"
+                    style={{ width: '100%', border: 'none', background: 'transparent', marginTop: '4px', fontSize: '0.85rem', outline: 'none' }}
+                  />
+                </div>
+
+                {/* 4. Size Pill Selector & Stock Manager */}
+                <div className="alo-detail-option-group" style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div className="alo-option-label" style={{ justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <span><strong>Size & Stock Manager:</strong></span>
+                    <button 
+                      type="button" 
+                      onClick={handleAddOption}
+                      style={{ padding: '4px 10px', background: '#0284c7', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
+                    >
+                      + 사이즈 추가
+                    </button>
+                  </div>
+                  
+                  <div className="alo-size-pill-grid">
+                    {formData.options && formData.options.map((sz, idx) => (
+                      <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                          <button
+                            type="button"
+                            className="alo-size-pill-btn selected"
+                            style={{ minWidth: '45px', padding: '6px' }}
+                          >
+                            {sz.name}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOption(idx)}
+                            style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '18px', height: '18px', fontSize: '0.65rem', cursor: 'pointer' }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.725rem' }}>
+                          <button type="button" onClick={() => handleOptionStockChange(idx, -1)} style={{ padding: '1px 5px', border: '1px solid #cbd5e1', borderRadius: '3px', cursor: 'pointer' }}>-</button>
+                          <span style={{ fontWeight: 'bold', color: sz.stock > 0 ? '#15803d' : '#dc2626' }}>{sz.stock}개</span>
+                          <button type="button" onClick={() => handleOptionStockChange(idx, 1)} style={{ padding: '1px 5px', border: '1px solid #cbd5e1', borderRadius: '3px', cursor: 'pointer' }}>+</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 5. Video Upload & Youtube Media Card */}
+                <div style={{ padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                  <strong style={{ fontSize: '0.85rem', color: '#1e293b', display: 'block', marginBottom: '0.5rem' }}>
+                    🎥 동영상 관리 (MP4 또는 유튜브)
+                  </strong>
+                  
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <label style={{ fontSize: '0.78rem', color: '#475569', display: 'block', marginBottom: '4px' }}>직접 MP4 파일 업로드 (20MB 이하):</label>
+                    <input type="file" accept="video/mp4,video/quicktime" onChange={handleVideoChange} style={{ fontSize: '0.8rem', width: '100%' }} />
+                  </div>
+
+                  {(videoPreviewUrl || formData.videoUrl) && (
+                    <div style={{ position: 'relative', display: 'inline-block', marginTop: '0.5rem' }}>
+                      <video 
+                        src={videoPreviewUrl || formData.videoUrl} 
+                        style={{ width: '140px', height: '100px', objectFit: 'cover', borderRadius: '4px', backgroundColor: 'black' }} 
+                        controls 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={handleRemoveVideo}
+                        style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <label style={{ fontSize: '0.78rem', color: '#475569', display: 'block', marginBottom: '4px' }}>유튜브 영상 URL:</label>
+                    <input 
+                      type="text" 
+                      placeholder="https://youtube.com/watch?v=..."
+                      value={formData.youtubeUrl || ''} 
+                      onChange={e => handleChange(null, 'youtubeUrl', e.target.value)} 
+                      style={{ width: '100%', padding: '6px 8px', fontSize: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} 
+                    />
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* ----------------------------------------------------
+                BOTTOM TABS & RICH TEXT DETAILS WYSIWYG EDITOR
+               ---------------------------------------------------- */}
+            <div style={{ marginTop: '4rem', borderTop: '2px solid #E5E5E5', paddingTop: '2.5rem' }}>
+              
+              <div className="detail-tabs-container">
+                <button 
+                  type="button"
+                  onClick={() => setActiveTab('details')}
+                  className={`detail-tab-btn ${activeTab === 'details' ? 'active' : ''}`}
+                >
+                  상품 상세정보 (Live WYSIWYG)
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setActiveTab('reviews')}
+                  className={`detail-tab-btn ${activeTab === 'reviews' ? 'active' : ''}`}
+                >
+                  고객 리뷰 (182)
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setActiveTab('qna')}
+                  className={`detail-tab-btn ${activeTab === 'qna' ? 'active' : ''}`}
+                >
+                  Q&A 문의
+                </button>
+              </div>
+
+              <div style={{ padding: '1.5rem 0' }}>
+                {activeTab === 'details' && (
+                  <div className="detail-tab-content fade-in">
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '1rem' }}>
+                      PRODUCT DETAILS & FABRIC ({activeLang.toUpperCase()})
+                    </h3>
+                    
+                    {/* Fabric Info Editable Box */}
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                        🧵 원단 / 소재 정보 ({activeLang.toUpperCase()}):
+                      </label>
+                      <textarea
+                        value={currentLangData.fabric || ''}
+                        onChange={e => handleChange(activeLang, 'fabric', e.target.value)}
+                        placeholder="예: Premium Organic Cotton Blend 88%, Spandex 12%"
+                        style={{
+                          width: '100%',
+                          minHeight: '60px',
+                          padding: '8px 12px',
+                          fontSize: '0.9rem',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          fontFamily: 'inherit'
+                        }}
+                      />
+                    </div>
+
+                    {/* Quill Embedded Rich Text Visual Editor */}
+                    <div>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                        📝 상세페이지 본문 에디터 (사진, 폰트 서식, 정렬을 자유롭게 구성하세요):
+                      </label>
+                      
+                      <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', minHeight: '300px' }}>
+                        {activeLang === 'ko' && (
+                          <ReactQuill 
+                            ref={quillRefKo} 
+                            theme="snow" 
+                            modules={modulesKo} 
+                            value={formData.ko?.description || ''} 
+                            onChange={val => handleChange('ko', 'description', val)} 
+                            placeholder="한국어 상세페이지 내용을 예쁘게 작성하세요!" 
+                          />
+                        )}
+                        {activeLang === 'en' && (
+                          <ReactQuill 
+                            ref={quillRefEn} 
+                            theme="snow" 
+                            modules={modulesEn} 
+                            value={formData.en?.description || ''} 
+                            onChange={val => handleChange('en', 'description', val)} 
+                            placeholder="Write English detailed description here..." 
+                          />
+                        )}
+                        {activeLang === 'vi' && (
+                          <ReactQuill 
+                            ref={quillRefVi} 
+                            theme="snow" 
+                            modules={modulesVi} 
+                            value={formData.vi?.description || ''} 
+                            onChange={val => handleChange('vi', 'description', val)} 
+                            placeholder="Viết mô tả chi tiết bằng tiếng Việt..." 
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+
+                {activeTab === 'reviews' && (
+                  <div style={{ padding: '2rem', textTransform: 'uppercase', textAlign: 'center', color: '#94a3b8' }}>
+                    고객 리뷰 미리보기 (실제 고객이 작성한 리뷰가 표출되는 영역입니다)
+                  </div>
+                )}
+
+                {activeTab === 'qna' && (
+                  <div style={{ padding: '2rem', textTransform: 'uppercase', textAlign: 'center', color: '#94a3b8' }}>
+                    Q&A 문의 미리보기 (고객의 상품 문의 내역이 표출되는 영역입니다)
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+          </div>
+        ) : (
+          /* ========================================================
+             📋 FORM MODE (TRADITIONAL TABULAR FORM)
+             ======================================================== */
+          <div className="admin-modal-content fade-in" style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem', backgroundColor: '#ffffff', borderRadius: '12px' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#0f172a' }}>📋 전통적 폼 방식 데이터 입력</h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>기본 가격</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <select value={baseCurrency} onChange={handleCurrencyChange} style={{ padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}>
+                    <option value="KRW">KRW (원)</option>
+                    <option value="USD">USD (달러)</option>
+                    <option value="VND">VND (동)</option>
+                  </select>
+                  <input value={rawPrice} onChange={handlePriceChange} placeholder="가격 (숫자만)" style={{ flex: 1, padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
+                </div>
+              </div>
+
+              {/* Korean Form */}
+              <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                <h4 style={{ color: '#2563eb', margin: '0 0 0.75rem 0' }}>🇰🇷 한국어 데이터</h4>
+                <input placeholder="상품명" value={formData.ko.name} onChange={e => handleChange('ko', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
+                <input placeholder="카테고리" value={formData.ko.category} onChange={e => handleChange('ko', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
+                <textarea placeholder="원단 정보" value={formData.ko.fabric} onChange={e => handleChange('ko', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', minHeight: '60px' }} />
+              </div>
+
+              {/* English Form */}
+              <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                <h4 style={{ color: '#16a34a', margin: '0 0 0.75rem 0' }}>🇺🇸 English Data</h4>
+                <input placeholder="Product Name" value={formData.en.name} onChange={e => handleChange('en', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
+                <input placeholder="Category" value={formData.en.category} onChange={e => handleChange('en', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
+                <textarea placeholder="Fabric Info" value={formData.en.fabric} onChange={e => handleChange('en', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', minHeight: '60px' }} />
+              </div>
+
+              {/* Vietnamese Form */}
+              <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                <h4 style={{ color: '#dc2626', margin: '0 0 0.75rem 0' }}>🇻🇳 Dữ liệu tiếng Việt</h4>
+                <input placeholder="Tên sản phẩm" value={formData.vi.name} onChange={e => handleChange('vi', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
+                <input placeholder="Thể loại" value={formData.vi.category} onChange={e => handleChange('vi', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
+                <textarea placeholder="Thông tin vải" value={formData.vi.fabric} onChange={e => handleChange('vi', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', minHeight: '60px' }} />
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+
     </div>
   );
 }
