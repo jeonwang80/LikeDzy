@@ -55,14 +55,45 @@ export default function ProductDetail({ product, onBack }) {
     ? product.colorSwatches
     : (product.colors && product.colors.length > 0 ? product.colors : []);
 
-  const activeColor = colorSwatches[selectedColorIdx] || colorSwatches[0];
-  const activeColorImg = activeColor?.imageUrl || images[selectedColorIdx];
-
-  // Reorder images so selected color image is displayed first in gallery
+  // Filter and order images specifically for the selected active color
   const displayImages = useMemo(() => {
-    if (!activeColorImg || !images.includes(activeColorImg)) return images;
-    return [activeColorImg, ...images.filter(img => img !== activeColorImg)];
-  }, [images, activeColorImg]);
+    if (!activeColor) return images;
+    
+    // Gather all photos belonging to this active color
+    let colorPhotos = [];
+    if (activeColor.imageUrls && activeColor.imageUrls.length > 0) {
+      colorPhotos = images.filter(url => activeColor.imageUrls.includes(url));
+    }
+    
+    if (colorPhotos.length === 0) {
+      colorPhotos = images.filter(url => {
+        if (activeColor.imageUrl === url || activeColor.hoverImageUrl === url) return true;
+        const mapped = (product.colorSwatches || []).find(s => s.imageUrl === url || s.hoverImageUrl === url);
+        return mapped?.name === activeColor.name;
+      });
+    }
+
+    if (colorPhotos.length === 0) return images;
+
+    const primary = activeColor.imageUrl;
+    const hover = activeColor.hoverImageUrl;
+    const sorted = [...colorPhotos];
+
+    if (primary && sorted.includes(primary)) {
+      const idxP = sorted.indexOf(primary);
+      sorted.splice(idxP, 1);
+      sorted.unshift(primary);
+    }
+
+    if (hover && sorted.includes(hover) && hover !== primary) {
+      const idxH = sorted.indexOf(hover);
+      sorted.splice(idxH, 1);
+      const targetIdx = sorted.includes(primary) ? 1 : 0;
+      sorted.splice(targetIdx, 0, hover);
+    }
+
+    return sorted;
+  }, [product, activeColor, images]);
 
   // Sizes pill array (from product options or default Alo Yoga sizes)
   const sizes = hasOptions 

@@ -151,7 +151,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       vi: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
       imageUrls: [],
       colorSwatches: [
-        { name: 'Black', colorHex: '#111111', imageUrl: '', hoverImageUrl: '' }
+        { name: 'Black', colorHex: '#111111', imageUrl: '', hoverImageUrl: '', imageUrls: [] }
       ],
       options: [
         { name: 'S' },
@@ -265,7 +265,8 @@ export default function ProductEditor({ product, onClose, onSaved }) {
           name: 'New Color', 
           colorHex: '#111111', 
           imageUrl: '', 
-          hoverImageUrl: '' 
+          hoverImageUrl: '',
+          imageUrls: [] 
         }
       ]
     }));
@@ -287,50 +288,47 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   };
 
   // Set Photo Color Swatch Mapping
-  const handleSetPhotoColor = (imgUrl, colorName) => {
+  const handleSetPhotoColor = (imgUrl, targetColorName) => {
     setFormData(prev => {
       const updatedSwatches = (prev.colorSwatches || []).map(swatch => {
-        if (swatch.name === colorName) {
-          // If swatch didn't have primary image, assign this
-          if (!swatch.imageUrl) return { ...swatch, imageUrl: imgUrl };
-          return swatch;
+        const currentGroup = swatch.imageUrls || [];
+        if (swatch.name === targetColorName) {
+          const newGroup = currentGroup.includes(imgUrl) ? currentGroup : [...currentGroup, imgUrl];
+          const newPrimary = swatch.imageUrl || imgUrl;
+          return { ...swatch, imageUrl: newPrimary, imageUrls: newGroup };
         } else {
-          // Unassign if it was assigned to another swatch's primary/hover
-          let newSwatch = { ...swatch };
-          if (newSwatch.imageUrl === imgUrl) newSwatch.imageUrl = '';
-          if (newSwatch.hoverImageUrl === imgUrl) newSwatch.hoverImageUrl = '';
-          return newSwatch;
+          const newGroup = currentGroup.filter(u => u !== imgUrl);
+          const newPrimary = swatch.imageUrl === imgUrl ? '' : swatch.imageUrl;
+          const newHover = swatch.hoverImageUrl === imgUrl ? '' : swatch.hoverImageUrl;
+          return { ...swatch, imageUrl: newPrimary, hoverImageUrl: newHover, imageUrls: newGroup };
         }
       });
       return { ...prev, colorSwatches: updatedSwatches };
     });
   };
 
-  // Set Photo Role: 'primary' (대표 1), 'hover' (대표 2), or 'none' (일반)
+  // Set Photo Role for a Color: 'primary' (대표 1), 'hover' (대표 2), or 'none' (일반)
   const handleSetPhotoRole = (imgUrl, colorName, newRole) => {
     setFormData(prev => {
-      // Find active color swatch or default first color swatch
-      const targetColorIndex = prev.colorSwatches?.findIndex(s => s.name === colorName) >= 0
-        ? prev.colorSwatches.findIndex(s => s.name === colorName)
-        : 0;
-
       let updatedSwatches = [...(prev.colorSwatches || [])];
 
       if (updatedSwatches.length === 0) {
-        updatedSwatches = [{ name: 'Black', colorHex: '#111111', imageUrl: '', hoverImageUrl: '' }];
+        updatedSwatches = [{ name: 'Black', colorHex: '#111111', imageUrl: '', hoverImageUrl: '', imageUrls: [] }];
       }
 
-      const targetSwatch = { ...updatedSwatches[targetColorIndex] };
+      const targetColorIndex = updatedSwatches.findIndex(s => s.name === colorName) >= 0
+        ? updatedSwatches.findIndex(s => s.name === colorName)
+        : 0;
 
-      // Ensure ONLY ONE photo is set as primary or hover for this color (clear role from other photos)
+      const targetSwatch = { ...updatedSwatches[targetColorIndex] };
+      const groupImages = targetSwatch.imageUrls || [];
+      if (!groupImages.includes(imgUrl)) groupImages.push(imgUrl);
+      targetSwatch.imageUrls = groupImages;
+
       if (newRole === 'primary') {
-        // If this image was hover, clear hover
         if (targetSwatch.hoverImageUrl === imgUrl) targetSwatch.hoverImageUrl = '';
-        
-        // Unset primary from any other image in this swatch
         targetSwatch.imageUrl = imgUrl;
 
-        // Also move imgUrl to the top of imageUrls array if it's existing photo
         const remainingImages = (prev.imageUrls || []).filter(u => u !== imgUrl);
         const newImageUrls = [imgUrl, ...remainingImages];
 
@@ -341,10 +339,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
           colorSwatches: updatedSwatches
         };
       } else if (newRole === 'hover') {
-        // If this image was primary, clear primary
         if (targetSwatch.imageUrl === imgUrl) targetSwatch.imageUrl = '';
-        
-        // Unset hover from any other image in this swatch
         targetSwatch.hoverImageUrl = imgUrl;
 
         updatedSwatches[targetColorIndex] = targetSwatch;
@@ -353,7 +348,6 @@ export default function ProductEditor({ product, onClose, onSaved }) {
           colorSwatches: updatedSwatches
         };
       } else {
-        // Clear role ('none')
         if (targetSwatch.imageUrl === imgUrl) targetSwatch.imageUrl = '';
         if (targetSwatch.hoverImageUrl === imgUrl) targetSwatch.hoverImageUrl = '';
 
@@ -473,7 +467,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               {product ? `상품 라이브 비주얼 빌더 (${formData.ko?.name || '편집 중'})` : '새 상품 비주얼 라이브 빌더'}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-              각 이미지 카드에서 대표 1(기본) 및 대표 2(호버) 콤보박스를 직접 설정하세요
+              각 사진 카드에서 적용 색상을 지정하고 대표 1(기본), 대표 2(호버)를 선택하세요
             </div>
           </div>
         </div>
@@ -591,7 +585,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               color: '#1e40af',
               fontSize: '0.85rem'
             }}>
-              <span><strong>이미지 직접 지정 모드:</strong> 각 이미지 카드 하단 콤보박스에서 [대표 1 (기본)], [대표 2 (호버)]를 선택하세요. (각 역할당 1개만 자동 선택됨)</span>
+              <span><strong>색상별 이미지 그룹핑 모드:</strong> 각 사진 카드 하단에서 [적용 색상]을 선택하고, 색상별 [대표 1(기본)], [대표 2(호버)]를 지정하세요.</span>
               <span style={{ fontWeight: 'bold' }}>현재 편집 언어: {activeLang === 'ko' ? '한국어' : activeLang === 'en' ? 'English' : 'Tiếng Việt'}</span>
             </div>
 
@@ -605,9 +599,10 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                 {formData.imageUrls && formData.imageUrls.map((imgUrl, idx) => {
                   const primarySwatch = (formData.colorSwatches || []).find(s => s.imageUrl === imgUrl);
                   const hoverSwatch = (formData.colorSwatches || []).find(s => s.hoverImageUrl === imgUrl);
+                  const groupSwatch = (formData.colorSwatches || []).find(s => s.imageUrls && s.imageUrls.includes(imgUrl));
                   
-                  const activeSwatchName = primarySwatch?.name || hoverSwatch?.name || formData.colorSwatches?.[0]?.name || '';
-                  const isPrimary = !!primarySwatch || (idx === 0 && !hoverSwatch);
+                  const activeSwatchName = primarySwatch?.name || hoverSwatch?.name || groupSwatch?.name || (formData.colorSwatches?.[0]?.name || '');
+                  const isPrimary = !!primarySwatch;
                   const isHover = !!hoverSwatch;
                   const currentRoleValue = isPrimary ? 'primary' : isHover ? 'hover' : 'none';
 
@@ -630,12 +625,12 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                         {/* Active Role Badge Overlay */}
                         {isPrimary && (
                           <span style={{ position: 'absolute', bottom: '8px', right: '8px', background: '#10b981', color: '#fff', padding: '4px 10px', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
-                            대표 1 (기본 이미지)
+                            {activeSwatchName} - 대표 1 (기본)
                           </span>
                         )}
                         {isHover && (
                           <span style={{ position: 'absolute', bottom: '8px', right: '8px', background: '#2563eb', color: '#fff', padding: '4px 10px', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
-                            대표 2 (마우스 호버 이미지)
+                            {activeSwatchName} - 대표 2 (호버)
                           </span>
                         )}
 
@@ -676,7 +671,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                       {/* COMBOBOX CONTROLS PANEL DIRECTLY ON PHOTO CARD */}
                       <div style={{ padding: '0.85rem', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         
-                        {/* Color Selector Combobox if Color Swatches exist */}
+                        {/* Color Selector Combobox */}
                         {formData.colorSwatches && formData.colorSwatches.length > 0 && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#475569', minWidth: '70px' }}>적용 색상:</span>
@@ -703,7 +698,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                             style={{ flex: 1, padding: '5px 8px', fontSize: '0.825rem', border: isPrimary ? '2px solid #10b981' : isHover ? '2px solid #2563eb' : '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#ffffff', fontWeight: 800, color: isPrimary ? '#059669' : isHover ? '#2563eb' : '#334155' }}
                           >
                             <option value="none">-- 일반 이미지 --</option>
-                            <option value="primary">★ 대표 1 (기본 처음에 나오는 이미지)</option>
+                            <option value="primary">★ 대표 1 (처음 나오는 기본 이미지)</option>
                             <option value="hover">✨ 대표 2 (마우스 가져다대면 변경 이미지)</option>
                           </select>
                         </div>
@@ -719,8 +714,9 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                   const totalIdx = (formData.imageUrls?.length || 0) + idx;
                   const primarySwatch = (formData.colorSwatches || []).find(s => s.imageUrl === url);
                   const hoverSwatch = (formData.colorSwatches || []).find(s => s.hoverImageUrl === url);
+                  const groupSwatch = (formData.colorSwatches || []).find(s => s.imageUrls && s.imageUrls.includes(url));
                   
-                  const activeSwatchName = primarySwatch?.name || hoverSwatch?.name || formData.colorSwatches?.[0]?.name || '';
+                  const activeSwatchName = primarySwatch?.name || hoverSwatch?.name || groupSwatch?.name || (formData.colorSwatches?.[0]?.name || '');
                   const isPrimary = !!primarySwatch;
                   const isHover = !!hoverSwatch;
                   const currentRoleValue = isPrimary ? 'primary' : isHover ? 'hover' : 'none';
@@ -774,7 +770,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                             style={{ flex: 1, padding: '5px 8px', fontSize: '0.825rem', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#ffffff', fontWeight: 800 }}
                           >
                             <option value="none">-- 일반 이미지 --</option>
-                            <option value="primary">★ 대표 1 (기본 처음에 나오는 이미지)</option>
+                            <option value="primary">★ 대표 1 (처음 나오는 기본 이미지)</option>
                             <option value="hover">✨ 대표 2 (마우스 가져다대면 변경 이미지)</option>
                           </select>
                         </div>
