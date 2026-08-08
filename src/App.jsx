@@ -11,6 +11,7 @@ import AdminOrders from './pages/AdminOrders';
 import AdminInventory from './pages/AdminInventory';
 import AdminBoard from './pages/AdminBoard';
 import AdminLogin from './pages/AdminLogin';
+import AdminMasterData from './pages/AdminMasterData';
 import CartModal from './components/CartModal';
 import IntroSplash from './components/IntroSplash';
 import BottomNav from './components/BottomNav';
@@ -37,6 +38,7 @@ function App() {
           <Route path="orders" element={<AdminOrders />} />
           <Route path="inventory" element={<AdminInventory />} />
           <Route path="board" element={<AdminBoard />} />
+          <Route path="master-data" element={<AdminMasterData />} />
         </Route>
         
         <Route path="*" element={<Navigate to="/" replace />} />

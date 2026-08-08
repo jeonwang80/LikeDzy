@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: '/admin/orders', index: '03', label: '주문 관리', description: '결제·배송 상태' },
   { to: '/admin/board', index: '04', label: '고객 응대', description: '문의·리뷰' },
   { to: '/admin/stats', index: '05', label: '통계', description: '방문 데이터' },
+  { to: '/admin/master-data', index: '06', label: '기준정보', description: '카테고리 코드 관리' },
 ];
 
 export default function AdminLayout() {

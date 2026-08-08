@@ -3,6 +3,7 @@ import { collection, deleteDoc, doc, onSnapshot, setDoc, updateDoc } from 'fireb
 import { db } from '../firebase';
 import ProductEditor from './ProductEditor';
 import { FALLBACK_PRODUCT_IMAGE, formatProductPrice, getSafeImageUrl } from '../utils/productPresentation';
+import { formatCategoryPath, useCategoryMasters } from '../hooks/useCategoryMasters';
 
 const sortProductList = (items) => [...items].sort((a, b) => {
   const orderA = a.orderIndex ?? 999;
@@ -162,6 +163,7 @@ function InventoryModal({ product, onClose }) {
 }
 
 export default function AdminInventory() {
+  const { categories: categoryMasters } = useCategoryMasters();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -183,9 +185,14 @@ export default function AdminInventory() {
     return () => unsubscribe();
   }, []);
 
-  const categories = useMemo(() => (
-    [...new Set(products.map((product) => product.category || product.ko?.category).filter(Boolean))]
-  ), [products]);
+  const categoryLabelMap = useMemo(() => new Map(
+    categoryMasters.map((category) => [category.code, formatCategoryPath(category)])
+  ), [categoryMasters]);
+
+  const categories = useMemo(() => ([...new Set([
+    ...categoryMasters.map((category) => category.code),
+    ...products.map((product) => product.category || product.ko?.category),
+  ].filter(Boolean))]), [categoryMasters, products]);
 
   const filteredProducts = useMemo(() => {
     const queryText = searchTerm.trim().toLowerCase();
@@ -301,7 +308,11 @@ export default function AdminInventory() {
         </label>
         <select className="admin-select" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
           <option value="ALL">전체 카테고리</option>
-          {categories.map((category) => <option value={category} key={category}>{category}</option>)}
+          {categories.map((category) => (
+            <option value={category} key={category}>
+              {category}{categoryLabelMap.get(category) ? ` · ${categoryLabelMap.get(category)}` : ' · 기존 분류'}
+            </option>
+          ))}
         </select>
         <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
           <option value="ALL">전체 상태</option>
@@ -339,7 +350,9 @@ export default function AdminInventory() {
                   }}
                 />
                 <div>
-                  <span>{product.category || product.ko?.category || 'OUTDOOR'} · {product.id.slice(0, 8).toUpperCase()}</span>
+                  <span title={categoryLabelMap.get(product.category || product.ko?.category) || ''}>
+                    {product.category || product.ko?.category || 'OUTDOOR'} · {product.id.slice(0, 8).toUpperCase()}
+                  </span>
                   <strong>{product.name || product.ko?.name || '이름 없는 상품'}</strong>
                   <small>{formatProductPrice(product, 'ko')}</small>
                 </div>

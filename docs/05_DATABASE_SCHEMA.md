@@ -7,6 +7,7 @@
 | 컬렉션 | 용도 |
 | --- | --- |
 | `products` | 상품, 이미지, 옵션, 노출 설정 |
+| `categoryMasters` | 3레벨 상품 카테고리 기준정보 |
 | `settings/main` | 히어로, 스플래시 등 메인 화면 설정 |
 | `settings/admin` | 관리자 이메일 목록 |
 | `orders` | 주문 및 결제 결과 |
@@ -20,7 +21,9 @@
 {
   name: "LIGHTWEIGHT SHELL JACKET",
   price: 189000,
-  category: "OUTERWEAR", // TOPS | BOTTOMS | OUTERWEAR | ACC
+  category: "MAN-TOP-FW", // categoryMasters.code, 기존 분류 코드도 호환
+  categoryMasterId: "firestore-document-id",
+  categoryPath: "남성 / 상의 / 기능성 웨어",
   description: "<p>...</p>",
   imageUrl: "https://...",
   images: ["https://..."],
@@ -40,6 +43,29 @@
 ```
 
 과거 상품은 일부 필드가 없을 수 있습니다. 화면 계층은 누락값을 안전하게 보정하며, Firebase 데이터 마이그레이션은 프런트 변경과 분리합니다.
+
+## categoryMasters 주요 필드
+
+```js
+{
+  code: "MAN-TOP-FW",
+  level1Code: "MAN",
+  level1Name: "남성",
+  level2Code: "TOP",
+  level2Name: "상의",
+  level3Code: "FW",
+  level3Name: "기능성 웨어",
+  active: true,
+  sortOrder: 100,
+  createdAt: Timestamp,
+  updatedAt: Timestamp
+}
+```
+
+- 각 레벨 코드는 영문 대문자와 숫자만 허용하며 화면에서 자동 정규화합니다.
+- 상품 등록 화면에는 `active !== false`인 기준정보만 표시합니다.
+- 기준정보를 비활성화하거나 삭제해도 기존 상품에 저장된 `category` 코드는 유지됩니다.
+- 기준정보 컬렉션의 읽기·쓰기 권한은 관리자 인증 정책에 맞춰 Firestore Rules에서 별도로 허용해야 합니다.
 
 ## settings/main 주요 필드
 

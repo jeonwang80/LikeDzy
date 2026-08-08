@@ -5,10 +5,14 @@ import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import imageCompression from 'browser-image-compression';
 import { db, storage } from '../firebase';
+import { formatCategoryPath, useCategoryMasters } from '../hooks/useCategoryMasters';
 import '../admin.css';
 import '../components/CollectionList.css';
 
+const LEGACY_CATEGORY_OPTIONS = ['TOPS', 'BOTTOMS', 'OUTERWEAR', 'ACC'];
+
 export default function ProductEditor({ product, onClose, onSaved }) {
+  const { categories: categoryMasters, loading: categoryMastersLoading } = useCategoryMasters({ activeOnly: true });
   const [loading, setLoading] = useState(false);
   const [editorMode, setEditorMode] = useState('form'); // 'visual' | 'form'
   const [activeLang, setActiveLang] = useState('ko'); // 'ko' | 'en' | 'vi'
@@ -150,9 +154,9 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       price: '',
       youtubeUrl: '',
       videoUrl: '',
-      ko: { name: '', category: 'OUTERWEAR', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
-      en: { name: '', category: 'OUTERWEAR', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
-      vi: { name: '', category: 'OUTERWEAR', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
+      ko: { name: '', category: '', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
+      en: { name: '', category: '', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
+      vi: { name: '', category: '', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
       imageUrls: [],
       colorSwatches: [
         { name: 'Black', colorHex: '#111111', imageUrl: '', hoverImageUrl: '', imageUrls: [] }
@@ -472,6 +476,35 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   };
 
   const currentLangData = formData[activeLang] || formData.ko;
+  const categoryOptions = useMemo(() => {
+    const masterOptions = categoryMasters.map((category) => ({
+      value: category.code,
+      label: `${category.code} · ${formatCategoryPath(category)}`,
+      id: category.id,
+      path: formatCategoryPath(category),
+    }));
+    const options = masterOptions.length > 0
+      ? masterOptions
+      : LEGACY_CATEGORY_OPTIONS.map((category) => ({ value: category, label: `${category} · 기존 분류` }));
+    const currentCategory = currentLangData.category?.trim();
+    if (currentCategory && !options.some((option) => option.value === currentCategory)) {
+      return [{ value: currentCategory, label: `${currentCategory} · 기존 상품 분류` }, ...options];
+    }
+    return options;
+  }, [categoryMasters, currentLangData.category]);
+
+  const handleCategoryChange = (categoryCode) => {
+    const selectedMaster = categoryMasters.find((category) => category.code === categoryCode);
+    setFormData((previous) => ({
+      ...previous,
+      category: categoryCode,
+      categoryMasterId: selectedMaster?.id || '',
+      categoryPath: selectedMaster ? formatCategoryPath(selectedMaster) : '',
+      ko: { ...previous.ko, category: categoryCode },
+      en: { ...previous.en, category: categoryCode },
+      vi: { ...previous.vi, category: categoryCode },
+    }));
+  };
   const allPhotos = [...(formData.imageUrls || []), ...previewUrls];
   const registrationChecks = [
     { label: '상품명', complete: Boolean(formData.ko?.name?.trim()) },
@@ -840,11 +873,9 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                       NEW
                     </label>
 
-                    <input
-                      type="text"
+                    <select
                       value={currentLangData.category || ''}
-                      onChange={e => handleChange(activeLang, 'category', e.target.value)}
-                      placeholder="카테고리 (TOPS / BOTTOMS / OUTERWEAR / ACC)"
+                      onChange={(event) => handleCategoryChange(event.target.value)}
                       className="visual-editable-field"
                       style={{
                         border: '1px dashed #cbd5e1',
@@ -855,7 +886,10 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                         textTransform: 'uppercase',
                         color: '#64748b'
                       }}
-                    />
+                    >
+                      <option value="">{categoryMastersLoading ? '카테고리 불러오는 중...' : '카테고리 선택'}</option>
+                      {categoryOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+                    </select>
                   </div>
 
                   {/* Title Field */}
@@ -1224,12 +1258,11 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                     </label>
                     <label className="admin-form-field">
                       <span>카테고리</span>
-                      <select className="admin-select" value={currentLangData.category || 'OUTERWEAR'} onChange={(event) => handleChange(activeLang, 'category', event.target.value)}>
-                        <option value="TOPS">TOPS</option>
-                        <option value="BOTTOMS">BOTTOMS</option>
-                        <option value="OUTERWEAR">OUTERWEAR</option>
-                        <option value="ACC">ACC</option>
+                      <select className="admin-select" value={currentLangData.category || ''} onChange={(event) => handleCategoryChange(event.target.value)}>
+                        <option value="">{categoryMastersLoading ? '카테고리 불러오는 중...' : '기준정보 카테고리 선택'}</option>
+                        {categoryOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
                       </select>
+                      <small>06 기준정보에서 사용 중인 카테고리가 표시됩니다.</small>
                     </label>
                     <label className="admin-form-field">
                       <span>기준 통화</span>
