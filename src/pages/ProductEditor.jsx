@@ -256,23 +256,16 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     });
   };
 
-  const handleMakeMainImage = (url) => {
-    setFormData(prev => {
-      const filtered = prev.imageUrls.filter(u => u !== url);
-      return { ...prev, imageUrls: [url, ...filtered] };
-    });
-  };
-
   const handleAddColorSwatch = () => {
     setFormData(prev => ({
       ...prev,
       colorSwatches: [
         ...(prev.colorSwatches || []),
         { 
-          name: 'Black', 
+          name: 'New Color', 
           colorHex: '#111111', 
-          imageUrl: prev.imageUrls?.[0] || '', 
-          hoverImageUrl: prev.imageUrls?.[1] || '' 
+          imageUrl: '', 
+          hoverImageUrl: '' 
         }
       ]
     }));
@@ -291,6 +284,86 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       ...prev,
       colorSwatches: prev.colorSwatches.filter((_, i) => i !== index)
     }));
+  };
+
+  // Set Photo Color Swatch Mapping
+  const handleSetPhotoColor = (imgUrl, colorName) => {
+    setFormData(prev => {
+      const updatedSwatches = (prev.colorSwatches || []).map(swatch => {
+        if (swatch.name === colorName) {
+          // If swatch didn't have primary image, assign this
+          if (!swatch.imageUrl) return { ...swatch, imageUrl: imgUrl };
+          return swatch;
+        } else {
+          // Unassign if it was assigned to another swatch's primary/hover
+          let newSwatch = { ...swatch };
+          if (newSwatch.imageUrl === imgUrl) newSwatch.imageUrl = '';
+          if (newSwatch.hoverImageUrl === imgUrl) newSwatch.hoverImageUrl = '';
+          return newSwatch;
+        }
+      });
+      return { ...prev, colorSwatches: updatedSwatches };
+    });
+  };
+
+  // Set Photo Role: 'primary' (대표 1), 'hover' (대표 2), or 'none' (일반)
+  const handleSetPhotoRole = (imgUrl, colorName, newRole) => {
+    setFormData(prev => {
+      // Find active color swatch or default first color swatch
+      const targetColorIndex = prev.colorSwatches?.findIndex(s => s.name === colorName) >= 0
+        ? prev.colorSwatches.findIndex(s => s.name === colorName)
+        : 0;
+
+      let updatedSwatches = [...(prev.colorSwatches || [])];
+
+      if (updatedSwatches.length === 0) {
+        updatedSwatches = [{ name: 'Black', colorHex: '#111111', imageUrl: '', hoverImageUrl: '' }];
+      }
+
+      const targetSwatch = { ...updatedSwatches[targetColorIndex] };
+
+      // Ensure ONLY ONE photo is set as primary or hover for this color (clear role from other photos)
+      if (newRole === 'primary') {
+        // If this image was hover, clear hover
+        if (targetSwatch.hoverImageUrl === imgUrl) targetSwatch.hoverImageUrl = '';
+        
+        // Unset primary from any other image in this swatch
+        targetSwatch.imageUrl = imgUrl;
+
+        // Also move imgUrl to the top of imageUrls array if it's existing photo
+        const remainingImages = (prev.imageUrls || []).filter(u => u !== imgUrl);
+        const newImageUrls = [imgUrl, ...remainingImages];
+
+        updatedSwatches[targetColorIndex] = targetSwatch;
+        return {
+          ...prev,
+          imageUrls: newImageUrls,
+          colorSwatches: updatedSwatches
+        };
+      } else if (newRole === 'hover') {
+        // If this image was primary, clear primary
+        if (targetSwatch.imageUrl === imgUrl) targetSwatch.imageUrl = '';
+        
+        // Unset hover from any other image in this swatch
+        targetSwatch.hoverImageUrl = imgUrl;
+
+        updatedSwatches[targetColorIndex] = targetSwatch;
+        return {
+          ...prev,
+          colorSwatches: updatedSwatches
+        };
+      } else {
+        // Clear role ('none')
+        if (targetSwatch.imageUrl === imgUrl) targetSwatch.imageUrl = '';
+        if (targetSwatch.hoverImageUrl === imgUrl) targetSwatch.hoverImageUrl = '';
+
+        updatedSwatches[targetColorIndex] = targetSwatch;
+        return {
+          ...prev,
+          colorSwatches: updatedSwatches
+        };
+      }
+    });
   };
 
   const handleAddOption = () => {
@@ -400,7 +473,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               {product ? `상품 라이브 비주얼 빌더 (${formData.ko?.name || '편집 중'})` : '새 상품 비주얼 라이브 빌더'}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-              화면 상의 텍스트와 사진을 직접 클릭하여 실시간으로 편집하세요
+              각 이미지 카드에서 대표 1(기본) 및 대표 2(호버) 콤보박스를 직접 설정하세요
             </div>
           </div>
         </div>
@@ -518,122 +591,125 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               color: '#1e40af',
               fontSize: '0.85rem'
             }}>
-              <span><strong>라이브 비주얼 모드:</strong> 사진별 대표 1(기본), 대표 2(호버) 태그와 순서를 확인하세요.</span>
+              <span><strong>이미지 직접 지정 모드:</strong> 각 이미지 카드 하단 콤보박스에서 [대표 1 (기본)], [대표 2 (호버)]를 선택하세요. (각 역할당 1개만 자동 선택됨)</span>
               <span style={{ fontWeight: 'bold' }}>현재 편집 언어: {activeLang === 'ko' ? '한국어' : activeLang === 'en' ? 'English' : 'Tiếng Việt'}</span>
             </div>
 
             {/* Alo Yoga 2-Column Main Layout */}
             <div className="alo-detail-layout">
               
-              {/* LEFT COLUMN: Photo Gallery */}
-              <div className="alo-detail-gallery" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+              {/* LEFT COLUMN: Photo Gallery With Image Combobox Controls */}
+              <div className="alo-detail-gallery" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
                 
                 {/* Existing Photos */}
                 {formData.imageUrls && formData.imageUrls.map((imgUrl, idx) => {
-                  const primarySwatches = (formData.colorSwatches || []).filter(swatch => swatch.imageUrl === imgUrl);
-                  const hoverSwatches = (formData.colorSwatches || []).filter(swatch => swatch.hoverImageUrl === imgUrl);
+                  const primarySwatch = (formData.colorSwatches || []).find(s => s.imageUrl === imgUrl);
+                  const hoverSwatch = (formData.colorSwatches || []).find(s => s.hoverImageUrl === imgUrl);
+                  
+                  const activeSwatchName = primarySwatch?.name || hoverSwatch?.name || formData.colorSwatches?.[0]?.name || '';
+                  const isPrimary = !!primarySwatch || (idx === 0 && !hoverSwatch);
+                  const isHover = !!hoverSwatch;
+                  const currentRoleValue = isPrimary ? 'primary' : isHover ? 'hover' : 'none';
 
                   return (
-                    <div key={`existing-${idx}`} className="visual-image-card">
-                      <img 
-                        src={imgUrl} 
-                        alt={`Gallery ${idx + 1}`} 
-                        style={{ width: '100%', height: '320px', objectFit: 'cover', display: 'block' }} 
-                      />
+                    <div key={`existing-${idx}`} className="visual-image-card" style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', borderRadius: '10px', overflow: 'hidden', border: isPrimary ? '2px solid #10b981' : isHover ? '2px solid #2563eb' : '1px solid #cbd5e1' }}>
                       
-                      {/* Photo Sequence Number Tag */}
-                      <span className="alo-model-tag" style={{ background: 'rgba(15, 23, 42, 0.9)', color: '#fff', padding: '3px 9px', fontSize: '0.75rem', fontWeight: 800 }}>
-                        사진 #{idx + 1} {idx === 0 ? '(전체 1순위)' : ''}
-                      </span>
+                      {/* Image Frame */}
+                      <div style={{ position: 'relative', width: '100%', height: '300px' }}>
+                        <img 
+                          src={imgUrl} 
+                          alt={`Gallery ${idx + 1}`} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                        />
+                        
+                        {/* Photo Sequence Number Tag */}
+                        <span className="alo-model-tag" style={{ background: 'rgba(15, 23, 42, 0.9)', color: '#fff', padding: '4px 10px', fontSize: '0.75rem', fontWeight: 800 }}>
+                          사진 #{idx + 1}
+                        </span>
 
-                      {/* Connected Color Representatives Badges Overlay */}
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '8px',
-                        right: '8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '4px',
-                        alignItems: 'flex-end',
-                        zIndex: 10
-                      }}>
-                        {primarySwatches.map((swatch, sIdx) => (
-                          <span 
-                            key={`p-${sIdx}`}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '5px',
-                              backgroundColor: '#10b981',
-                              color: '#ffffff',
-                              padding: '4px 9px',
-                              borderRadius: '9999px',
-                              fontSize: '0.725rem',
-                              fontWeight: 800,
-                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
-                              border: '1px solid #ffffff'
-                            }}
-                          >
-                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: swatch.colorHex || '#111', border: '1px solid #fff', display: 'inline-block' }} />
-                            {swatch.name || 'Color'} [대표 1]
+                        {/* Active Role Badge Overlay */}
+                        {isPrimary && (
+                          <span style={{ position: 'absolute', bottom: '8px', right: '8px', background: '#10b981', color: '#fff', padding: '4px 10px', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+                            대표 1 (기본 이미지)
                           </span>
-                        ))}
-
-                        {hoverSwatches.map((swatch, sIdx) => (
-                          <span 
-                            key={`h-${sIdx}`}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '5px',
-                              backgroundColor: '#2563eb',
-                              color: '#ffffff',
-                              padding: '4px 9px',
-                              borderRadius: '9999px',
-                              fontSize: '0.725rem',
-                              fontWeight: 800,
-                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
-                              border: '1px solid #ffffff'
-                            }}
-                          >
-                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: swatch.colorHex || '#111', border: '1px solid #fff', display: 'inline-block' }} />
-                            {swatch.name || 'Color'} [대표 2 호버]
+                        )}
+                        {isHover && (
+                          <span style={{ position: 'absolute', bottom: '8px', right: '8px', background: '#2563eb', color: '#fff', padding: '4px 10px', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+                            대표 2 (마우스 호버 이미지)
                           </span>
-                        ))}
-                      </div>
+                        )}
 
-                      {/* Card Overlay Controls */}
-                      <div className="visual-image-overlay-toolbar">
-                        <div className="visual-img-btn-group">
+                        {/* Hover Overlay Toolbar for Reordering/Deletion */}
+                        <div className="visual-image-overlay-toolbar">
+                          <div className="visual-img-btn-group">
+                            <button 
+                              type="button" 
+                              className="visual-img-action-btn" 
+                              onClick={() => handleMoveExistingImage(idx, -1)}
+                              disabled={idx === 0}
+                              title="위로 이동"
+                            >
+                              위로
+                            </button>
+                            <button 
+                              type="button" 
+                              className="visual-img-action-btn" 
+                              onClick={() => handleMoveExistingImage(idx, 1)}
+                              disabled={idx === (formData.imageUrls.length - 1)}
+                              title="아래로 이동"
+                            >
+                              아래로
+                            </button>
+                          </div>
+                          
                           <button 
                             type="button" 
-                            className="visual-img-action-btn" 
-                            onClick={() => handleMoveExistingImage(idx, -1)}
-                            disabled={idx === 0}
-                            title="위로 이동"
+                            className="visual-img-action-btn danger" 
+                            onClick={() => handleRemoveExistingImage(idx)}
+                            title="사진 삭제"
                           >
-                            위로
-                          </button>
-                          <button 
-                            type="button" 
-                            className="visual-img-action-btn" 
-                            onClick={() => handleMoveExistingImage(idx, 1)}
-                            disabled={idx === (formData.imageUrls.length - 1)}
-                            title="아래로 이동"
-                          >
-                            아래로
+                            삭제
                           </button>
                         </div>
-                        
-                        <button 
-                          type="button" 
-                          className="visual-img-action-btn danger" 
-                          onClick={() => handleRemoveExistingImage(idx)}
-                          title="사진 삭제"
-                        >
-                          삭제
-                        </button>
                       </div>
+
+                      {/* COMBOBOX CONTROLS PANEL DIRECTLY ON PHOTO CARD */}
+                      <div style={{ padding: '0.85rem', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        
+                        {/* Color Selector Combobox if Color Swatches exist */}
+                        {formData.colorSwatches && formData.colorSwatches.length > 0 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#475569', minWidth: '70px' }}>적용 색상:</span>
+                            <select 
+                              value={activeSwatchName} 
+                              onChange={e => handleSetPhotoColor(imgUrl, e.target.value)}
+                              style={{ flex: 1, padding: '4px 8px', fontSize: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#ffffff', fontWeight: 'bold' }}
+                            >
+                              {formData.colorSwatches.map((sw, sIdx) => (
+                                <option key={sIdx} value={sw.name}>
+                                  {sw.name || `컬러 #${sIdx+1}`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {/* Role Combobox (대표 1 / 대표 2 / 일반) */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#1e293b', minWidth: '70px' }}>대표 설정:</span>
+                          <select 
+                            value={currentRoleValue} 
+                            onChange={e => handleSetPhotoRole(imgUrl, activeSwatchName, e.target.value)}
+                            style={{ flex: 1, padding: '5px 8px', fontSize: '0.825rem', border: isPrimary ? '2px solid #10b981' : isHover ? '2px solid #2563eb' : '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#ffffff', fontWeight: 800, color: isPrimary ? '#059669' : isHover ? '#2563eb' : '#334155' }}
+                          >
+                            <option value="none">-- 일반 이미지 --</option>
+                            <option value="primary">★ 대표 1 (기본 처음에 나오는 이미지)</option>
+                            <option value="hover">✨ 대표 2 (마우스 가져다대면 변경 이미지)</option>
+                          </select>
+                        </div>
+
+                      </div>
+
                     </div>
                   );
                 })}
@@ -641,69 +717,76 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                 {/* Newly Picked Photos */}
                 {previewUrls.map((url, idx) => {
                   const totalIdx = (formData.imageUrls?.length || 0) + idx;
-                  const primarySwatches = (formData.colorSwatches || []).filter(swatch => swatch.imageUrl === url);
-                  const hoverSwatches = (formData.colorSwatches || []).filter(swatch => swatch.hoverImageUrl === url);
+                  const primarySwatch = (formData.colorSwatches || []).find(s => s.imageUrl === url);
+                  const hoverSwatch = (formData.colorSwatches || []).find(s => s.hoverImageUrl === url);
+                  
+                  const activeSwatchName = primarySwatch?.name || hoverSwatch?.name || formData.colorSwatches?.[0]?.name || '';
+                  const isPrimary = !!primarySwatch;
+                  const isHover = !!hoverSwatch;
+                  const currentRoleValue = isPrimary ? 'primary' : isHover ? 'hover' : 'none';
 
                   return (
-                    <div key={`new-${idx}`} className="visual-image-card" style={{ borderColor: '#0284c7' }}>
-                      <img 
-                        src={url} 
-                        alt={`New ${idx + 1}`} 
-                        style={{ width: '100%', height: '320px', objectFit: 'cover', display: 'block' }} 
-                      />
-                      <span className="alo-model-tag" style={{ background: '#0284c7', color: '#fff', padding: '4px 10px', fontSize: '0.75rem', fontWeight: 800 }}>
-                        사진 #{totalIdx + 1} (신규 업로드 예정)
-                      </span>
+                    <div key={`new-${idx}`} className="visual-image-card" style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', borderRadius: '10px', overflow: 'hidden', border: '2px dashed #0284c7' }}>
+                      <div style={{ position: 'relative', width: '100%', height: '300px' }}>
+                        <img 
+                          src={url} 
+                          alt={`New ${idx + 1}`} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                        />
+                        <span className="alo-model-tag" style={{ background: '#0284c7', color: '#fff', padding: '4px 10px', fontSize: '0.75rem', fontWeight: 800 }}>
+                          사진 #{totalIdx + 1} (신규 대기)
+                        </span>
 
-                      {/* Connected Color Badges */}
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '8px',
-                        right: '8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '4px',
-                        alignItems: 'flex-end',
-                        zIndex: 10
-                      }}>
-                        {primarySwatches.map((swatch, sIdx) => (
-                          <span 
-                            key={`p-${sIdx}`}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: '#10b981', color: '#ffffff', padding: '4px 9px', borderRadius: '9999px', fontSize: '0.725rem', fontWeight: 800, border: '1px solid #ffffff' }}
+                        <div className="visual-image-overlay-toolbar">
+                          <span style={{ color: 'white', fontSize: '0.75rem', fontWeight: 'bold' }}>#{totalIdx + 1}</span>
+                          <button 
+                            type="button" 
+                            className="visual-img-action-btn danger" 
+                            onClick={() => handleRemoveNewImage(idx)}
                           >
-                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: swatch.colorHex || '#111', border: '1px solid #fff', display: 'inline-block' }} />
-                            {swatch.name || 'Color'} [대표 1]
-                          </span>
-                        ))}
-
-                        {hoverSwatches.map((swatch, sIdx) => (
-                          <span 
-                            key={`h-${sIdx}`}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: '#2563eb', color: '#ffffff', padding: '4px 9px', borderRadius: '9999px', fontSize: '0.725rem', fontWeight: 800, border: '1px solid #ffffff' }}
-                          >
-                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: swatch.colorHex || '#111', border: '1px solid #fff', display: 'inline-block' }} />
-                            {swatch.name || 'Color'} [대표 2 호버]
-                          </span>
-                        ))}
+                            삭제
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="visual-image-overlay-toolbar">
-                        <span style={{ color: 'white', fontSize: '0.75rem', fontWeight: 'bold' }}>#{totalIdx + 1}</span>
-                        <button 
-                          type="button" 
-                          className="visual-img-action-btn danger" 
-                          onClick={() => handleRemoveNewImage(idx)}
-                        >
-                          삭제
-                        </button>
+                      {/* COMBOBOX CONTROLS PANEL FOR NEW PHOTOS */}
+                      <div style={{ padding: '0.85rem', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {formData.colorSwatches && formData.colorSwatches.length > 0 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#475569', minWidth: '70px' }}>적용 색상:</span>
+                            <select 
+                              value={activeSwatchName} 
+                              onChange={e => handleSetPhotoColor(url, e.target.value)}
+                              style={{ flex: 1, padding: '4px 8px', fontSize: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#ffffff', fontWeight: 'bold' }}
+                            >
+                              {formData.colorSwatches.map((sw, sIdx) => (
+                                <option key={sIdx} value={sw.name}>{sw.name || `컬러 #${sIdx+1}`}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#1e293b', minWidth: '70px' }}>대표 설정:</span>
+                          <select 
+                            value={currentRoleValue} 
+                            onChange={e => handleSetPhotoRole(url, activeSwatchName, e.target.value)}
+                            style={{ flex: 1, padding: '5px 8px', fontSize: '0.825rem', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#ffffff', fontWeight: 800 }}
+                          >
+                            <option value="none">-- 일반 이미지 --</option>
+                            <option value="primary">★ 대표 1 (기본 처음에 나오는 이미지)</option>
+                            <option value="hover">✨ 대표 2 (마우스 가져다대면 변경 이미지)</option>
+                          </select>
+                        </div>
                       </div>
+
                     </div>
                   );
                 })}
 
                 {/* Add Photo Dropzone Card */}
                 {allPhotos.length < 8 && (
-                  <label className="visual-add-photo-card">
+                  <label className="visual-add-photo-card" style={{ minHeight: '380px' }}>
                     <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>+ 상품 사진 추가</span>
                     <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
                       ({allPhotos.length} / 8장)
@@ -720,7 +803,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
 
               </div>
 
-              {/* RIGHT COLUMN: Specs & Options */}
+              {/* RIGHT COLUMN: Specs & Simple Color Swatches */}
               <div className="alo-detail-buy-panel">
                 
                 {/* Category & BEST SELLER Checkbox */}
@@ -811,7 +894,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
 
                 <div className="alo-detail-divider" />
 
-                {/* Color Swatches Manager (With Representative Image 1 & 2 per Color) */}
+                {/* Clean Simple Color Swatches List */}
                 <div className="alo-detail-option-group" style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   <div className="alo-option-label" style={{ justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                     <strong>Color Swatches ({formData.colorSwatches?.length || 0}):</strong>
@@ -833,74 +916,30 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                     </button>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {formData.colorSwatches && formData.colorSwatches.map((swatch, idx) => (
-                      <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#fff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                        
-                        {/* Header Row: Color Circle + Name */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <input 
-                            type="color" 
-                            value={swatch.colorHex || '#111111'} 
-                            onChange={e => handleColorSwatchChange(idx, 'colorHex', e.target.value)}
-                            style={{ width: '28px', height: '28px', border: 'none', cursor: 'pointer', background: 'none' }}
-                            title="색상 칩 컬러 지정"
-                          />
-                          <input 
-                            type="text" 
-                            value={swatch.name || ''} 
-                            onChange={e => handleColorSwatchChange(idx, 'name', e.target.value)}
-                            placeholder="색상명 (예: Black)"
-                            style={{ width: '120px', padding: '4px 8px', fontSize: '0.85rem', border: '1px solid #cbd5e1', borderRadius: '4px', fontWeight: 'bold' }}
-                          />
-                          <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: 'auto' }}>
-                            컬러 그룹 #{idx + 1}
-                          </span>
-                          <button 
-                            type="button" 
-                            onClick={() => handleRemoveColorSwatch(idx)}
-                            style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}
-                          >
-                            삭제
-                          </button>
-                        </div>
-
-                        {/* Representative Image 1 Select */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
-                          <span style={{ fontWeight: 'bold', minWidth: '90px', color: '#1e293b' }}>대표 1 (기본):</span>
-                          <select 
-                            value={swatch.imageUrl || ''} 
-                            onChange={e => handleColorSwatchChange(idx, 'imageUrl', e.target.value)}
-                            style={{ flex: 1, padding: '4px 6px', fontSize: '0.78rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-                          >
-                            <option value="">-- 대표 1 (처음 나오는 사진) 선택 --</option>
-                            {allPhotos.map((url, pIdx) => (
-                              <option key={pIdx} value={url}>사진 #{pIdx + 1}</option>
-                            ))}
-                          </select>
-                          {swatch.imageUrl && (
-                            <img src={swatch.imageUrl} alt="대표 1" style={{ width: '28px', height: '28px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #10b981' }} title="대표 1 사진" />
-                          )}
-                        </div>
-
-                        {/* Representative Image 2 Select */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
-                          <span style={{ fontWeight: 'bold', minWidth: '90px', color: '#1e293b' }}>대표 2 (호버):</span>
-                          <select 
-                            value={swatch.hoverImageUrl || ''} 
-                            onChange={e => handleColorSwatchChange(idx, 'hoverImageUrl', e.target.value)}
-                            style={{ flex: 1, padding: '4px 6px', fontSize: '0.78rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-                          >
-                            <option value="">-- 대표 2 (마우스 가져다대면 변경 사진) 선택 --</option>
-                            {allPhotos.map((url, pIdx) => (
-                              <option key={pIdx} value={url}>사진 #{pIdx + 1}</option>
-                            ))}
-                          </select>
-                          {swatch.hoverImageUrl && (
-                            <img src={swatch.hoverImageUrl} alt="대표 2" style={{ width: '28px', height: '28px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #2563eb' }} title="대표 2 호버 사진" />
-                          )}
-                        </div>
-
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fff', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                        <input 
+                          type="color" 
+                          value={swatch.colorHex || '#111111'} 
+                          onChange={e => handleColorSwatchChange(idx, 'colorHex', e.target.value)}
+                          style={{ width: '28px', height: '28px', border: 'none', cursor: 'pointer', background: 'none' }}
+                          title="색상 칩 컬러 지정"
+                        />
+                        <input 
+                          type="text" 
+                          value={swatch.name || ''} 
+                          onChange={e => handleColorSwatchChange(idx, 'name', e.target.value)}
+                          placeholder="색상명 (예: Black)"
+                          style={{ flex: 1, padding: '4px 8px', fontSize: '0.85rem', border: '1px solid #cbd5e1', borderRadius: '4px', fontWeight: 'bold' }}
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => handleRemoveColorSwatch(idx)}
+                          style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                          삭제
+                        </button>
                       </div>
                     ))}
                   </div>
