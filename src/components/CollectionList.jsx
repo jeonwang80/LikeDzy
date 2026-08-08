@@ -225,10 +225,9 @@ const CollectionItem = ({ product, onProductSelect, isWishlisted, onToggleWishli
   const [isHovered, setIsHovered] = useState(false);
 
   const activeColor = product.colorSwatches?.[selectedColorIdx] || product.colorSwatches?.[0];
-  const colorImg = activeColor?.imageUrl || product.images?.[selectedColorIdx];
-  const mainImage = (isHovered && product.images.length > 1) 
-    ? (product.images[1] !== colorImg ? product.images[1] : product.images[0])
-    : (colorImg || product.images?.[0] || '/models/model_1.png');
+  const primaryImg = activeColor?.imageUrl || product.images?.[0] || '/models/model_1.png';
+  const hoverImg = activeColor?.hoverImageUrl || (product.images?.length > 1 ? product.images[1] : primaryImg);
+  const mainImage = isHovered ? hoverImg : primaryImg;
 
   return (
     <div 

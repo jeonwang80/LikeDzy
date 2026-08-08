@@ -151,7 +151,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       vi: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
       imageUrls: [],
       colorSwatches: [
-        { name: 'Black', colorHex: '#111111', imageUrl: '' }
+        { name: 'Black', colorHex: '#111111', imageUrl: '', hoverImageUrl: '' }
       ],
       options: [
         { name: 'S' },
@@ -268,7 +268,12 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       ...prev,
       colorSwatches: [
         ...(prev.colorSwatches || []),
-        { name: 'Black', colorHex: '#111111', imageUrl: prev.imageUrls?.[0] || '' }
+        { 
+          name: 'Black', 
+          colorHex: '#111111', 
+          imageUrl: prev.imageUrls?.[0] || '', 
+          hoverImageUrl: prev.imageUrls?.[1] || '' 
+        }
       ]
     }));
   };
@@ -513,7 +518,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               color: '#1e40af',
               fontSize: '0.85rem'
             }}>
-              <span><strong>라이브 비주얼 모드:</strong> 실제 고객 상품 상세 페이지와 동일한 화면입니다. 점선 테두리 항목을 직접 클릭해서 수정하세요.</span>
+              <span><strong>라이브 비주얼 모드:</strong> 사진별 대표 1(기본), 대표 2(호버) 태그와 순서를 확인하세요.</span>
               <span style={{ fontWeight: 'bold' }}>현재 편집 언어: {activeLang === 'ko' ? '한국어' : activeLang === 'en' ? 'English' : 'Tiếng Việt'}</span>
             </div>
 
@@ -525,7 +530,9 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                 
                 {/* Existing Photos */}
                 {formData.imageUrls && formData.imageUrls.map((imgUrl, idx) => {
-                  const matchedSwatches = (formData.colorSwatches || []).filter(swatch => swatch.imageUrl === imgUrl);
+                  const primarySwatches = (formData.colorSwatches || []).filter(swatch => swatch.imageUrl === imgUrl);
+                  const hoverSwatches = (formData.colorSwatches || []).filter(swatch => swatch.hoverImageUrl === imgUrl);
+
                   return (
                     <div key={`existing-${idx}`} className="visual-image-card">
                       <img 
@@ -534,78 +541,68 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                         style={{ width: '100%', height: '320px', objectFit: 'cover', display: 'block' }} 
                       />
                       
-                      {idx === 0 ? (
-                        <span className="alo-model-tag" style={{ background: '#111111', color: '#fff', padding: '4px 10px', fontSize: '0.7rem' }}>
-                          대표 이미지
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleMakeMainImage(imgUrl)}
-                          style={{
-                            position: 'absolute',
-                            bottom: '8px',
-                            left: '8px',
-                            background: 'rgba(0,0,0,0.7)',
-                            color: '#fff',
-                            border: 'none',
-                            padding: '4px 10px',
-                            borderRadius: '4px',
-                            fontSize: '0.7rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          대표 지정
-                        </button>
-                      )}
+                      {/* Photo Sequence Number Tag */}
+                      <span className="alo-model-tag" style={{ background: 'rgba(15, 23, 42, 0.9)', color: '#fff', padding: '3px 9px', fontSize: '0.75rem', fontWeight: 800 }}>
+                        사진 #{idx + 1} {idx === 0 ? '(전체 1순위)' : ''}
+                      </span>
 
-                      {/* Connected Color Circle Badges Overlay */}
-                      {matchedSwatches.length > 0 && (
-                        <div style={{
-                          position: 'absolute',
-                          bottom: '8px',
-                          right: '8px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
-                          alignItems: 'flex-end',
-                          zIndex: 10
-                        }}>
-                          {matchedSwatches.map((swatch, sIdx) => (
-                            <span 
-                              key={sIdx}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                                color: '#ffffff',
-                                padding: '4px 9px',
-                                borderRadius: '9999px',
-                                fontSize: '0.725rem',
-                                fontWeight: 700,
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
-                                backdropFilter: 'blur(4px)',
-                                border: '1px solid rgba(255, 255, 255, 0.25)'
-                              }}
-                            >
-                              <span 
-                                style={{ 
-                                  width: '12px', 
-                                  height: '12px', 
-                                  borderRadius: '50%', 
-                                  backgroundColor: swatch.colorHex || '#111111',
-                                  border: '1.5px solid #ffffff',
-                                  boxSizing: 'border-box',
-                                  display: 'inline-block'
-                                }} 
-                              />
-                              {swatch.name || 'Color'}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      {/* Connected Color Representatives Badges Overlay */}
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '8px',
+                        right: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                        alignItems: 'flex-end',
+                        zIndex: 10
+                      }}>
+                        {primarySwatches.map((swatch, sIdx) => (
+                          <span 
+                            key={`p-${sIdx}`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              backgroundColor: '#10b981',
+                              color: '#ffffff',
+                              padding: '4px 9px',
+                              borderRadius: '9999px',
+                              fontSize: '0.725rem',
+                              fontWeight: 800,
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
+                              border: '1px solid #ffffff'
+                            }}
+                          >
+                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: swatch.colorHex || '#111', border: '1px solid #fff', display: 'inline-block' }} />
+                            {swatch.name || 'Color'} [대표 1]
+                          </span>
+                        ))}
 
+                        {hoverSwatches.map((swatch, sIdx) => (
+                          <span 
+                            key={`h-${sIdx}`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              backgroundColor: '#2563eb',
+                              color: '#ffffff',
+                              padding: '4px 9px',
+                              borderRadius: '9999px',
+                              fontSize: '0.725rem',
+                              fontWeight: 800,
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
+                              border: '1px solid #ffffff'
+                            }}
+                          >
+                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: swatch.colorHex || '#111', border: '1px solid #fff', display: 'inline-block' }} />
+                            {swatch.name || 'Color'} [대표 2 호버]
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Card Overlay Controls */}
                       <div className="visual-image-overlay-toolbar">
                         <div className="visual-img-btn-group">
                           <button 
@@ -644,7 +641,9 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                 {/* Newly Picked Photos */}
                 {previewUrls.map((url, idx) => {
                   const totalIdx = (formData.imageUrls?.length || 0) + idx;
-                  const matchedSwatches = (formData.colorSwatches || []).filter(swatch => swatch.imageUrl === url);
+                  const primarySwatches = (formData.colorSwatches || []).filter(swatch => swatch.imageUrl === url);
+                  const hoverSwatches = (formData.colorSwatches || []).filter(swatch => swatch.hoverImageUrl === url);
+
                   return (
                     <div key={`new-${idx}`} className="visual-image-card" style={{ borderColor: '#0284c7' }}>
                       <img 
@@ -652,56 +651,41 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                         alt={`New ${idx + 1}`} 
                         style={{ width: '100%', height: '320px', objectFit: 'cover', display: 'block' }} 
                       />
-                      <span className="alo-model-tag" style={{ background: '#0284c7', color: '#fff', padding: '4px 10px', fontSize: '0.7rem' }}>
-                        신규 업로드 예정
+                      <span className="alo-model-tag" style={{ background: '#0284c7', color: '#fff', padding: '4px 10px', fontSize: '0.75rem', fontWeight: 800 }}>
+                        사진 #{totalIdx + 1} (신규 업로드 예정)
                       </span>
 
-                      {/* Connected Color Circle Badges Overlay */}
-                      {matchedSwatches.length > 0 && (
-                        <div style={{
-                          position: 'absolute',
-                          bottom: '8px',
-                          right: '8px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
-                          alignItems: 'flex-end',
-                          zIndex: 10
-                        }}>
-                          {matchedSwatches.map((swatch, sIdx) => (
-                            <span 
-                              key={sIdx}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                                color: '#ffffff',
-                                padding: '4px 9px',
-                                borderRadius: '9999px',
-                                fontSize: '0.725rem',
-                                fontWeight: 700,
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
-                                backdropFilter: 'blur(4px)',
-                                border: '1px solid rgba(255, 255, 255, 0.25)'
-                              }}
-                            >
-                              <span 
-                                style={{ 
-                                  width: '12px', 
-                                  height: '12px', 
-                                  borderRadius: '50%', 
-                                  backgroundColor: swatch.colorHex || '#111111',
-                                  border: '1.5px solid #ffffff',
-                                  boxSizing: 'border-box',
-                                  display: 'inline-block'
-                                }} 
-                              />
-                              {swatch.name || 'Color'}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      {/* Connected Color Badges */}
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '8px',
+                        right: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                        alignItems: 'flex-end',
+                        zIndex: 10
+                      }}>
+                        {primarySwatches.map((swatch, sIdx) => (
+                          <span 
+                            key={`p-${sIdx}`}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: '#10b981', color: '#ffffff', padding: '4px 9px', borderRadius: '9999px', fontSize: '0.725rem', fontWeight: 800, border: '1px solid #ffffff' }}
+                          >
+                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: swatch.colorHex || '#111', border: '1px solid #fff', display: 'inline-block' }} />
+                            {swatch.name || 'Color'} [대표 1]
+                          </span>
+                        ))}
+
+                        {hoverSwatches.map((swatch, sIdx) => (
+                          <span 
+                            key={`h-${sIdx}`}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: '#2563eb', color: '#ffffff', padding: '4px 9px', borderRadius: '9999px', fontSize: '0.725rem', fontWeight: 800, border: '1px solid #ffffff' }}
+                          >
+                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: swatch.colorHex || '#111', border: '1px solid #fff', display: 'inline-block' }} />
+                            {swatch.name || 'Color'} [대표 2 호버]
+                          </span>
+                        ))}
+                      </div>
 
                       <div className="visual-image-overlay-toolbar">
                         <span style={{ color: 'white', fontSize: '0.75rem', fontWeight: 'bold' }}>#{totalIdx + 1}</span>
@@ -827,7 +811,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
 
                 <div className="alo-detail-divider" />
 
-                {/* Color Swatches Manager */}
+                {/* Color Swatches Manager (With Representative Image 1 & 2 per Color) */}
                 <div className="alo-detail-option-group" style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   <div className="alo-option-label" style={{ justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                     <strong>Color Swatches ({formData.colorSwatches?.length || 0}):</strong>
@@ -849,40 +833,74 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                     </button>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {formData.colorSwatches && formData.colorSwatches.map((swatch, idx) => (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fff', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-                        <input 
-                          type="color" 
-                          value={swatch.colorHex || '#111111'} 
-                          onChange={e => handleColorSwatchChange(idx, 'colorHex', e.target.value)}
-                          style={{ width: '28px', height: '28px', border: 'none', cursor: 'pointer', background: 'none' }}
-                          title="색상 칩 컬러 지정"
-                        />
-                        <input 
-                          type="text" 
-                          value={swatch.name || ''} 
-                          onChange={e => handleColorSwatchChange(idx, 'name', e.target.value)}
-                          placeholder="색상명"
-                          style={{ width: '90px', padding: '4px 6px', fontSize: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-                        />
-                        <select 
-                          value={swatch.imageUrl || ''} 
-                          onChange={e => handleColorSwatchChange(idx, 'imageUrl', e.target.value)}
-                          style={{ flex: 1, padding: '4px 6px', fontSize: '0.78rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-                        >
-                          <option value="">-- 연결 사진 선택 --</option>
-                          {allPhotos.map((url, pIdx) => (
-                            <option key={pIdx} value={url}>사진 #{pIdx + 1}</option>
-                          ))}
-                        </select>
-                        <button 
-                          type="button" 
-                          onClick={() => handleRemoveColorSwatch(idx)}
-                          style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '0.7rem', cursor: 'pointer' }}
-                        >
-                          삭제
-                        </button>
+                      <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#fff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                        
+                        {/* Header Row: Color Circle + Name */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <input 
+                            type="color" 
+                            value={swatch.colorHex || '#111111'} 
+                            onChange={e => handleColorSwatchChange(idx, 'colorHex', e.target.value)}
+                            style={{ width: '28px', height: '28px', border: 'none', cursor: 'pointer', background: 'none' }}
+                            title="색상 칩 컬러 지정"
+                          />
+                          <input 
+                            type="text" 
+                            value={swatch.name || ''} 
+                            onChange={e => handleColorSwatchChange(idx, 'name', e.target.value)}
+                            placeholder="색상명 (예: Black)"
+                            style={{ width: '120px', padding: '4px 8px', fontSize: '0.85rem', border: '1px solid #cbd5e1', borderRadius: '4px', fontWeight: 'bold' }}
+                          />
+                          <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: 'auto' }}>
+                            컬러 그룹 #{idx + 1}
+                          </span>
+                          <button 
+                            type="button" 
+                            onClick={() => handleRemoveColorSwatch(idx)}
+                            style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}
+                          >
+                            삭제
+                          </button>
+                        </div>
+
+                        {/* Representative Image 1 Select */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
+                          <span style={{ fontWeight: 'bold', minWidth: '90px', color: '#1e293b' }}>대표 1 (기본):</span>
+                          <select 
+                            value={swatch.imageUrl || ''} 
+                            onChange={e => handleColorSwatchChange(idx, 'imageUrl', e.target.value)}
+                            style={{ flex: 1, padding: '4px 6px', fontSize: '0.78rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                          >
+                            <option value="">-- 대표 1 (처음 나오는 사진) 선택 --</option>
+                            {allPhotos.map((url, pIdx) => (
+                              <option key={pIdx} value={url}>사진 #{pIdx + 1}</option>
+                            ))}
+                          </select>
+                          {swatch.imageUrl && (
+                            <img src={swatch.imageUrl} alt="대표 1" style={{ width: '28px', height: '28px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #10b981' }} title="대표 1 사진" />
+                          )}
+                        </div>
+
+                        {/* Representative Image 2 Select */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
+                          <span style={{ fontWeight: 'bold', minWidth: '90px', color: '#1e293b' }}>대표 2 (호버):</span>
+                          <select 
+                            value={swatch.hoverImageUrl || ''} 
+                            onChange={e => handleColorSwatchChange(idx, 'hoverImageUrl', e.target.value)}
+                            style={{ flex: 1, padding: '4px 6px', fontSize: '0.78rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                          >
+                            <option value="">-- 대표 2 (마우스 가져다대면 변경 사진) 선택 --</option>
+                            {allPhotos.map((url, pIdx) => (
+                              <option key={pIdx} value={url}>사진 #{pIdx + 1}</option>
+                            ))}
+                          </select>
+                          {swatch.hoverImageUrl && (
+                            <img src={swatch.hoverImageUrl} alt="대표 2" style={{ width: '28px', height: '28px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #2563eb' }} title="대표 2 호버 사진" />
+                          )}
+                        </div>
+
                       </div>
                     ))}
                   </div>
@@ -900,7 +918,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                   />
                 </div>
 
-                {/* Size Options Selector (Without Stock Counters) */}
+                {/* Size Options Selector */}
                 <div className="alo-detail-option-group" style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   <div className="alo-option-label" style={{ justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                     <span><strong>Size Options ({formData.options?.length || 0}):</strong></span>
@@ -936,7 +954,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                   </div>
                 </div>
 
-                {/* Shipping & Return Perks Editable Box (Capture 2) */}
+                {/* Shipping & Return Perks Editable Box */}
                 <div className="alo-shipping-perks visual-editable-field" style={{ backgroundColor: '#f8fafc', padding: '0.85rem', borderRadius: '8px', border: '1px dashed #cbd5e1', marginBottom: '1rem' }}>
                   <label style={{ fontSize: '0.78rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '6px' }}>
                     배송 및 혜택 안내 문구 (Capture 2 영역 - {activeLang.toUpperCase()}):
