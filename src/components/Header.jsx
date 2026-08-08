@@ -3,6 +3,8 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export default function Header({ onNavigateHome }) {
   const { t, language, setLanguage } = useLanguage();
@@ -11,6 +13,7 @@ export default function Header({ onNavigateHome }) {
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -18,6 +21,39 @@ export default function Header({ onNavigateHome }) {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkAdminPermission = async () => {
+      if (!currentUser || !currentUser.email) {
+        if (isMounted) setIsAdmin(false);
+        return;
+      }
+
+      try {
+        const adminDocRef = doc(db, 'settings', 'admin');
+        const adminDoc = await getDoc(adminDocRef);
+
+        let allowedEmails = ['jeonwang80@gmail.com'];
+        if (adminDoc.exists() && Array.isArray(adminDoc.data()?.adminEmails)) {
+          allowedEmails = [...allowedEmails, ...adminDoc.data().adminEmails];
+        }
+
+        const isAllowed = allowedEmails.some(
+          e => e && currentUser.email && e.trim().toLowerCase() === currentUser.email.trim().toLowerCase()
+        );
+
+        if (isMounted) setIsAdmin(isAllowed);
+      } catch (err) {
+        console.error("Header admin check error:", err);
+        if (isMounted) setIsAdmin(false);
+      }
+    };
+
+    checkAdminPermission();
+
+    return () => { isMounted = false; };
+  }, [currentUser]);
 
   const handleLogoClick = () => {
     setMobileMenuOpen(false);
@@ -85,7 +121,9 @@ export default function Header({ onNavigateHome }) {
         
         {currentUser ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-            <Link to="/admin" style={{ color: '#2563eb', textDecoration: 'none', fontSize: '0.85rem', fontWeight: '800', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '4px', border: '1px solid #bfdbfe' }}>ADMIN</Link>
+            {isAdmin && (
+              <Link to="/admin" style={{ color: '#2563eb', textDecoration: 'none', fontSize: '0.85rem', fontWeight: '800', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '4px', border: '1px solid #bfdbfe' }}>ADMIN</Link>
+            )}
             <Link to="/mypage" style={{ color: 'inherit', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold' }}>마이페이지</Link>
           </div>
         ) : (
