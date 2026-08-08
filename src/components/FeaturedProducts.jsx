@@ -154,6 +154,26 @@ const AloProductCard = ({ product, onProductSelect, isWishlisted, onToggleWishli
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
+  // Preload all product images into browser memory on mount for 0ms instant switching
+  useEffect(() => {
+    const urlsToPreload = new Set();
+    if (product.colorSwatches && product.colorSwatches.length > 0) {
+      product.colorSwatches.forEach(swatch => {
+        if (swatch.imageUrl) urlsToPreload.add(swatch.imageUrl);
+        if (swatch.hoverImageUrl) urlsToPreload.add(swatch.hoverImageUrl);
+        if (swatch.imageUrls) swatch.imageUrls.forEach(u => urlsToPreload.add(u));
+      });
+    }
+    if (product.images) product.images.forEach(u => urlsToPreload.add(u));
+
+    urlsToPreload.forEach(url => {
+      if (url && typeof url === 'string' && !url.startsWith('blob:')) {
+        const img = new Image();
+        img.src = url;
+      }
+    });
+  }, [product]);
+
   const activeColor = product.colorSwatches?.[selectedColorIdx] || product.colorSwatches?.[0];
   const primaryImg = activeColor?.imageUrl 
     || (activeColor?.imageUrls && activeColor.imageUrls[0]) 
@@ -174,7 +194,9 @@ const AloProductCard = ({ product, onProductSelect, isWishlisted, onToggleWishli
   }
   if (!hoverImg) hoverImg = primaryImg;
 
-  const mainImage = getSafeImageUrl(isHovered ? hoverImg : primaryImg);
+  const safePrimaryImg = getSafeImageUrl(primaryImg);
+  const safeHoverImg = getSafeImageUrl(hoverImg);
+  const hasDistinctHover = safeHoverImg && safeHoverImg !== safePrimaryImg;
 
   return (
     <div 
@@ -183,17 +205,54 @@ const AloProductCard = ({ product, onProductSelect, isWishlisted, onToggleWishli
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="alo-card-media">
+      {/* Media Container with Dual Layer Image Stack for Instant 0ms Hover */}
+      <div className="alo-card-media" style={{ position: 'relative', overflow: 'hidden' }}>
+        
+        {/* Layer 1: Primary Image */}
         <img 
-          src={mainImage} 
+          src={safePrimaryImg} 
           alt={product.name} 
           className="alo-card-img" 
-          loading="lazy" 
+          loading="eager" 
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transition: 'opacity 0.15s ease-in-out',
+            opacity: (isHovered && hasDistinctHover) ? 0 : 1
+          }}
           onError={(e) => {
             e.target.onerror = null;
             e.target.src = '/models/model_1.png';
           }}
         />
+
+        {/* Layer 2: Pre-rendered Hover Image for Instant Hardware Accelerated Crossfade */}
+        {hasDistinctHover && (
+          <img 
+            src={safeHoverImg} 
+            alt={`${product.name} - hover`} 
+            className="alo-card-img" 
+            loading="eager" 
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transition: 'opacity 0.15s ease-in-out',
+              opacity: isHovered ? 1 : 0
+            }}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = '/models/model_1.png';
+            }}
+          />
+        )}
 
         <button 
           className={`alo-wishlist-btn ${isWishlisted ? 'active' : ''}`}
