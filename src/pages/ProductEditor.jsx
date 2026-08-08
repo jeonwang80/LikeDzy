@@ -411,14 +411,28 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       const perk2 = formData.ko?.perk2 || defaultPerk2;
 
       const processedSwatches = (formData.colorSwatches || []).map((swatch, sIdx) => {
-        let img = swatch.imageUrl;
-        if (!img) {
-          img = finalImageUrls[sIdx] || finalImageUrls[0] || '';
+        let groupImgs = (swatch.imageUrls || []).filter(url => finalImageUrls.includes(url));
+        
+        if (swatch.imageUrl && !groupImgs.includes(swatch.imageUrl)) {
+          groupImgs.unshift(swatch.imageUrl);
         }
-        let groupImgs = swatch.imageUrls && swatch.imageUrls.length > 0 ? swatch.imageUrls : (img ? [img] : []);
+        if (swatch.hoverImageUrl && !groupImgs.includes(swatch.hoverImageUrl)) {
+          groupImgs.push(swatch.hoverImageUrl);
+        }
+
+        // If a color swatch still has no images assigned, default to fallback photo by index
+        if (groupImgs.length === 0 && finalImageUrls.length > 0) {
+          const fallbackUrl = finalImageUrls[sIdx % finalImageUrls.length];
+          groupImgs = [fallbackUrl];
+        }
+
+        const primaryImg = swatch.imageUrl || groupImgs[0] || '';
+        const hoverImg = swatch.hoverImageUrl || (groupImgs.length > 1 ? groupImgs[1] : primaryImg);
+
         return {
           ...swatch,
-          imageUrl: img,
+          imageUrl: primaryImg,
+          hoverImageUrl: hoverImg,
           imageUrls: groupImgs
         };
       });
