@@ -11,8 +11,10 @@ export default function BottomNav() {
   
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
 
-  // 현재 경로에 따라 활성화된 탭 결정
-  const isActive = (path) => location.pathname === path;
+  // 현재 경로가 어드민이면 쇼핑몰 하단 네비게이션 숨김
+  if (location.pathname.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <div className="bottom-nav-container">

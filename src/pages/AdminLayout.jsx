@@ -107,35 +107,35 @@ export default function AdminLayout() {
             end
             className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
           >
-            상품 관리
-          </NavLink>
-          <NavLink 
-            to="/admin/orders" 
-            className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
-          >
-            주문 관리
+            📊 어드민 대시보드
           </NavLink>
           <NavLink 
             to="/admin/inventory" 
             className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
           >
-            재고 관리
+            🎨 상품 등록 & 비주얼 에디터
+          </NavLink>
+          <NavLink 
+            to="/admin/orders" 
+            className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
+          >
+            📦 주문 & 배송 관리
           </NavLink>
           <NavLink 
             to="/admin/board" 
             className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
           >
-            게시판 관리
+            💬 고객 문의 & 게시판
           </NavLink>
           <NavLink 
             to="/admin/stats" 
             className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
           >
-            방문자 통계
+            📈 매출 & 방문자 통계
           </NavLink>
         </nav>
         <button onClick={handleLogout} className="admin-logout-btn">
-          🔒 로그아웃
+          🔒 어드민 로그아웃
         </button>
       </aside>
 

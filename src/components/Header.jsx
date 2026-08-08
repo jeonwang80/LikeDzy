@@ -84,7 +84,10 @@ export default function Header({ onNavigateHome }) {
         </select>
         
         {currentUser ? (
-          <Link to="/mypage" style={{ color: 'inherit', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold' }}>마이페이지</Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <Link to="/admin" style={{ color: '#2563eb', textDecoration: 'none', fontSize: '0.85rem', fontWeight: '800', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '4px', border: '1px solid #bfdbfe' }}>ADMIN</Link>
+            <Link to="/mypage" style={{ color: 'inherit', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold' }}>마이페이지</Link>
+          </div>
         ) : (
           <Link to="/login" style={{ color: 'inherit', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold' }}>로그인</Link>
         )}
