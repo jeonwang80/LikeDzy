@@ -156,27 +156,89 @@ export default function AdminInventory() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+
+  const fetchProducts = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'products'));
+      const productsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProducts(productsList.sort((a, b) => {
+        const orderA = a.orderIndex !== undefined ? a.orderIndex : 999;
+        const orderB = b.orderIndex !== undefined ? b.orderIndex : 999;
+        if (orderA !== orderB) return orderA - orderB;
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return timeB - timeA;
+      }));
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setProducts(data);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    fetchProducts();
   }, []);
 
-  if (loading) return <div style={{ color: '#707072', fontWeight: 'bold' }}>재고 데이터 불러오는 중...</div>;
+  const handleAddNew = () => {
+    setEditingProduct(null);
+    setIsEditorOpen(true);
+  };
+
+  const handleEdit = (product) => {
+    setEditingProduct(product);
+    setIsEditorOpen(true);
+  };
+
+  const handleDelete = async (productId) => {
+    if (window.confirm("이 상품을 정밀 삭제하시겠습니까? 삭제된 정보는 복구할 수 없습니다.")) {
+      try {
+        await deleteDoc(doc(db, 'products', productId));
+        fetchProducts();
+      } catch (error) {
+        console.error("Error deleting product:", error);
+        alert("삭제 중 오류가 발생했습니다.");
+      }
+    }
+  };
+
+  const handleMoveOrder = async (currentIndex, direction) => {
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= products.length) return;
+
+    const updatedProducts = [...products];
+    const temp = updatedProducts[currentIndex];
+    updatedProducts[currentIndex] = updatedProducts[targetIndex];
+    updatedProducts[targetIndex] = temp;
+
+    setProducts(updatedProducts);
+
+    try {
+      const batchPromises = updatedProducts.map((p, idx) => 
+        setDoc(doc(db, 'products', p.id), { orderIndex: idx }, { merge: true })
+      );
+      await Promise.all(batchPromises);
+    } catch (error) {
+      console.error("Error updating order:", error);
+      alert("순서 변경 중 오류가 발생했습니다.");
+      fetchProducts();
+    }
+  };
+
+  if (loading) return <div style={{ color: '#707072', fontWeight: 'bold', padding: '2rem' }}>상품 데이터 로딩 중...</div>;
 
   return (
     <div>
-      <div className="admin-header">
-        <h1 className="admin-title">재고 관리 (Inventory)</h1>
+      <div className="admin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 className="admin-title" style={{ margin: 0 }}>상품 관리</h1>
+          <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.875rem' }}>전체 상품 등록, 진열 순서 변경, 라이브 비주얼 에디터 및 재고 관리</p>
+        </div>
+        <button onClick={handleAddNew} className="admin-btn-primary" style={{ height: '42px', padding: '0 20px', fontSize: '0.9rem', fontWeight: 700 }}>
+          + 신규 상품 등록 (라이브 에디터)
+        </button>
       </div>
 
       <div className="admin-card" style={{ padding: 0 }}>
@@ -184,12 +246,12 @@ export default function AdminInventory() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>상품 사진</th>
-                <th>SKU (고유코드)</th>
+                <th>상품 대표사진</th>
+                <th>SKU 코드</th>
                 <th>상품명</th>
-                <th>옵션 수</th>
-                <th>총 남은 재고</th>
-                <th>누적 판매량</th>
+                <th>카테고리</th>
+                <th style={{ textAlign: 'center' }}>진열 순서</th>
+                <th>재고 / 판매량</th>
                 <th style={{ textAlign: 'right' }}>관리</th>
               </tr>
             </thead>
@@ -199,34 +261,99 @@ export default function AdminInventory() {
                   <td colSpan="7" style={{ padding: '3rem', textAlign: 'center', color: '#707072' }}>등록된 상품이 없습니다.</td>
                 </tr>
               ) : (
-                products.map((product) => {
+                products.map((product, idx) => {
                   const totalStock = (product.options || []).reduce((acc, opt) => acc + (opt.stock || 0), 0);
                   const totalSales = (product.options || []).reduce((acc, opt) => acc + (opt.sales || 0), 0);
+                  const displayImage = (product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls[0] : product.imageUrl;
                   
                   return (
                     <tr key={product.id}>
                       <td>
-                        <img src={product.imageUrls?.[0] || product.imageUrl} alt={product.name} style={{ width: '48px', height: '48px', objectFit: 'cover', backgroundColor: '#f5f5f5' }} />
+                        <img src={displayImage || '/models/model_1.png'} alt={product.name} style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px', backgroundColor: '#f5f5f5' }} />
                       </td>
-                      <td style={{ color: '#707072', fontFamily: 'monospace' }}>
+                      <td style={{ color: '#707072', fontFamily: 'monospace', fontSize: '0.8rem' }}>
                         {product.id.slice(0, 8).toUpperCase()}
                       </td>
-                      <td style={{ fontWeight: '600' }}>{product.name}</td>
-                      <td>{product.options?.length || 0}개</td>
-                      <td style={{ color: totalStock === 0 ? '#d30005' : '#007d48', fontWeight: '700' }}>
-                        {totalStock}개
+                      <td>
+                        <div style={{ fontWeight: '700', color: '#0f172a' }}>{product.name}</div>
+                        {product.ko?.name && <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{product.ko.name}</div>}
                       </td>
-                      <td style={{ fontWeight: '700' }}>
-                        {totalSales}개
+                      <td>
+                        <span style={{ background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
+                          {product.category || product.ko?.category || '일반'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b', minWidth: '24px' }}>
+                            #{idx + 1}
+                          </span>
+                          <button 
+                            disabled={idx === 0} 
+                            onClick={() => handleMoveOrder(idx, 'up')}
+                            style={{ 
+                              padding: '3px 8px', 
+                              fontSize: '0.75rem', 
+                              background: idx === 0 ? '#f1f5f9' : '#ffffff', 
+                              border: '1px solid #cbd5e1', 
+                              borderRadius: '4px', 
+                              cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                              color: idx === 0 ? '#94a3b8' : '#0f172a',
+                              fontWeight: 'bold'
+                            }}
+                            title="위로 이동"
+                          >
+                            위로
+                          </button>
+                          <button 
+                            disabled={idx === products.length - 1} 
+                            onClick={() => handleMoveOrder(idx, 'down')}
+                            style={{ 
+                              padding: '3px 8px', 
+                              fontSize: '0.75rem', 
+                              background: idx === products.length - 1 ? '#f1f5f9' : '#ffffff', 
+                              border: '1px solid #cbd5e1', 
+                              borderRadius: '4px', 
+                              cursor: idx === products.length - 1 ? 'not-allowed' : 'pointer',
+                              color: idx === products.length - 1 ? '#94a3b8' : '#0f172a',
+                              fontWeight: 'bold'
+                            }}
+                            title="아래로 이동"
+                          >
+                            아래로
+                          </button>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: '0.85rem' }}>
+                          <span style={{ color: totalStock === 0 ? '#ef4444' : '#10b981', fontWeight: '700' }}>재고 {totalStock}개</span>
+                          <span style={{ color: '#64748b', marginLeft: '0.4rem' }}>(판매 {totalSales}개)</span>
+                        </div>
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <button 
-                          onClick={() => setSelectedProduct(product)}
-                          className="admin-btn-secondary"
-                          style={{ height: '36px', padding: '6px 16px', fontSize: '0.85rem' }}
-                        >
-                          재고/옵션 관리
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                          <button 
+                            onClick={() => handleEdit(product)}
+                            className="admin-btn-primary"
+                            style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem', backgroundColor: '#2563eb' }}
+                          >
+                            수정 & 비주얼 에디터
+                          </button>
+                          <button 
+                            onClick={() => setSelectedProduct(product)}
+                            className="admin-btn-secondary"
+                            style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem' }}
+                          >
+                            재고/옵션
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(product.id)}
+                            className="admin-btn-danger"
+                            style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem' }}
+                          >
+                            삭제
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -241,6 +368,17 @@ export default function AdminInventory() {
         <InventoryModal 
           product={selectedProduct} 
           onClose={() => setSelectedProduct(null)} 
+        />
+      )}
+
+      {isEditorOpen && (
+        <ProductEditor 
+          product={editingProduct} 
+          onClose={() => setIsEditorOpen(false)} 
+          onSaved={() => {
+            setIsEditorOpen(false);
+            fetchProducts();
+          }} 
         />
       )}
     </div>
