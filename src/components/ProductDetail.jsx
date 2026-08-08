@@ -61,7 +61,7 @@ export default function ProductDetail({ product, onBack }) {
   const displayImages = useMemo(() => {
     if (!activeColor) return images;
     
-    // Gather all photos belonging to this active color
+    // 1. Gather photos specifically assigned to activeColor
     let colorPhotos = [];
     if (activeColor.imageUrls && activeColor.imageUrls.length > 0) {
       colorPhotos = images.filter(url => activeColor.imageUrls.includes(url));
@@ -69,14 +69,24 @@ export default function ProductDetail({ product, onBack }) {
     
     if (colorPhotos.length === 0) {
       colorPhotos = images.filter(url => {
-        if (activeColor.imageUrl === url || activeColor.hoverImageUrl === url) return true;
+        if (activeColor.imageUrl && activeColor.imageUrl === url) return true;
+        if (activeColor.hoverImageUrl && activeColor.hoverImageUrl === url) return true;
         const mapped = (product.colorSwatches || []).find(s => s.imageUrl === url || s.hoverImageUrl === url);
-        return mapped?.name === activeColor.name;
+        return mapped && mapped.name === activeColor.name;
       });
     }
 
-    if (colorPhotos.length === 0) return images;
+    // 2. If no photo explicitly assigned to this swatch yet, fallback by index/swatch imageUrl:
+    if (colorPhotos.length === 0) {
+      const fallbackLead = activeColor.imageUrl 
+        || (images.length > selectedColorIdx ? images[selectedColorIdx] : images[0]);
+      if (fallbackLead && images.includes(fallbackLead)) {
+        return [fallbackLead, ...images.filter(img => img !== fallbackLead)];
+      }
+      return images;
+    }
 
+    // 3. Sort colorPhotos so 대표 1 (primary) is first, 대표 2 (hover) is second
     const primary = activeColor.imageUrl;
     const hover = activeColor.hoverImageUrl;
     const sorted = [...colorPhotos];
@@ -94,8 +104,10 @@ export default function ProductDetail({ product, onBack }) {
       sorted.splice(targetIdx, 0, hover);
     }
 
-    return sorted;
-  }, [product, activeColor, images]);
+    // Append remaining uncategorized product images if any
+    const remaining = images.filter(img => !sorted.includes(img));
+    return [...sorted, ...remaining];
+  }, [product, activeColor, selectedColorIdx, images]);
 
   // Sizes pill array (from product options or default Alo Yoga sizes)
   const sizes = hasOptions 

@@ -424,6 +424,19 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       const perk1 = formData.ko?.perk1 || defaultPerk1;
       const perk2 = formData.ko?.perk2 || defaultPerk2;
 
+      const processedSwatches = (formData.colorSwatches || []).map((swatch, sIdx) => {
+        let img = swatch.imageUrl;
+        if (!img) {
+          img = finalImageUrls[sIdx] || finalImageUrls[0] || '';
+        }
+        let groupImgs = swatch.imageUrls && swatch.imageUrls.length > 0 ? swatch.imageUrls : (img ? [img] : []);
+        return {
+          ...swatch,
+          imageUrl: img,
+          imageUrls: groupImgs
+        };
+      });
+
       const finalData = { 
         ...formData, 
         name,
@@ -432,6 +445,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         fabric,
         perk1,
         perk2,
+        colorSwatches: processedSwatches,
         imageUrls: finalImageUrls, 
         videoUrl: finalVideoUrl, 
         updatedAt: new Date() 
