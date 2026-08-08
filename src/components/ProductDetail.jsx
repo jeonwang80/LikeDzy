@@ -153,7 +153,9 @@ export default function ProductDetail({ product, onBack }) {
           <div className="alo-detail-buy-panel">
             {/* 1. Badge & Title */}
             <div className="alo-detail-header-meta">
-              <span className="alo-badge-pill" style={{ marginBottom: '8px' }}>BEST SELLER</span>
+              {product.isBestSeller && (
+                <span className="alo-badge-pill" style={{ marginBottom: '8px' }}>BEST SELLER</span>
+              )}
               <h1 className="alo-detail-title">{product.name}</h1>
               <div className="alo-detail-price-rating-row">
                 <span className="alo-detail-price-text">{displayPrice}</span>

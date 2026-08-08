@@ -99,14 +99,15 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     if (product) {
       return {
         ...product,
+        isBestSeller: product.isBestSeller !== undefined ? product.isBestSeller : false,
         imageUrls: product.imageUrls || (product.imageUrl ? [product.imageUrl] : []),
         colorSwatches: product.colorSwatches || (product.colors || []),
         options: product.options || [
-          { name: 'S', stock: 10 },
-          { name: 'M', stock: 10 },
-          { name: 'L', stock: 10 },
-          { name: 'XL', stock: 10 },
-          { name: '2XL', stock: 5 }
+          { name: 'S' },
+          { name: 'M' },
+          { name: 'L' },
+          { name: 'XL' },
+          { name: '2XL' }
         ],
         ko: product.ko || { name: product.name || '', category: product.category || '', description: product.description || '', fabric: product.fabric || '', sizeGuide: '' },
         en: product.en || { name: product.name || '', category: product.category || '', description: product.description || '', fabric: product.fabric || '', sizeGuide: '' },
@@ -114,6 +115,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       };
     }
     return {
+      isBestSeller: false,
       price: '',
       youtubeUrl: '',
       videoUrl: '',
@@ -125,11 +127,11 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         { name: 'Black', colorHex: '#111111', imageUrl: '' }
       ],
       options: [
-        { name: 'S', stock: 10 },
-        { name: 'M', stock: 10 },
-        { name: 'L', stock: 10 },
-        { name: 'XL', stock: 10 },
-        { name: '2XL', stock: 5 }
+        { name: 'S' },
+        { name: 'M' },
+        { name: 'L' },
+        { name: 'XL' },
+        { name: '2XL' }
       ],
       prices: { KRW: 0, USD: 0, VND: 0 }
     };
@@ -143,7 +145,6 @@ export default function ProductEditor({ product, onClose, onSaved }) {
           [lang]: { ...prev[lang], [field]: value }
         };
         
-        // If updating KO, mirror to EN/VI if they were identical or blank
         if (lang === 'ko') {
           const oldKoValue = prev.ko[field];
           if (!prev.en[field] || prev.en[field] === oldKoValue) {
@@ -166,7 +167,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     setRawPrice(value);
     
     const calculated = calculatePrices(baseCurrency, value);
-    const formattedPriceString = `₩${calculated.KRW.toLocaleString()} / $${calculated.USD.toLocaleString()} / ₫${calculated.VND.toLocaleString()}`;
+    const formattedPriceString = `KRW ₩${calculated.KRW.toLocaleString()} / USD $${calculated.USD.toLocaleString()} / VND ₫${calculated.VND.toLocaleString()}`;
     
     setFormData(prev => ({
       ...prev,
@@ -180,7 +181,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     setBaseCurrency(newBase);
     if (rawPrice) {
        const calculated = calculatePrices(newBase, rawPrice);
-       const formattedPriceString = `₩${calculated.KRW.toLocaleString()} / $${calculated.USD.toLocaleString()} / ₫${calculated.VND.toLocaleString()}`;
+       const formattedPriceString = `KRW ₩${calculated.KRW.toLocaleString()} / USD $${calculated.USD.toLocaleString()} / VND ₫${calculated.VND.toLocaleString()}`;
        setFormData(prev => ({
          ...prev,
          prices: calculated,
@@ -240,7 +241,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       ...prev,
       colorSwatches: [
         ...(prev.colorSwatches || []),
-        { name: 'New Color', colorHex: '#111111', imageUrl: prev.imageUrls?.[0] || '' }
+        { name: 'Black', colorHex: '#111111', imageUrl: prev.imageUrls?.[0] || '' }
       ]
     }));
   };
@@ -261,21 +262,12 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   };
 
   const handleAddOption = () => {
-    const name = prompt("추가할 옵션/사이즈명을 입력하세요 (예: 3XL, Custom)", "3XL");
+    const name = prompt("추가할 사이즈 옵션명을 입력하세요 (예: 3XL, FREE)", "3XL");
     if (!name) return;
     setFormData(prev => ({
       ...prev,
-      options: [...(prev.options || []), { name: name.toUpperCase(), stock: 10 }]
+      options: [...(prev.options || []), { name: name.trim().toUpperCase() }]
     }));
-  };
-
-  const handleOptionStockChange = (index, delta) => {
-    setFormData(prev => {
-      const updated = [...(prev.options || [])];
-      const newStock = Math.max(0, (updated[index].stock || 0) + delta);
-      updated[index] = { ...updated[index], stock: newStock };
-      return { ...prev, options: updated };
-    });
   };
 
   const handleRemoveOption = (index) => {
@@ -311,7 +303,6 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       let finalImageUrls = [...(formData.imageUrls || [])];
       let finalVideoUrl = formData.videoUrl || '';
 
-      // Upload new image files
       if (imageFiles.length > 0) {
         for (const file of imageFiles) {
           const imageRef = ref(storage, `products/${Date.now()}_${file.name}`);
@@ -321,14 +312,12 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         }
       }
 
-      // Upload new video file
       if (videoFile) {
         const videoRef = ref(storage, `products/videos/${Date.now()}_${videoFile.name}`);
         const snapshot = await uploadBytes(videoRef, videoFile);
         finalVideoUrl = await getDownloadURL(snapshot.ref);
       }
 
-      // Fallback top-level name & description from active language
       const name = formData.ko?.name || formData.en?.name || formData.vi?.name || '신규 상품';
       const category = formData.ko?.category || 'Apparel';
       const description = formData.ko?.description || '';
@@ -367,18 +356,15 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   return (
     <div className="product-live-editor-overlay fade-in">
       
-      {/* ========================================================
-          1. TOP STICKY BUILDER HEADER CONTROL BAR
-         ======================================================== */}
+      {/* 1. TOP STICKY BUILDER HEADER CONTROL BAR */}
       <header className="live-builder-header">
         <div className="live-builder-title">
-          <span style={{ fontSize: '1.4rem' }}>🎨</span>
           <div>
             <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
-              {product ? `상품 라이브 비주얼 빌더 (${formData.ko?.name || '편집 중'})` : '➕ 새 상품 비주얼 라이브 빌더'}
+              {product ? `상품 라이브 비주얼 빌더 (${formData.ko?.name || '편집 중'})` : '새 상품 비주얼 라이브 빌더'}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-              화면 상의 텍스트와 사진을 직접 클릭하여 라이브 미리보기 상태로 편집하세요
+              화면 상의 텍스트와 사진을 직접 클릭하여 실시간으로 편집하세요
             </div>
           </div>
         </div>
@@ -391,14 +377,14 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               className={`live-builder-mode-btn ${editorMode === 'visual' ? 'active' : ''}`}
               onClick={() => setEditorMode('visual')}
             >
-              🎨 라이브 비주얼 편집
+              라이브 비주얼 편집
             </button>
             <button 
               type="button" 
               className={`live-builder-mode-btn ${editorMode === 'form' ? 'active' : ''}`}
               onClick={() => setEditorMode('form')}
             >
-              📋 양식 폼 모드
+              양식 폼 모드
             </button>
           </div>
 
@@ -409,28 +395,28 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               className={`live-builder-lang-btn ${activeLang === 'ko' ? 'active' : ''}`}
               onClick={() => setActiveLang('ko')}
             >
-              🇰🇷 한국어
+              한국어
             </button>
             <button 
               type="button" 
               className={`live-builder-lang-btn ${activeLang === 'en' ? 'active' : ''}`}
               onClick={() => setActiveLang('en')}
             >
-              🇺🇸 English
+              English
             </button>
             <button 
               type="button" 
               className={`live-builder-lang-btn ${activeLang === 'vi' ? 'active' : ''}`}
               onClick={() => setActiveLang('vi')}
             >
-              🇻🇳 Tiếng Việt
+              Tiếng Việt
             </button>
           </div>
 
           {/* Currency Pill */}
           <div className="live-builder-price-pill">
             {formData.prices?.KRW > 0 
-              ? `₩${formData.prices.KRW?.toLocaleString()} / $${formData.prices.USD?.toLocaleString()} / ₫${formData.prices.VND?.toLocaleString()}`
+              ? `KRW ₩${formData.prices.KRW?.toLocaleString()} / USD $${formData.prices.USD?.toLocaleString()} / VND ₫${formData.prices.VND?.toLocaleString()}`
               : '가격 미설정'
             }
           </div>
@@ -470,21 +456,17 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                 boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
               }}
             >
-              {loading ? '저장 중...' : '💾 저장 및 반영'}
+              {loading ? '저장 중...' : '저장 및 반영'}
             </button>
           </div>
         </div>
       </header>
 
-      {/* ========================================================
-          2. MAIN EDITOR WORKSPACE CANVAS
-         ======================================================== */}
+      {/* 2. MAIN EDITOR WORKSPACE CANVAS */}
       <main className="product-live-editor-body">
         
         {editorMode === 'visual' ? (
-          /* ========================================================
-             🎨 VISUAL LIVE WYSIWYG CANVAS MODE
-             ======================================================== */
+          /* VISUAL LIVE WYSIWYG CANVAS MODE */
           <div className="visual-canvas-container fade-in">
             
             {/* Top Info Banner */}
@@ -500,19 +482,17 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               color: '#1e40af',
               fontSize: '0.85rem'
             }}>
-              <span>💡 <strong>라이브 비주얼 모드:</strong> 실제 고객 상품 상세 페이지와 100% 동일한 화면입니다. 점선 테두리 항목을 직접 클릭해서 수정하세요.</span>
-              <span style={{ fontWeight: 'bold' }}>현재 편집 언어: {activeLang === 'ko' ? '🇰🇷 한국어' : activeLang === 'en' ? '🇺🇸 English' : '🇻🇳 Tiếng Việt'}</span>
+              <span><strong>라이브 비주얼 모드:</strong> 실제 고객 상품 상세 페이지와 동일한 화면입니다. 점선 테두리 항목을 직접 클릭해서 수정하세요.</span>
+              <span style={{ fontWeight: 'bold' }}>현재 편집 언어: {activeLang === 'ko' ? '한국어' : activeLang === 'en' ? 'English' : 'Tiếng Việt'}</span>
             </div>
 
-            {/* Alo Yoga 2-Column Main Layout: Left Multiple Photos Grid + Right Specs Panel */}
+            {/* Alo Yoga 2-Column Main Layout */}
             <div className="alo-detail-layout">
               
-              {/* ----------------------------------------------------
-                  LEFT COLUMN: Interactive Photo Gallery Grid
-                 ---------------------------------------------------- */}
+              {/* LEFT COLUMN: Photo Gallery */}
               <div className="alo-detail-gallery" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                 
-                {/* 1. Existing Uploaded Photos */}
+                {/* Existing Photos */}
                 {formData.imageUrls && formData.imageUrls.map((imgUrl, idx) => (
                   <div key={`existing-${idx}`} className="visual-image-card">
                     <img 
@@ -521,10 +501,9 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                       style={{ width: '100%', height: '320px', objectFit: 'cover', display: 'block' }} 
                     />
                     
-                    {/* Main Tag */}
                     {idx === 0 ? (
                       <span className="alo-model-tag" style={{ background: '#111111', color: '#fff', padding: '4px 10px', fontSize: '0.7rem' }}>
-                        ★ 메인 대표 이미지
+                        대표 이미지
                       </span>
                     ) : (
                       <button
@@ -537,7 +516,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                           background: 'rgba(0,0,0,0.7)',
                           color: '#fff',
                           border: 'none',
-                          padding: '3px 8px',
+                          padding: '4px 10px',
                           borderRadius: '4px',
                           fontSize: '0.7rem',
                           cursor: 'pointer'
@@ -547,7 +526,6 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                       </button>
                     )}
 
-                    {/* Overlay Action Toolbar */}
                     <div className="visual-image-overlay-toolbar">
                       <div className="visual-img-btn-group">
                         <button 
@@ -555,18 +533,18 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                           className="visual-img-action-btn" 
                           onClick={() => handleMoveExistingImage(idx, -1)}
                           disabled={idx === 0}
-                          title="왼쪽/위로 이동"
+                          title="위로 이동"
                         >
-                          ◀
+                          위로
                         </button>
                         <button 
                           type="button" 
                           className="visual-img-action-btn" 
                           onClick={() => handleMoveExistingImage(idx, 1)}
                           disabled={idx === (formData.imageUrls.length - 1)}
-                          title="오른쪽/아래로 이동"
+                          title="아래로 이동"
                         >
-                          ▶
+                          아래로
                         </button>
                       </div>
                       
@@ -576,13 +554,13 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                         onClick={() => handleRemoveExistingImage(idx)}
                         title="사진 삭제"
                       >
-                        ✕ 삭제
+                        삭제
                       </button>
                     </div>
                   </div>
                 ))}
 
-                {/* 2. Newly Picked Photos Pending Upload */}
+                {/* Newly Picked Photos */}
                 {previewUrls.map((url, idx) => {
                   const totalIdx = (formData.imageUrls?.length || 0) + idx;
                   return (
@@ -603,17 +581,16 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                           className="visual-img-action-btn danger" 
                           onClick={() => handleRemoveNewImage(idx)}
                         >
-                          ✕ 삭제
+                          삭제
                         </button>
                       </div>
                     </div>
                   );
                 })}
 
-                {/* 3. Add Photo Dropzone Card */}
+                {/* Add Photo Dropzone Card */}
                 {allPhotos.length < 8 && (
                   <label className="visual-add-photo-card">
-                    <span style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📸</span>
                     <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>+ 상품 사진 추가</span>
                     <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
                       ({allPhotos.length} / 8장)
@@ -630,24 +607,33 @@ export default function ProductEditor({ product, onClose, onSaved }) {
 
               </div>
 
-              {/* ----------------------------------------------------
-                  RIGHT COLUMN: Interactive Specs & Purchase Panel
-                 ---------------------------------------------------- */}
+              {/* RIGHT COLUMN: Specs & Options */}
               <div className="alo-detail-buy-panel">
                 
-                {/* 1. Category & Title Editable */}
+                {/* Category & BEST SELLER Checkbox */}
                 <div className="alo-detail-header-meta">
-                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '8px' }}>
-                    <span className="alo-badge-pill">BEST SELLER</span>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', backgroundColor: '#f1f5f9', padding: '3px 10px', borderRadius: '9999px', border: '1px solid #cbd5e1' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={formData.isBestSeller || false} 
+                        onChange={e => setFormData(prev => ({ ...prev, isBestSeller: e.target.checked }))} 
+                        style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                      />
+                      <span className="alo-badge-pill" style={{ opacity: formData.isBestSeller ? 1 : 0.4, margin: 0 }}>
+                        BEST SELLER
+                      </span>
+                    </label>
+
                     <input
                       type="text"
                       value={currentLangData.category || ''}
                       onChange={e => handleChange(activeLang, 'category', e.target.value)}
-                      placeholder="카테고리 (예: Apparel, Tops)"
+                      placeholder="카테고리 (예: Apparel)"
                       className="visual-editable-field"
                       style={{
                         border: '1px dashed #cbd5e1',
-                        padding: '2px 8px',
+                        padding: '3px 8px',
                         borderRadius: '4px',
                         fontSize: '0.75rem',
                         fontWeight: 700,
@@ -678,7 +664,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                     />
                   </div>
 
-                  {/* Price Row */}
+                  {/* Price & Currency Row */}
                   <div className="alo-detail-price-rating-row" style={{ marginTop: '1rem' }}>
                     <div className="visual-editable-field" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <select 
@@ -686,9 +672,9 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                         onChange={handleCurrencyChange}
                         style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}
                       >
-                        <option value="KRW">KRW (₩)</option>
+                        <option value="KRW">KRW (원)</option>
                         <option value="USD">USD ($)</option>
-                        <option value="VND">VND (₫)</option>
+                        <option value="VND">VND (동)</option>
                       </select>
 
                       <input 
@@ -706,13 +692,13 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                         }}
                       />
                     </div>
-                    <span className="alo-detail-rating">★★★★★ <small>(182 Reviews)</small></span>
+                    <span className="alo-detail-rating">(182 Reviews)</span>
                   </div>
                 </div>
 
                 <div className="alo-detail-divider" />
 
-                {/* 2. Color Swatches Visual Manager */}
+                {/* Color Swatches Manager */}
                 <div className="alo-detail-option-group" style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   <div className="alo-option-label" style={{ justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                     <strong>Color Swatches ({formData.colorSwatches?.length || 0}):</strong>
@@ -758,22 +744,22 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                         >
                           <option value="">-- 연결 사진 선택 --</option>
                           {allPhotos.map((url, pIdx) => (
-                            <option key={pIdx} value={url}>🖼️ 사진 #{pIdx + 1}</option>
+                            <option key={pIdx} value={url}>사진 #{pIdx + 1}</option>
                           ))}
                         </select>
                         <button 
                           type="button" 
                           onClick={() => handleRemoveColorSwatch(idx)}
-                          style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '3px 6px', fontSize: '0.7rem', cursor: 'pointer' }}
+                          style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '0.7rem', cursor: 'pointer' }}
                         >
-                          ✕
+                          삭제
                         </button>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* 3. Fit Note Box Editable */}
+                {/* Fit Note Box Editable */}
                 <div className="alo-fit-note-box visual-editable-field">
                   <strong>Fit Note:</strong>
                   <input
@@ -785,10 +771,10 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                   />
                 </div>
 
-                {/* 4. Size Pill Selector & Stock Manager */}
+                {/* Size Options Selector (Without Stock Counters) */}
                 <div className="alo-detail-option-group" style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   <div className="alo-option-label" style={{ justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                    <span><strong>Size & Stock Manager:</strong></span>
+                    <span><strong>Size Options ({formData.options?.length || 0}):</strong></span>
                     <button 
                       type="button" 
                       onClick={handleAddOption}
@@ -800,38 +786,31 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                   
                   <div className="alo-size-pill-grid">
                     {formData.options && formData.options.map((sz, idx) => (
-                      <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                          <button
-                            type="button"
-                            className="alo-size-pill-btn selected"
-                            style={{ minWidth: '45px', padding: '6px' }}
-                          >
-                            {sz.name}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveOption(idx)}
-                            style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '18px', height: '18px', fontSize: '0.65rem', cursor: 'pointer' }}
-                          >
-                            ✕
-                          </button>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.725rem' }}>
-                          <button type="button" onClick={() => handleOptionStockChange(idx, -1)} style={{ padding: '1px 5px', border: '1px solid #cbd5e1', borderRadius: '3px', cursor: 'pointer' }}>-</button>
-                          <span style={{ fontWeight: 'bold', color: sz.stock > 0 ? '#15803d' : '#dc2626' }}>{sz.stock}개</span>
-                          <button type="button" onClick={() => handleOptionStockChange(idx, 1)} style={{ padding: '1px 5px', border: '1px solid #cbd5e1', borderRadius: '3px', cursor: 'pointer' }}>+</button>
-                        </div>
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <button
+                          type="button"
+                          className="alo-size-pill-btn selected"
+                          style={{ padding: '6px 14px', cursor: 'default' }}
+                        >
+                          {sz.name || sz}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOption(idx)}
+                          style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '0.7rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="사이즈 삭제"
+                        >
+                          ✕
+                        </button>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* 5. Video Upload & Youtube Media Card */}
+                {/* Video Upload & Youtube Media Card */}
                 <div style={{ padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                   <strong style={{ fontSize: '0.85rem', color: '#1e293b', display: 'block', marginBottom: '0.5rem' }}>
-                    🎥 동영상 관리 (MP4 또는 유튜브)
+                    동영상 관리 (MP4 또는 유튜브)
                   </strong>
                   
                   <div style={{ marginBottom: '0.5rem' }}>
@@ -871,9 +850,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               </div>
             </div>
 
-            {/* ----------------------------------------------------
-                BOTTOM TABS & RICH TEXT DETAILS WYSIWYG EDITOR
-               ---------------------------------------------------- */}
+            {/* BOTTOM TABS & RICH TEXT DETAILS WYSIWYG EDITOR */}
             <div style={{ marginTop: '4rem', borderTop: '2px solid #E5E5E5', paddingTop: '2.5rem' }}>
               
               <div className="detail-tabs-container">
@@ -910,7 +887,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                     {/* Fabric Info Editable Box */}
                     <div style={{ marginBottom: '1.5rem' }}>
                       <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
-                        🧵 원단 / 소재 정보 ({activeLang.toUpperCase()}):
+                        원단 / 소재 정보 ({activeLang.toUpperCase()}):
                       </label>
                       <textarea
                         value={currentLangData.fabric || ''}
@@ -931,7 +908,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                     {/* Quill Embedded Rich Text Visual Editor */}
                     <div>
                       <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
-                        📝 상세페이지 본문 에디터 (사진, 폰트 서식, 정렬을 자유롭게 구성하세요):
+                        상세페이지 본문 에디터:
                       </label>
                       
                       <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', minHeight: '300px' }}>
@@ -942,7 +919,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                             modules={modulesKo} 
                             value={formData.ko?.description || ''} 
                             onChange={val => handleChange('ko', 'description', val)} 
-                            placeholder="한국어 상세페이지 내용을 예쁘게 작성하세요!" 
+                            placeholder="한국어 상세페이지 내용을 작성하세요." 
                           />
                         )}
                         {activeLang === 'en' && (
@@ -973,13 +950,13 @@ export default function ProductEditor({ product, onClose, onSaved }) {
 
                 {activeTab === 'reviews' && (
                   <div style={{ padding: '2rem', textTransform: 'uppercase', textAlign: 'center', color: '#94a3b8' }}>
-                    고객 리뷰 미리보기 (실제 고객이 작성한 리뷰가 표출되는 영역입니다)
+                    고객 리뷰 미리보기
                   </div>
                 )}
 
                 {activeTab === 'qna' && (
                   <div style={{ padding: '2rem', textTransform: 'uppercase', textAlign: 'center', color: '#94a3b8' }}>
-                    Q&A 문의 미리보기 (고객의 상품 문의 내역이 표출되는 영역입니다)
+                    Q&A 문의 미리보기
                   </div>
                 )}
               </div>
@@ -988,13 +965,24 @@ export default function ProductEditor({ product, onClose, onSaved }) {
 
           </div>
         ) : (
-          /* ========================================================
-             📋 FORM MODE (TRADITIONAL TABULAR FORM)
-             ======================================================== */
+          /* FORM MODE */
           <div className="admin-modal-content fade-in" style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem', backgroundColor: '#ffffff', borderRadius: '12px' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#0f172a' }}>📋 전통적 폼 방식 데이터 입력</h3>
+            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#0f172a' }}>전통적 폼 방식 데이터 입력</h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              
+              <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={formData.isBestSeller || false} 
+                    onChange={e => setFormData(prev => ({ ...prev, isBestSeller: e.target.checked }))} 
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  <span>BEST SELLER 설정</span>
+                </label>
+              </div>
+
               <div>
                 <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>기본 가격</label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -1009,7 +997,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
 
               {/* Korean Form */}
               <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                <h4 style={{ color: '#2563eb', margin: '0 0 0.75rem 0' }}>🇰🇷 한국어 데이터</h4>
+                <h4 style={{ color: '#2563eb', margin: '0 0 0.75rem 0' }}>한국어 데이터</h4>
                 <input placeholder="상품명" value={formData.ko.name} onChange={e => handleChange('ko', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
                 <input placeholder="카테고리" value={formData.ko.category} onChange={e => handleChange('ko', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
                 <textarea placeholder="원단 정보" value={formData.ko.fabric} onChange={e => handleChange('ko', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', minHeight: '60px' }} />
@@ -1017,7 +1005,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
 
               {/* English Form */}
               <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                <h4 style={{ color: '#16a34a', margin: '0 0 0.75rem 0' }}>🇺🇸 English Data</h4>
+                <h4 style={{ color: '#16a34a', margin: '0 0 0.75rem 0' }}>English Data</h4>
                 <input placeholder="Product Name" value={formData.en.name} onChange={e => handleChange('en', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
                 <input placeholder="Category" value={formData.en.category} onChange={e => handleChange('en', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
                 <textarea placeholder="Fabric Info" value={formData.en.fabric} onChange={e => handleChange('en', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', minHeight: '60px' }} />
@@ -1025,7 +1013,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
 
               {/* Vietnamese Form */}
               <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                <h4 style={{ color: '#dc2626', margin: '0 0 0.75rem 0' }}>🇻🇳 Dữ liệu tiếng Việt</h4>
+                <h4 style={{ color: '#dc2626', margin: '0 0 0.75rem 0' }}>Dữ liệu tiếng Việt</h4>
                 <input placeholder="Tên sản phẩm" value={formData.vi.name} onChange={e => handleChange('vi', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
                 <input placeholder="Thể loại" value={formData.vi.category} onChange={e => handleChange('vi', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
                 <textarea placeholder="Thông tin vải" value={formData.vi.fabric} onChange={e => handleChange('vi', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', minHeight: '60px' }} />
