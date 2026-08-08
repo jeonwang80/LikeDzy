@@ -161,9 +161,18 @@ const AloProductCard = ({ product, onProductSelect, isWishlisted, onToggleWishli
     || product.images?.[0] 
     || '/models/model_1.png';
 
-  const hoverImg = activeColor?.hoverImageUrl 
-    || (activeColor?.imageUrls && activeColor.imageUrls[1]) 
-    || (product.images?.length > 1 ? (product.images.find(img => img !== primaryImg) || product.images[1]) : primaryImg);
+  // Sequential hover image resolution
+  let hoverImg = activeColor?.hoverImageUrl;
+  if (!hoverImg || hoverImg === primaryImg) {
+    if (activeColor?.imageUrls && activeColor.imageUrls.length > 1) {
+      hoverImg = activeColor.imageUrls.find(img => img !== primaryImg) || activeColor.imageUrls[1];
+    } else if (product.images && product.images.length > 1) {
+      const primaryIdx = product.images.indexOf(primaryImg);
+      const nextIdx = primaryIdx >= 0 ? (primaryIdx + 1) % product.images.length : 1;
+      hoverImg = product.images[nextIdx] !== primaryImg ? product.images[nextIdx] : product.images[0];
+    }
+  }
+  if (!hoverImg) hoverImg = primaryImg;
 
   const mainImage = getSafeImageUrl(isHovered ? hoverImg : primaryImg);
 
@@ -217,8 +226,10 @@ const AloProductCard = ({ product, onProductSelect, isWishlisted, onToggleWishli
               key={idx}
               className={`alo-swatch-circle ${selectedColorIdx === idx ? 'selected' : ''}`}
               style={{ backgroundColor: swatch.colorHex || '#ccc' }}
-              onClick={() => setSelectedColorIdx(idx)}
-              onMouseEnter={() => setSelectedColorIdx(idx)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedColorIdx(idx);
+              }}
               title={swatch.name}
             />
           ))}
