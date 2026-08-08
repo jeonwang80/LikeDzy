@@ -95,6 +95,9 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     };
   };
   
+  const defaultPerk1 = 'Complimentary Shipping Over ₩50,000 & Free Returns';
+  const defaultPerk2 = 'Premium Organic Cotton Blend';
+
   const [formData, setFormData] = useState(() => {
     if (product) {
       return {
@@ -109,9 +112,33 @@ export default function ProductEditor({ product, onClose, onSaved }) {
           { name: 'XL' },
           { name: '2XL' }
         ],
-        ko: product.ko || { name: product.name || '', category: product.category || '', description: product.description || '', fabric: product.fabric || '', sizeGuide: '' },
-        en: product.en || { name: product.name || '', category: product.category || '', description: product.description || '', fabric: product.fabric || '', sizeGuide: '' },
-        vi: product.vi || { name: product.name || '', category: product.category || '', description: product.description || '', fabric: product.fabric || '', sizeGuide: '' },
+        ko: product.ko || { 
+          name: product.name || '', 
+          category: product.category || '', 
+          description: product.description || '', 
+          fabric: product.fabric || '', 
+          sizeGuide: product.sizeGuide || '',
+          perk1: product.perk1 || defaultPerk1,
+          perk2: product.perk2 || defaultPerk2
+        },
+        en: product.en || { 
+          name: product.name || '', 
+          category: product.category || '', 
+          description: product.description || '', 
+          fabric: product.fabric || '', 
+          sizeGuide: product.sizeGuide || '',
+          perk1: product.perk1 || defaultPerk1,
+          perk2: product.perk2 || defaultPerk2
+        },
+        vi: product.vi || { 
+          name: product.name || '', 
+          category: product.category || '', 
+          description: product.description || '', 
+          fabric: product.fabric || '', 
+          sizeGuide: product.sizeGuide || '',
+          perk1: product.perk1 || defaultPerk1,
+          perk2: product.perk2 || defaultPerk2
+        },
       };
     }
     return {
@@ -119,9 +146,9 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       price: '',
       youtubeUrl: '',
       videoUrl: '',
-      ko: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '' },
-      en: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '' },
-      vi: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '' },
+      ko: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
+      en: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
+      vi: { name: '', category: 'Apparel', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
       imageUrls: [],
       colorSwatches: [
         { name: 'Black', colorHex: '#111111', imageUrl: '' }
@@ -322,6 +349,8 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       const category = formData.ko?.category || 'Apparel';
       const description = formData.ko?.description || '';
       const fabric = formData.ko?.fabric || '';
+      const perk1 = formData.ko?.perk1 || defaultPerk1;
+      const perk2 = formData.ko?.perk2 || defaultPerk2;
 
       const finalData = { 
         ...formData, 
@@ -329,6 +358,8 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         category,
         description,
         fabric,
+        perk1,
+        perk2,
         imageUrls: finalImageUrls, 
         videoUrl: finalVideoUrl, 
         updatedAt: new Date() 
@@ -807,6 +838,33 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                   </div>
                 </div>
 
+                {/* Shipping & Return Perks Editable Box (Capture 2) */}
+                <div className="alo-shipping-perks visual-editable-field" style={{ backgroundColor: '#f8fafc', padding: '0.85rem', borderRadius: '8px', border: '1px dashed #cbd5e1', marginBottom: '1rem' }}>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '6px' }}>
+                    배송 및 혜택 안내 문구 (Capture 2 영역 - {activeLang.toUpperCase()}):
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.85rem' }}>✓</span>
+                    <input 
+                      type="text"
+                      value={currentLangData.perk1 ?? defaultPerk1}
+                      onChange={e => handleChange(activeLang, 'perk1', e.target.value)}
+                      placeholder="혜택 문구 1 (예: Complimentary Shipping Over ₩50,000 & Free Returns)"
+                      style={{ flex: 1, padding: '4px 8px', fontSize: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '0.85rem' }}>✓</span>
+                    <input 
+                      type="text"
+                      value={currentLangData.perk2 ?? defaultPerk2}
+                      onChange={e => handleChange(activeLang, 'perk2', e.target.value)}
+                      placeholder="혜택 문구 2 (예: Premium Organic Cotton Blend)"
+                      style={{ flex: 1, padding: '4px 8px', fontSize: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                    />
+                  </div>
+                </div>
+
                 {/* Video Upload & Youtube Media Card */}
                 <div style={{ padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                   <strong style={{ fontSize: '0.85rem', color: '#1e293b', display: 'block', marginBottom: '0.5rem' }}>
@@ -1000,7 +1058,9 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                 <h4 style={{ color: '#2563eb', margin: '0 0 0.75rem 0' }}>한국어 데이터</h4>
                 <input placeholder="상품명" value={formData.ko.name} onChange={e => handleChange('ko', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
                 <input placeholder="카테고리" value={formData.ko.category} onChange={e => handleChange('ko', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
-                <textarea placeholder="원단 정보" value={formData.ko.fabric} onChange={e => handleChange('ko', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', minHeight: '60px' }} />
+                <textarea placeholder="원단 정보" value={formData.ko.fabric} onChange={e => handleChange('ko', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', minHeight: '60px' }} />
+                <input placeholder="혜택 안내 1" value={formData.ko.perk1} onChange={e => handleChange('ko', 'perk1', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
+                <input placeholder="혜택 안내 2" value={formData.ko.perk2} onChange={e => handleChange('ko', 'perk2', e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
               </div>
 
               {/* English Form */}
@@ -1008,7 +1068,9 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                 <h4 style={{ color: '#16a34a', margin: '0 0 0.75rem 0' }}>English Data</h4>
                 <input placeholder="Product Name" value={formData.en.name} onChange={e => handleChange('en', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
                 <input placeholder="Category" value={formData.en.category} onChange={e => handleChange('en', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
-                <textarea placeholder="Fabric Info" value={formData.en.fabric} onChange={e => handleChange('en', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', minHeight: '60px' }} />
+                <textarea placeholder="Fabric Info" value={formData.en.fabric} onChange={e => handleChange('en', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', minHeight: '60px' }} />
+                <input placeholder="Perk 1" value={formData.en.perk1} onChange={e => handleChange('en', 'perk1', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
+                <input placeholder="Perk 2" value={formData.en.perk2} onChange={e => handleChange('en', 'perk2', e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
               </div>
 
               {/* Vietnamese Form */}
@@ -1016,7 +1078,9 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                 <h4 style={{ color: '#dc2626', margin: '0 0 0.75rem 0' }}>Dữ liệu tiếng Việt</h4>
                 <input placeholder="Tên sản phẩm" value={formData.vi.name} onChange={e => handleChange('vi', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
                 <input placeholder="Thể loại" value={formData.vi.category} onChange={e => handleChange('vi', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
-                <textarea placeholder="Thông tin vải" value={formData.vi.fabric} onChange={e => handleChange('vi', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', minHeight: '60px' }} />
+                <textarea placeholder="Thông tin vải" value={formData.vi.fabric} onChange={e => handleChange('vi', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', minHeight: '60px' }} />
+                <input placeholder="Quyền lợi 1" value={formData.vi.perk1} onChange={e => handleChange('vi', 'perk1', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
+                <input placeholder="Quyền lợi 2" value={formData.vi.perk2} onChange={e => handleChange('vi', 'perk2', e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
               </div>
             </div>
           </div>

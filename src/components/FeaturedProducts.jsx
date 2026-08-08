@@ -80,9 +80,9 @@ export default function FeaturedProducts({ onProductSelect, onViewAll }) {
       displayPrice = `₩${product.price.toLocaleString()}`;
     }
 
-    const colorSwatches = product.colors && product.colors.length > 0 
-      ? product.colors 
-      : DEFAULT_COLOR_PALETTES[idx % DEFAULT_COLOR_PALETTES.length];
+    const colorSwatches = (product.colorSwatches && product.colorSwatches.length > 0)
+      ? product.colorSwatches 
+      : (product.colors && product.colors.length > 0 ? product.colors : []);
 
     const isBestSeller = product.isBestSeller || idx % 2 === 0;
 

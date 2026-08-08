@@ -51,9 +51,9 @@ export default function ProductDetail({ product, onBack }) {
 
   // Options & Swatches
   const hasOptions = product.options && product.options.length > 0;
-  const colorSwatches = product.colorSwatches && product.colorSwatches.length > 0
+  const colorSwatches = (product.colorSwatches && product.colorSwatches.length > 0)
     ? product.colorSwatches
-    : (product.colors && product.colors.length > 0 ? product.colors : DEFAULT_COLOR_PALETTES[0]);
+    : (product.colors && product.colors.length > 0 ? product.colors : []);
 
   const activeColor = colorSwatches[selectedColorIdx] || colorSwatches[0];
   const activeColorImg = activeColor?.imageUrl || images[selectedColorIdx];
@@ -82,6 +82,8 @@ export default function ProductDetail({ product, onBack }) {
   const fabric = langData.fabric || product.fabric || '';
   const description = langData.description || product.description || '';
   const sizeGuide = langData.sizeGuide || product.sizeGuide || '';
+  const perk1 = langData.perk1 || product.perk1 || 'Complimentary Shipping Over ₩50,000 & Free Returns';
+  const perk2 = langData.perk2 || product.perk2 || 'Premium Organic Cotton Blend';
 
   // Prices formatting
   let displayPrice = product.price;
@@ -240,10 +242,12 @@ export default function ProductDetail({ product, onBack }) {
             </div>
 
             {/* 6. Shipping & Return Info */}
-            <div className="alo-shipping-perks">
-              <p>✓ Complimentary Shipping Over ₩50,000 & Free Returns</p>
-              <p>✓ Premium Organic Cotton Blend</p>
-            </div>
+            {(perk1 || perk2) && (
+              <div className="alo-shipping-perks">
+                {perk1 && <p>✓ {perk1}</p>}
+                {perk2 && <p>✓ {perk2}</p>}
+              </div>
+            )}
 
           </div>
         </div>

@@ -91,9 +91,9 @@ export default function CollectionList({ onProductSelect }) {
     }
 
     // Default swatches if product doesn't have custom color objects
-    const colorSwatches = product.colors && product.colors.length > 0 
-      ? product.colors 
-      : DEFAULT_COLOR_PALETTES[idx % DEFAULT_COLOR_PALETTES.length];
+    const colorSwatches = (product.colorSwatches && product.colorSwatches.length > 0)
+      ? product.colorSwatches 
+      : (product.colors && product.colors.length > 0 ? product.colors : []);
 
     const isBestSeller = product.isBestSeller || idx % 2 === 0;
 
