@@ -175,21 +175,40 @@ const AloProductCard = ({ product, onProductSelect, isWishlisted, onToggleWishli
   }, [product]);
 
   const activeColor = product.colorSwatches?.[selectedColorIdx] || product.colorSwatches?.[0];
-  const primaryImg = activeColor?.imageUrl 
-    || (activeColor?.imageUrls && activeColor.imageUrls[0]) 
-    || product.images?.[selectedColorIdx] 
-    || product.images?.[0] 
-    || '/models/model_1.png';
+  
+  // Gather all available product image URLs and filter out fallback model_1.png when clothing photos exist
+  const allProductImages = [
+    ...(activeColor?.imageUrls || []),
+    ...(product.images || []),
+    product.imageUrl
+  ].filter(u => u && typeof u === 'string' && !u.startsWith('blob:'));
 
-  // Sequential hover image resolution
+  const clothingImages = allProductImages.filter(u => !u.includes('model_1.png'));
+
+  // 1. Primary Image Resolution: Prefer actual product clothing photo over model_1.png
+  let primaryImg = '';
+  if (activeColor?.imageUrl && !activeColor.imageUrl.includes('model_1.png')) {
+    primaryImg = activeColor.imageUrl;
+  } else if (activeColor?.hoverImageUrl && !activeColor.hoverImageUrl.includes('model_1.png')) {
+    primaryImg = activeColor.hoverImageUrl;
+  } else if (clothingImages.length > 0) {
+    primaryImg = clothingImages[0];
+  } else if (allProductImages.length > 0) {
+    primaryImg = allProductImages[0];
+  } else {
+    primaryImg = '/models/model_1.png';
+  }
+
+  // 2. Sequential Hover Image Resolution
   let hoverImg = activeColor?.hoverImageUrl;
+  if (hoverImg && hoverImg.includes('model_1.png')) hoverImg = '';
+
   if (!hoverImg || hoverImg === primaryImg) {
-    if (activeColor?.imageUrls && activeColor.imageUrls.length > 1) {
-      hoverImg = activeColor.imageUrls.find(img => img !== primaryImg) || activeColor.imageUrls[1];
-    } else if (product.images && product.images.length > 1) {
-      const primaryIdx = product.images.indexOf(primaryImg);
-      const nextIdx = primaryIdx >= 0 ? (primaryIdx + 1) % product.images.length : 1;
-      hoverImg = product.images[nextIdx] !== primaryImg ? product.images[nextIdx] : product.images[0];
+    const candidateHover = clothingImages.find(img => img !== primaryImg);
+    if (candidateHover) {
+      hoverImg = candidateHover;
+    } else if (allProductImages.length > 1) {
+      hoverImg = allProductImages.find(img => img !== primaryImg) || primaryImg;
     }
   }
   if (!hoverImg) hoverImg = primaryImg;
