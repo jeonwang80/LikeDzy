@@ -220,7 +220,9 @@ const AloProductCard = ({ product, onProductSelect, isWishlisted, onToggleWishli
             left: 0,
             width: '100%',
             height: '100%',
-            objectFit: 'cover',
+            objectFit: 'contain',
+            objectPosition: 'center',
+            padding: '0.4rem',
             transition: 'opacity 0.15s ease-in-out',
             opacity: (isHovered && hasDistinctHover) ? 0 : 1
           }}
@@ -243,7 +245,9 @@ const AloProductCard = ({ product, onProductSelect, isWishlisted, onToggleWishli
               left: 0,
               width: '100%',
               height: '100%',
-              objectFit: 'cover',
+              objectFit: 'contain',
+              objectPosition: 'center',
+              padding: '0.4rem',
               transition: 'opacity 0.15s ease-in-out',
               opacity: isHovered ? 1 : 0
             }}
