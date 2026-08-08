@@ -62,12 +62,6 @@ export default function FeaturedProducts({ onProductSelect, onViewAll }) {
 
   return (
     <section id="featured-products" className="editorial-section outdoor-featured-section">
-      <header className="outdoor-section-header">
-        <p className="outdoor-section-kicker">{t('home.featuredKicker')}</p>
-        <h2 className="collection-title">{t('home.featuredTitle')}</h2>
-        <p className="collection-subtitle">{t('home.featuredSubtitle')}</p>
-      </header>
-
       {loading ? (
         <div className="collection-loading-skeleton">
           {[1, 2, 3, 4].map((item) => (

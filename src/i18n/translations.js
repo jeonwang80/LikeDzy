@@ -10,9 +10,6 @@ export const translations = {
       subtitle: '도시의 경계를 넘어, 모든 움직임을 위해 설계한 테크니컬 아웃도어.',
     },
     home: {
-      featuredKicker: 'CURATED FOR THE OUTSIDE',
-      featuredTitle: 'OUTDOOR ESSENTIALS',
-      featuredSubtitle: '예측할 수 없는 날씨와 움직임에 대응하는 LikeDzy의 핵심 셀렉션.',
       viewCollection: '전체 컬렉션 보기',
     },
     collection: {
@@ -47,9 +44,6 @@ export const translations = {
       subtitle: 'Technical outdoor wear designed for every move beyond the city limits.',
     },
     home: {
-      featuredKicker: 'CURATED FOR THE OUTSIDE',
-      featuredTitle: 'OUTDOOR ESSENTIALS',
-      featuredSubtitle: 'Core LikeDzy layers engineered for movement and unpredictable conditions.',
       viewCollection: 'View all collection',
     },
     collection: {
@@ -84,9 +78,6 @@ export const translations = {
       subtitle: 'Trang phục outdoor kỹ thuật được thiết kế cho mọi chuyển động ngoài giới hạn đô thị.',
     },
     home: {
-      featuredKicker: 'CURATED FOR THE OUTSIDE',
-      featuredTitle: 'OUTDOOR ESSENTIALS',
-      featuredSubtitle: 'Những thiết kế cốt lõi của LikeDzy dành cho chuyển động và thời tiết khó đoán.',
       viewCollection: 'Xem toàn bộ bộ sưu tập',
     },
     collection: {
