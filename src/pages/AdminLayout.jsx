@@ -7,12 +7,12 @@ import { useAuth } from '../context/AuthContext';
 import '../admin.css';
 
 const NAV_ITEMS = [
-  { to: '/admin', end: true, index: '01', label: '운영 홈', description: '메인 콘텐츠와 계정' },
+  { to: '/admin', end: true, index: '01', label: '운영 홈', description: '메인 콘텐츠 관리' },
   { to: '/admin/inventory', index: '02', label: '상품 관리', description: '등록·수정·진열·재고' },
   { to: '/admin/orders', index: '03', label: '주문 관리', description: '결제·배송 상태' },
   { to: '/admin/board', index: '04', label: '고객 응대', description: '문의·리뷰' },
   { to: '/admin/stats', index: '05', label: '통계', description: '방문 데이터' },
-  { to: '/admin/master-data', index: '06', label: '기준정보', description: '카테고리 코드 관리' },
+  { to: '/admin/master-data', index: '06', label: '기준정보', description: '카테고리·승인 계정' },
 ];
 
 export default function AdminLayout() {

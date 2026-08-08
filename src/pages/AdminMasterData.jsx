@@ -7,6 +7,7 @@ import {
   serverTimestamp,
   updateDoc,
 } from 'firebase/firestore';
+import AdminAuthorization from '../components/AdminAuthorization';
 import { db } from '../firebase';
 import { formatCategoryPath, useCategoryMasters } from '../hooks/useCategoryMasters';
 
@@ -168,6 +169,8 @@ export default function AdminMasterData() {
         </div>
         <p>각 레벨의 영문·숫자 코드를 조합해 상품 분류 코드가 자동 생성됩니다.</p>
       </section>
+
+      <AdminAuthorization />
 
       <div className="admin-master-layout">
         <form className="admin-card admin-master-form" onSubmit={handleSubmit}>
