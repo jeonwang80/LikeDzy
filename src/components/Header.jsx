@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -56,7 +56,6 @@ export default function Header({ onNavigateHome }) {
   const [mobileCategoryCode, setMobileCategoryCode] = useState('');
   const [activeMegaCode, setActiveMegaCode] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
-  const megaCloseTimerRef = useRef(null);
 
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
@@ -65,10 +64,7 @@ export default function Header({ onNavigateHome }) {
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.clearTimeout(megaCloseTimerRef.current);
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   useEffect(() => {
@@ -100,20 +96,13 @@ export default function Header({ onNavigateHome }) {
   }, [currentUser]);
 
   const closeNavigation = () => {
-    window.clearTimeout(megaCloseTimerRef.current);
     setActiveMegaCode('');
     setMobileMenuOpen(false);
     setMobileCategoryCode('');
   };
 
   const openMegaMenu = (categoryCode) => {
-    window.clearTimeout(megaCloseTimerRef.current);
     setActiveMegaCode(categoryCode);
-  };
-
-  const scheduleMegaClose = () => {
-    window.clearTimeout(megaCloseTimerRef.current);
-    megaCloseTimerRef.current = window.setTimeout(() => setActiveMegaCode(''), 700);
   };
 
   const handleLogoClick = () => {
@@ -154,13 +143,11 @@ export default function Header({ onNavigateHome }) {
     <>
       <header
         className={`header storefront-header ${scrolled ? 'scrolled' : ''}`}
-        onMouseEnter={() => window.clearTimeout(megaCloseTimerRef.current)}
-        onMouseLeave={scheduleMegaClose}
         onKeyDown={(event) => {
           if (event.key === 'Escape') closeNavigation();
         }}
       >
-        <button type="button" className="header-logo" onClick={handleLogoClick}>LikeDzy</button>
+        <button type="button" className="header-logo" onMouseEnter={() => setActiveMegaCode('')} onClick={handleLogoClick}>LikeDzy</button>
 
         <nav className="header-nav" aria-label="주요 카테고리">
           {categoryTree.length > 0 ? categoryTree.map((category) => (
@@ -182,7 +169,7 @@ export default function Header({ onNavigateHome }) {
           <a href="/#about" onMouseEnter={() => setActiveMegaCode('')} onFocus={() => setActiveMegaCode('')} onClick={(event) => handleNavClick('about', event)}>{t('nav.about')}</a>
         </nav>
 
-        <div className="header-actions">
+        <div className="header-actions" onMouseEnter={() => setActiveMegaCode('')}>
           <select className="lang-select" value={language} onChange={(event) => setLanguage(event.target.value)} aria-label="언어 선택">
             <option value="ko">KR</option>
             <option value="en">EN</option>
@@ -231,8 +218,6 @@ export default function Header({ onNavigateHome }) {
           <section
             className="category-mega-menu"
             aria-label={`${activeMegaCategory.name} 카테고리`}
-            onMouseEnter={() => window.clearTimeout(megaCloseTimerRef.current)}
-            onMouseLeave={scheduleMegaClose}
           >
             <div className="category-mega-heading">
               <div><span>EXPLORE</span><strong>{activeMegaCategory.name}</strong></div>
@@ -289,7 +274,15 @@ export default function Header({ onNavigateHome }) {
       </header>
 
       {(activeMegaCategory || mobileMenuOpen) && (
-        <button type="button" className="header-menu-scrim" onClick={closeNavigation} aria-label="메뉴 닫기" />
+        <button
+          type="button"
+          className="header-menu-scrim"
+          onMouseMove={() => {
+            if (!mobileMenuOpen) setActiveMegaCode('');
+          }}
+          onClick={closeNavigation}
+          aria-label="메뉴 닫기"
+        />
       )}
     </>
   );

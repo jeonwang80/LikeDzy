@@ -3,6 +3,7 @@
   padding: 0 4.2%;
   gap: 38px;
   z-index: 500;
+  isolation: isolate;
   box-shadow: none;
 }
 
@@ -27,6 +28,7 @@
   top: 100%;
   left: 0;
   right: 0;
+  z-index: 1;
   max-height: calc(100vh - 82px);
   padding: 30px 4.5% 44px;
   overflow-y: auto;
@@ -34,10 +36,7 @@
   background: #fff;
   color: var(--colors-ink);
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.08);
-  animation: categoryMenuIn 150ms ease-out;
 }
-
-@keyframes categoryMenuIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
 .category-mega-heading { margin-bottom: 28px; padding-bottom: 18px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--colors-hairline-soft); }
 .category-mega-heading > div { display: flex; flex-direction: column; gap: 2px; }
@@ -54,7 +53,7 @@
 .category-mega-group > div a { padding: 0; color: var(--colors-charcoal); font-size: 0.8rem; line-height: 1.45; text-align: left; }
 .category-mega-group a:hover { color: var(--colors-mute); opacity: 1; transform: translateX(2px); }
 
-.header-menu-scrim { position: fixed; inset: 0; z-index: 490; border: 0; background: rgba(17, 17, 17, 0.38); cursor: default; }
+.header-menu-scrim { position: fixed; inset: 0; z-index: 490; border: 0; background: rgba(17, 17, 17, 0.1); cursor: default; }
 .mobile-category-menu { display: none; }
 
 @media (max-width: 1100px) {
@@ -74,7 +73,7 @@
   .storefront-header .header-actions > .header-account-link { display: none; }
   .storefront-header .mobile-menu-btn { display: grid; place-items: center; padding: 2px; }
   .category-mega-menu { display: none; }
-  .mobile-category-menu { position: absolute; top: 100%; left: 0; right: 0; max-height: calc(100vh - 64px); display: block; overflow-y: auto; border-top: 1px solid var(--colors-hairline-soft); background: #fff; color: var(--colors-ink); animation: categoryMenuIn 150ms ease-out; }
+  .mobile-category-menu { position: absolute; top: 100%; left: 0; right: 0; max-height: calc(100vh - 64px); display: block; overflow-y: auto; border-top: 1px solid var(--colors-hairline-soft); background: #fff; color: var(--colors-ink); }
   .mobile-category-scroll { padding: 8px 5% 32px; }
   .mobile-category-section { border-bottom: 1px solid var(--colors-hairline-soft); }
   .mobile-category-section > button,
