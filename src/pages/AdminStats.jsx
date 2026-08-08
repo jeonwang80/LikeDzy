@@ -30,9 +30,14 @@ export default function AdminStats() {
   if (loading) return <div style={{ color: '#707072', fontWeight: 'bold' }}>통계 불러오는 중...</div>;
 
   return (
-    <div>
-      <div className="admin-header">
-        <h1 className="admin-title">방문자 통계 (최근 30일)</h1>
+    <div className="admin-page">
+      <div className="admin-page-header">
+        <div>
+          <span className="admin-page-eyebrow">STORE ANALYTICS</span>
+          <h1>방문 통계</h1>
+          <p>최근 30일 동안 기록된 일별 스토어 방문 데이터를 확인합니다.</p>
+        </div>
+        <span className="admin-page-count">LAST 30 DAYS</span>
       </div>
       
       <div className="admin-card">

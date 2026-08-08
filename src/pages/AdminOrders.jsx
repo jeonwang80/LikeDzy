@@ -34,9 +34,14 @@ export default function AdminOrders() {
   if (loading) return <div style={{ color: '#707072', fontWeight: 'bold' }}>주문 목록 불러오는 중...</div>;
 
   return (
-    <div>
-      <div className="admin-header">
-        <h1 className="admin-title">주문 관리</h1>
+    <div className="admin-page">
+      <div className="admin-page-header">
+        <div>
+          <span className="admin-page-eyebrow">ORDER WORKFLOW</span>
+          <h1>주문 관리</h1>
+          <p>주문 상태를 확인하고 입금·결제·발송 단계를 변경합니다.</p>
+        </div>
+        <span className="admin-page-count">{orders.length} ORDERS</span>
       </div>
       
       <div className="admin-card" style={{ padding: 0 }}>

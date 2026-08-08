@@ -20,9 +20,13 @@ main.jsx
             │  ├─ Login / Signup
             │  └─ MyPage
             └─ 관리자 화면
-               └─ AdminLayout
-                  ├─ AdminDashboard
-                  ├─ AdminInventory ─ ProductEditor
+               └─ AdminLayout (공통 사이드바·상단바·모바일 메뉴)
+                  ├─ AdminDashboard (운영 바로가기·메인 콘텐츠·권한)
+                  ├─ AdminInventory (검색·필터·노출·재고·진열 순서)
+                  │  ├─ InventoryModal (옵션별 재고·변동 이력)
+                  │  └─ ProductEditor
+                  │     ├─ 빠른 등록 (기본값)
+                  │     └─ 스토어 미리보기
                   ├─ AdminOrders
                   ├─ AdminBoard
                   └─ AdminStats
@@ -35,6 +39,8 @@ main.jsx
 - `FeaturedProducts`: `isFeatured`/`isBestSeller` 상품을 먼저 노출하고 부족하면 최신 상품으로 채웁니다.
 - `CollectionList`: 카테고리 필터와 정렬을 담당합니다.
 - `ProductDetail`: 이미지 갤러리, 색상/사이즈 선택, 장바구니 진입을 담당합니다.
-- `ProductEditor`: 상품 정보와 이미지, `isFeatured`, `isNew`, `isBestSeller` 노출 플래그를 편집합니다.
+- `AdminInventory`: Firestore 상품을 실시간 구독하고 상품명/SKU 검색, 카테고리·노출·저재고 필터, 빠른 노출 전환과 진열 순서 변경을 담당합니다.
+- `ProductEditor`: 필수 등록 항목의 완료 상태를 안내하며 기본 정보, 설명, 이미지, 노출 플래그, 색상·사이즈를 빠르게 입력합니다. 세부 이미지 배치는 스토어 미리보기 모드에서 편집합니다.
+- `InventoryModal`: 색상·사이즈 옵션별 재고 조정과 최근 재고 변동 이력 확인을 담당합니다.
 
-주문·재고·리뷰·Q&A 컴포넌트는 유지하지만 현재 UI 개선의 우선 범위가 아닙니다.
+주문·리뷰·Q&A의 데이터 처리 로직은 유지하고 공통 관리자 레이아웃과 화면 헤더만 통일합니다. 다음 기능 확장 전까지는 상품 등록·진열·재고 관리가 우선 범위입니다.

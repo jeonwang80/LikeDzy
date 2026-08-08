@@ -70,12 +70,17 @@ export default function AdminBoard() {
   if (loading) return <div style={{ color: '#707072', fontWeight: 'bold' }}>데이터 불러오는 중...</div>;
 
   return (
-    <div>
-      <div className="admin-header">
-        <h1 className="admin-title">게시판 & 리뷰 관리</h1>
+    <div className="admin-page">
+      <div className="admin-page-header">
+        <div>
+          <span className="admin-page-eyebrow">CUSTOMER SUPPORT</span>
+          <h1>고객 응대</h1>
+          <p>상품 문의와 구매 리뷰를 확인하고 답변을 관리합니다.</p>
+        </div>
+        <span className="admin-page-count">{qnas.length + reviews.length} ITEMS</span>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem' }}>
+      <div className="admin-segmented-tabs">
         <button 
           onClick={() => setActiveTab('qna')}
           className={activeTab === 'qna' ? "admin-btn-primary" : "admin-btn-secondary"}

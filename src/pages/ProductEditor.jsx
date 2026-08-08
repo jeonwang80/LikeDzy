@@ -10,7 +10,7 @@ import '../components/CollectionList.css';
 
 export default function ProductEditor({ product, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
-  const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'form'
+  const [editorMode, setEditorMode] = useState('form'); // 'visual' | 'form'
   const [activeLang, setActiveLang] = useState('ko'); // 'ko' | 'en' | 'vi'
   const [activeTab, setActiveTab] = useState('details'); // 'details' | 'reviews' | 'qna'
 
@@ -473,6 +473,13 @@ export default function ProductEditor({ product, onClose, onSaved }) {
 
   const currentLangData = formData[activeLang] || formData.ko;
   const allPhotos = [...(formData.imageUrls || []), ...previewUrls];
+  const registrationChecks = [
+    { label: '상품명', complete: Boolean(formData.ko?.name?.trim()) },
+    { label: '카테고리', complete: Boolean(formData.ko?.category?.trim()) },
+    { label: '가격', complete: Number(formData.prices?.KRW || 0) > 0 },
+    { label: '상품 이미지', complete: allPhotos.length > 0 },
+  ];
+  const completedCheckCount = registrationChecks.filter((item) => item.complete).length;
 
   return (
     <div className="product-live-editor-overlay fade-in">
@@ -482,10 +489,10 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         <div className="live-builder-title">
           <div>
             <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
-              {product ? `상품 라이브 비주얼 빌더 (${formData.ko?.name || '편집 중'})` : '새 상품 비주얼 라이브 빌더'}
+              {product ? `상품 편집 · ${formData.ko?.name || '이름 없음'}` : '새 상품 등록'}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-              각 사진 카드에서 적용 색상을 지정하고 대표 1(기본), 대표 2(호버)를 선택하세요
+              필수 정보 {completedCheckCount}/4 완료 · 저장 전 이미지와 가격을 확인하세요
             </div>
           </div>
         </div>
@@ -495,17 +502,17 @@ export default function ProductEditor({ product, onClose, onSaved }) {
           <div className="live-builder-mode-switcher">
             <button 
               type="button" 
-              className={`live-builder-mode-btn ${editorMode === 'visual' ? 'active' : ''}`}
-              onClick={() => setEditorMode('visual')}
-            >
-              라이브 비주얼 편집
-            </button>
-            <button 
-              type="button" 
               className={`live-builder-mode-btn ${editorMode === 'form' ? 'active' : ''}`}
               onClick={() => setEditorMode('form')}
             >
-              양식 폼 모드
+              빠른 등록
+            </button>
+            <button 
+              type="button" 
+              className={`live-builder-mode-btn ${editorMode === 'visual' ? 'active' : ''}`}
+              onClick={() => setEditorMode('visual')}
+            >
+              스토어 미리보기
             </button>
           </div>
 
@@ -548,16 +555,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               type="button" 
               onClick={onClose}
               disabled={loading}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '9999px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#ffffff',
-                color: '#475569',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
+              className="admin-btn-secondary"
             >
               취소
             </button>
@@ -565,17 +563,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               type="button" 
               onClick={handleSubmit}
               disabled={loading}
-              style={{
-                padding: '8px 20px',
-                borderRadius: '9999px',
-                border: 'none',
-                backgroundColor: '#2563eb',
-                color: '#ffffff',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
-              }}
+              className="admin-btn-primary"
             >
               {loading ? '저장 중...' : '저장 및 반영'}
             </button>
@@ -1210,82 +1198,138 @@ export default function ProductEditor({ product, onClose, onSaved }) {
           </div>
         ) : (
           /* FORM MODE */
-          <div className="admin-modal-content fade-in" style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem', backgroundColor: '#ffffff', borderRadius: '12px' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#0f172a' }}>전통적 폼 방식 데이터 입력</h3>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.isFeatured || false}
-                    onChange={e => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
-                    style={{ width: '18px', height: '18px' }}
-                  />
-                  <span>메인 추천 상품</span>
-                </label>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={formData.isBestSeller || false} 
-                    onChange={e => setFormData(prev => ({ ...prev, isBestSeller: e.target.checked }))} 
-                    style={{ width: '18px', height: '18px' }}
-                  />
-                  <span>BEST SELLER 설정</span>
-                </label>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.isNew || false}
-                    onChange={e => setFormData(prev => ({ ...prev, isNew: e.target.checked }))}
-                    style={{ width: '18px', height: '18px' }}
-                  />
-                  <span>NEW 배지</span>
-                </label>
-              </div>
-
+          <div className="admin-product-form fade-in">
+            <div className="admin-registration-progress">
               <div>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>기본 가격</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <select value={baseCurrency} onChange={handleCurrencyChange} style={{ padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}>
-                    <option value="KRW">KRW (원)</option>
-                    <option value="USD">USD (달러)</option>
-                    <option value="VND">VND (동)</option>
-                  </select>
-                  <input value={rawPrice} onChange={handlePriceChange} placeholder="가격 (숫자만)" style={{ flex: 1, padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-                </div>
+                <span>REGISTRATION STATUS</span>
+                <strong>{completedCheckCount}/4 필수 정보 완료</strong>
+              </div>
+              <div className="admin-registration-checks">
+                {registrationChecks.map((item) => (
+                  <span className={item.complete ? 'complete' : ''} key={item.label}>
+                    {item.complete ? '✓' : '·'} {item.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="admin-product-form-grid">
+              <div className="admin-product-form-main">
+                <section className="admin-form-section">
+                  <header><span>01</span><div><h3>기본 정보</h3><p>상품명, 카테고리와 판매 가격을 설정합니다.</p></div></header>
+                  <div className="admin-form-field-grid">
+                    <label className="admin-form-field span-2">
+                      <span>상품명 ({activeLang === 'ko' ? '한국어' : activeLang === 'en' ? 'English' : 'Tiếng Việt'})</span>
+                      <input className="admin-input" value={currentLangData.name || ''} onChange={(event) => handleChange(activeLang, 'name', event.target.value)} placeholder="상품명을 입력하세요" />
+                    </label>
+                    <label className="admin-form-field">
+                      <span>카테고리</span>
+                      <select className="admin-select" value={currentLangData.category || 'OUTERWEAR'} onChange={(event) => handleChange(activeLang, 'category', event.target.value)}>
+                        <option value="TOPS">TOPS</option>
+                        <option value="BOTTOMS">BOTTOMS</option>
+                        <option value="OUTERWEAR">OUTERWEAR</option>
+                        <option value="ACC">ACC</option>
+                      </select>
+                    </label>
+                    <label className="admin-form-field">
+                      <span>기준 통화</span>
+                      <select className="admin-select" value={baseCurrency} onChange={handleCurrencyChange}>
+                        <option value="KRW">KRW (원)</option>
+                        <option value="USD">USD (달러)</option>
+                        <option value="VND">VND (동)</option>
+                      </select>
+                    </label>
+                    <label className="admin-form-field span-2">
+                      <span>판매 가격</span>
+                      <input className="admin-input admin-price-input" value={rawPrice} onChange={handlePriceChange} inputMode="decimal" placeholder="숫자만 입력" />
+                      <small>KRW ₩{formData.prices?.KRW?.toLocaleString() || 0} · USD ${formData.prices?.USD?.toLocaleString() || 0} · VND ₫{formData.prices?.VND?.toLocaleString() || 0}</small>
+                    </label>
+                  </div>
+                </section>
+
+                <section className="admin-form-section">
+                  <header><span>02</span><div><h3>상품 설명</h3><p>선택한 언어의 소재와 상세 내용을 입력합니다.</p></div></header>
+                  <div className="admin-form-field-grid">
+                    <label className="admin-form-field span-2">
+                      <span>소재 및 기능 요약</span>
+                      <textarea className="admin-textarea" value={currentLangData.fabric || ''} onChange={(event) => handleChange(activeLang, 'fabric', event.target.value)} placeholder="소재, 기능성, 착용감을 간단히 입력하세요" />
+                    </label>
+                    <label className="admin-form-field span-2">
+                      <span>사이즈 안내</span>
+                      <input className="admin-input" value={currentLangData.sizeGuide || ''} onChange={(event) => handleChange(activeLang, 'sizeGuide', event.target.value)} placeholder="예: REGULAR FIT / 정사이즈 권장" />
+                    </label>
+                    <label className="admin-form-field span-2">
+                      <span>혜택 안내 1</span>
+                      <input className="admin-input" value={currentLangData.perk1 || ''} onChange={(event) => handleChange(activeLang, 'perk1', event.target.value)} />
+                    </label>
+                    <label className="admin-form-field span-2">
+                      <span>혜택 안내 2</span>
+                      <input className="admin-input" value={currentLangData.perk2 || ''} onChange={(event) => handleChange(activeLang, 'perk2', event.target.value)} />
+                    </label>
+                    <div className="admin-form-field span-2">
+                      <span>상세 설명</span>
+                      {activeLang === 'ko' && <ReactQuill ref={quillRefKo} theme="snow" modules={modulesKo} value={formData.ko?.description || ''} onChange={(value) => handleChange('ko', 'description', value)} />}
+                      {activeLang === 'en' && <ReactQuill ref={quillRefEn} theme="snow" modules={modulesEn} value={formData.en?.description || ''} onChange={(value) => handleChange('en', 'description', value)} />}
+                      {activeLang === 'vi' && <ReactQuill ref={quillRefVi} theme="snow" modules={modulesVi} value={formData.vi?.description || ''} onChange={(value) => handleChange('vi', 'description', value)} />}
+                    </div>
+                  </div>
+                </section>
               </div>
 
-              {/* Korean Form */}
-              <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                <h4 style={{ color: '#2563eb', margin: '0 0 0.75rem 0' }}>한국어 데이터</h4>
-                <input placeholder="상품명" value={formData.ko.name} onChange={e => handleChange('ko', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
-                <input placeholder="카테고리" value={formData.ko.category} onChange={e => handleChange('ko', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
-                <textarea placeholder="원단 정보" value={formData.ko.fabric} onChange={e => handleChange('ko', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', minHeight: '60px' }} />
-                <input placeholder="혜택 안내 1" value={formData.ko.perk1} onChange={e => handleChange('ko', 'perk1', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
-                <input placeholder="혜택 안내 2" value={formData.ko.perk2} onChange={e => handleChange('ko', 'perk2', e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
-              </div>
+              <aside className="admin-product-form-side">
+                <section className="admin-form-section">
+                  <header><span>03</span><div><h3>상품 이미지</h3><p>첫 이미지가 대표로 노출됩니다.</p></div></header>
+                  <div className="admin-quick-image-grid">
+                    {allPhotos.map((imageUrl, index) => {
+                      const existingLength = formData.imageUrls?.length || 0;
+                      const isExisting = index < existingLength;
+                      return (
+                        <div key={`${imageUrl}-${index}`}>
+                          <img src={imageUrl} alt="" />
+                          {index === 0 && <span>대표</span>}
+                          <button type="button" onClick={() => isExisting ? handleRemoveExistingImage(index) : handleRemoveNewImage(index - existingLength)} aria-label="이미지 삭제">×</button>
+                        </div>
+                      );
+                    })}
+                    {allPhotos.length < 8 && (
+                      <label className="admin-quick-image-upload">
+                        <input type="file" accept="image/*" multiple onChange={handleImageChange} />
+                        <strong>+</strong><span>이미지 추가</span><small>{allPhotos.length}/8</small>
+                      </label>
+                    )}
+                  </div>
+                  <button type="button" className="admin-inline-link" onClick={() => setEditorMode('visual')}>색상별 대표·호버 이미지 세부 설정 →</button>
+                </section>
 
-              {/* English Form */}
-              <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                <h4 style={{ color: '#16a34a', margin: '0 0 0.75rem 0' }}>English Data</h4>
-                <input placeholder="Product Name" value={formData.en.name} onChange={e => handleChange('en', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
-                <input placeholder="Category" value={formData.en.category} onChange={e => handleChange('en', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
-                <textarea placeholder="Fabric Info" value={formData.en.fabric} onChange={e => handleChange('en', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', minHeight: '60px' }} />
-                <input placeholder="Perk 1" value={formData.en.perk1} onChange={e => handleChange('en', 'perk1', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
-                <input placeholder="Perk 2" value={formData.en.perk2} onChange={e => handleChange('en', 'perk2', e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
-              </div>
+                <section className="admin-form-section">
+                  <header><span>04</span><div><h3>스토어 노출</h3><p>메인과 상품 카드의 배지를 설정합니다.</p></div></header>
+                  <div className="admin-switch-list">
+                    <label><span><strong>메인 추천</strong><small>메인 셀렉션 우선 노출</small></span><input type="checkbox" checked={formData.isFeatured || false} onChange={(event) => setFormData((current) => ({ ...current, isFeatured: event.target.checked }))} /></label>
+                    <label><span><strong>신상품</strong><small>NEW 배지 표시</small></span><input type="checkbox" checked={formData.isNew || false} onChange={(event) => setFormData((current) => ({ ...current, isNew: event.target.checked }))} /></label>
+                    <label><span><strong>베스트셀러</strong><small>BEST SELLER 배지 표시</small></span><input type="checkbox" checked={formData.isBestSeller || false} onChange={(event) => setFormData((current) => ({ ...current, isBestSeller: event.target.checked }))} /></label>
+                  </div>
+                </section>
 
-              {/* Vietnamese Form */}
-              <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                <h4 style={{ color: '#dc2626', margin: '0 0 0.75rem 0' }}>Dữ liệu tiếng Việt</h4>
-                <input placeholder="Tên sản phẩm" value={formData.vi.name} onChange={e => handleChange('vi', 'name', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
-                <input placeholder="Thể loại" value={formData.vi.category} onChange={e => handleChange('vi', 'category', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
-                <textarea placeholder="Thông tin vải" value={formData.vi.fabric} onChange={e => handleChange('vi', 'fabric', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', minHeight: '60px' }} />
-                <input placeholder="Quyền lợi 1" value={formData.vi.perk1} onChange={e => handleChange('vi', 'perk1', e.target.value)} style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }} />
-                <input placeholder="Quyền lợi 2" value={formData.vi.perk2} onChange={e => handleChange('vi', 'perk2', e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
-              </div>
+                <section className="admin-form-section">
+                  <header><span>05</span><div><h3>색상·사이즈</h3><p>고객이 선택할 옵션을 관리합니다.</p></div></header>
+                  <div className="admin-color-option-list">
+                    {(formData.colorSwatches || []).map((swatch, index) => (
+                      <div key={`${swatch.name}-${index}`}>
+                        <input type="color" value={swatch.colorHex || '#111111'} onChange={(event) => handleColorSwatchChange(index, 'colorHex', event.target.value)} />
+                        <input className="admin-input" value={swatch.name} onChange={(event) => handleColorSwatchChange(index, 'name', event.target.value)} />
+                        <button type="button" onClick={() => handleRemoveColorSwatch(index)}>×</button>
+                      </div>
+                    ))}
+                    <button type="button" className="admin-inline-link" onClick={handleAddColorSwatch}>+ 색상 추가</button>
+                  </div>
+                  <div className="admin-size-option-list">
+                    {(formData.options || []).map((option, index) => (
+                      <span key={`${option.name}-${index}`}>{option.name}<button type="button" onClick={() => handleRemoveOption(index)}>×</button></span>
+                    ))}
+                    <button type="button" onClick={handleAddOption}>+ 사이즈</button>
+                  </div>
+                </section>
+              </aside>
             </div>
           </div>
         )}

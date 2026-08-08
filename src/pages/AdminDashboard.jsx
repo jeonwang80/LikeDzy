@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [heroImageUrls, setHeroImageUrls] = useState([]);
   const [heroLoading, setHeroLoading] = useState(false);
   const [splashImageUrl, setSplashImageUrl] = useState(null);
@@ -16,52 +18,6 @@ export default function AdminDashboard() {
   const [adminEmails, setAdminEmails] = useState(['jeonwang80@gmail.com']);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [adminSaving, setAdminSaving] = useState(false);
-
-  const fetchHeroImage = async () => {
-    try {
-      const docSnap = await getDoc(doc(db, 'settings', 'main'));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.heroImageUrls && Array.isArray(data.heroImageUrls)) {
-          setHeroImageUrls(data.heroImageUrls);
-        } else if (data.heroImageUrl) {
-          // Backward compatibility
-          setHeroImageUrls([data.heroImageUrl]);
-        }
-        if (data.heroTitle !== undefined) setHeroTitle(data.heroTitle);
-        if (data.heroTitleSize) setHeroTitleSize(data.heroTitleSize);
-        if (data.heroSubtitle !== undefined) setHeroSubtitle(data.heroSubtitle);
-        if (data.heroSubtitleSize) setHeroSubtitleSize(data.heroSubtitleSize);
-      }
-    } catch (error) {
-      console.error("Error fetching hero image:", error);
-    }
-  };
-
-  const fetchSplashImage = async () => {
-    try {
-      const docSnap = await getDoc(doc(db, 'settings', 'main'));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.splashImageUrl) {
-          setSplashImageUrl(data.splashImageUrl);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching splash image:", error);
-    }
-  };
-
-  const fetchAdminEmails = async () => {
-    try {
-      const docSnap = await getDoc(doc(db, 'settings', 'admin'));
-      if (docSnap.exists() && Array.isArray(docSnap.data()?.adminEmails)) {
-        setAdminEmails(docSnap.data().adminEmails);
-      }
-    } catch (error) {
-      console.error("Error fetching admin emails:", error);
-    }
-  };
 
   const handleAddAdminEmail = async (e) => {
     e.preventDefault();
@@ -113,9 +69,29 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    fetchHeroImage();
-    fetchSplashImage();
-    fetchAdminEmails();
+    const unsubscribeMain = onSnapshot(doc(db, 'settings', 'main'), (snapshot) => {
+      if (!snapshot.exists()) return;
+      const data = snapshot.data();
+      setHeroImageUrls(Array.isArray(data.heroImageUrls)
+        ? data.heroImageUrls
+        : data.heroImageUrl ? [data.heroImageUrl] : []);
+      setSplashImageUrl(data.splashImageUrl || null);
+      if (data.heroTitle !== undefined) setHeroTitle(data.heroTitle);
+      if (data.heroTitleSize) setHeroTitleSize(data.heroTitleSize);
+      if (data.heroSubtitle !== undefined) setHeroSubtitle(data.heroSubtitle);
+      if (data.heroSubtitleSize) setHeroSubtitleSize(data.heroSubtitleSize);
+    }, (error) => console.error('Error subscribing to main settings:', error));
+
+    const unsubscribeAdmin = onSnapshot(doc(db, 'settings', 'admin'), (snapshot) => {
+      if (snapshot.exists() && Array.isArray(snapshot.data()?.adminEmails)) {
+        setAdminEmails(snapshot.data().adminEmails);
+      }
+    }, (error) => console.error('Error subscribing to admin settings:', error));
+
+    return () => {
+      unsubscribeMain();
+      unsubscribeAdmin();
+    };
   }, []);
 
   const handleHeroUpload = async (e) => {
@@ -209,9 +185,34 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div>
-      <div className="admin-header">
-        <h1 className="admin-title">대시보드 & 메인 관리</h1>
+    <div className="admin-page">
+      <div className="admin-page-header">
+        <div>
+          <span className="admin-page-eyebrow">STORE OPERATIONS</span>
+          <h1>운영 홈</h1>
+          <p>스토어 진열 콘텐츠와 관리자 권한을 한곳에서 관리합니다.</p>
+        </div>
+        <button type="button" className="admin-btn-primary" onClick={() => navigate('/admin/inventory')}>
+          상품 등록하기
+        </button>
+      </div>
+
+      <div className="admin-overview-links">
+        <button type="button" onClick={() => navigate('/admin/inventory')}>
+          <span>01 / PRODUCT</span>
+          <strong>상품과 재고 관리</strong>
+          <small>등록 · 진열 · 가격 · 옵션</small>
+        </button>
+        <button type="button" onClick={() => navigate('/admin/orders')}>
+          <span>02 / ORDER</span>
+          <strong>주문 상태 확인</strong>
+          <small>입금 · 결제 · 발송 처리</small>
+        </button>
+        <button type="button" onClick={() => navigate('/admin/board')}>
+          <span>03 / SUPPORT</span>
+          <strong>고객 응대 확인</strong>
+          <small>Q&amp;A · 리뷰 관리</small>
+        </button>
       </div>
 
       {/* 🔐 Admin Whitelist Account Management */}
