@@ -209,7 +209,7 @@
   z-index: 1;
 }
 
-.alo-product-card:hover .alo-card-img {
+.alo-card-media:hover .alo-card-img {
   transform: scale(1.03);
 }
 

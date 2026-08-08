@@ -28,13 +28,15 @@ export default function ProductCard({
           openProduct();
         }
       }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       role="button"
       tabIndex={0}
       aria-label={`${product.name} 상품 보기`}
     >
-      <div className="alo-card-media">
+      <div
+        className="alo-card-media"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <img
           src={primary}
           alt={product.name}
