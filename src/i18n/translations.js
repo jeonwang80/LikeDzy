@@ -27,10 +27,9 @@ export const translations = {
       sortName: 'Name A-Z',
     },
     story: {
-      kicker: 'BUILT FOR UNDEFINED TERRAIN',
-      title: '경계 밖에서 완성되는 옷',
-      content: 'LikeDzy는 도시와 자연을 하나의 움직임으로 바라봅니다. 가볍고 견고한 소재, 변화하는 환경에 대응하는 디테일, 일상까지 이어지는 실루엣으로 새로운 아웃도어의 기준을 만듭니다.',
-      values: ['LIGHTWEIGHT', 'WEATHER READY', 'MOVE FREELY'],
+      title: 'We like you driving your zenith',
+      content: '당신이 더 높은 곳을 향해 나아가는 것,\n당신만의 정점에 가까워지는 것.\n\n우리는 그 여정을 좋아하고, 응원합니다.',
+      signature: 'DRIVE YOUR ZENITH.',
     },
     footer: {
       company: 'LikeDzy Technical Outdoor',
@@ -65,10 +64,9 @@ export const translations = {
       sortName: 'Name A-Z',
     },
     story: {
-      kicker: 'BUILT FOR UNDEFINED TERRAIN',
-      title: 'MADE BEYOND BOUNDARIES',
-      content: 'LikeDzy sees the city and the outdoors as one continuous movement. Lightweight durability, weather-ready details and everyday silhouettes define our new standard for technical outdoor wear.',
-      values: ['LIGHTWEIGHT', 'WEATHER READY', 'MOVE FREELY'],
+      title: 'We like you driving your zenith',
+      content: 'We like seeing you move toward something higher,\ncloser to the summit that is yours alone.\n\nWe believe in that journey, and we cheer you on.',
+      signature: 'DRIVE YOUR ZENITH.',
     },
     footer: {
       company: 'LikeDzy Technical Outdoor',
@@ -103,10 +101,9 @@ export const translations = {
       sortName: 'Tên A-Z',
     },
     story: {
-      kicker: 'BUILT FOR UNDEFINED TERRAIN',
-      title: 'ĐƯỢC TẠO RA NGOÀI MỌI GIỚI HẠN',
-      content: 'LikeDzy xem thành phố và thiên nhiên là một hành trình liền mạch. Chất liệu nhẹ bền, chi tiết thích ứng thời tiết và phom dáng hằng ngày tạo nên chuẩn mực outdoor kỹ thuật mới.',
-      values: ['LIGHTWEIGHT', 'WEATHER READY', 'MOVE FREELY'],
+      title: 'We like you driving your zenith',
+      content: 'Chúng tôi yêu cách bạn hướng đến những tầm cao mới,\ntiến gần hơn đến đỉnh cao của riêng mình.\n\nChúng tôi tin vào hành trình ấy và luôn cổ vũ bạn.',
+      signature: 'DRIVE YOUR ZENITH.',
     },
     footer: {
       company: 'LikeDzy Technical Outdoor',

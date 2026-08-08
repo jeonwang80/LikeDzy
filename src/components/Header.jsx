@@ -124,12 +124,6 @@ export default function Header({ onNavigateHome }) {
     closeNavigation();
     const isHomeView = location.pathname === '/' && !location.search;
 
-    if (type === 'collection') {
-      navigate('/?view=collection');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
     const sectionId = type === 'shop' ? 'featured-products' : 'about';
     if (!isHomeView) {
       navigate('/');
@@ -165,7 +159,6 @@ export default function Header({ onNavigateHome }) {
           )) : (
             <a href="/#featured-products" onClick={(event) => handleNavClick('shop', event)}>{t('nav.shop')}</a>
           )}
-          <a href="/?view=collection" onMouseEnter={() => setActiveMegaCode('')} onFocus={() => setActiveMegaCode('')} onClick={(event) => handleNavClick('collection', event)}>{t('nav.collection')}</a>
           <a href="/#about" onMouseEnter={() => setActiveMegaCode('')} onFocus={() => setActiveMegaCode('')} onClick={(event) => handleNavClick('about', event)}>{t('nav.about')}</a>
         </nav>
 
@@ -266,7 +259,6 @@ export default function Header({ onNavigateHome }) {
                   </div>
                 );
               })}
-              <a href="/?view=collection" onClick={(event) => handleNavClick('collection', event)}>{t('nav.collection')}</a>
               <a href="/#about" onClick={(event) => handleNavClick('about', event)}>{t('nav.about')}</a>
             </div>
           </section>
