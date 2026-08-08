@@ -75,6 +75,14 @@ export default function ProductDetail({ product, onBack }) {
         { name: '2XL', stock: 5 }
       ];
 
+  // Language specific fields
+  const langData = product[language] || product.ko || {};
+  const name = langData.name || product.name || '';
+  const category = langData.category || product.category || 'COLLECTION';
+  const fabric = langData.fabric || product.fabric || '';
+  const description = langData.description || product.description || '';
+  const sizeGuide = langData.sizeGuide || product.sizeGuide || '';
+
   // Prices formatting
   let displayPrice = product.price;
   if (product.prices) {
@@ -107,7 +115,7 @@ export default function ProductDetail({ product, onBack }) {
       return false;
     }
 
-    addToCart(product, selectedOpt, 1);
+    addToCart({ ...product, name }, selectedOpt, 1);
     return true;
   };
 
@@ -136,7 +144,7 @@ export default function ProductDetail({ product, onBack }) {
               >
                 <img 
                   src={imgUrl} 
-                  alt={`${product.name} - view ${idx + 1}`} 
+                  alt={`${name} - view ${idx + 1}`} 
                   className="alo-detail-img" 
                   loading={idx === 0 ? "eager" : "lazy"}
                 />
@@ -156,7 +164,7 @@ export default function ProductDetail({ product, onBack }) {
               {product.isBestSeller && (
                 <span className="alo-badge-pill" style={{ marginBottom: '8px' }}>BEST SELLER</span>
               )}
-              <h1 className="alo-detail-title">{product.name}</h1>
+              <h1 className="alo-detail-title">{name}</h1>
               <div className="alo-detail-price-rating-row">
                 <span className="alo-detail-price-text">{displayPrice}</span>
                 <span className="alo-detail-rating">★★★★★ <small>(182 Reviews)</small></span>
@@ -185,7 +193,7 @@ export default function ProductDetail({ product, onBack }) {
 
             {/* 3. Fit Note Box */}
             <div className="alo-fit-note-box">
-              <strong>Fit:</strong> Designed for a boxy, relaxed oversized silhouette — size down for a more tailored fit.
+              <strong>Fit:</strong> {sizeGuide || 'Designed for a boxy, relaxed oversized silhouette — size down for a more tailored fit.'}
             </div>
 
             {/* 4. Size Pill Selector Buttons */}
@@ -234,7 +242,7 @@ export default function ProductDetail({ product, onBack }) {
             {/* 6. Shipping & Return Info */}
             <div className="alo-shipping-perks">
               <p>✓ Complimentary Shipping Over ₩50,000 & Free Returns</p>
-              <p>✓ Premium 手作業 Organic Cotton Blend</p>
+              <p>✓ Premium Organic Cotton Blend</p>
             </div>
 
           </div>
@@ -267,14 +275,14 @@ export default function ProductDetail({ product, onBack }) {
             {activeTab === 'details' && (
               <div className="detail-tab-content">
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem' }}>PRODUCT DETAILS & FABRIC</h3>
-                {product.fabric && (
+                {fabric && (
                   <p style={{ color: '#444', lineHeight: 1.7, marginBottom: '1.5rem', whiteSpace: 'pre-wrap' }}>
-                    {product.fabric}
+                    {fabric}
                   </p>
                 )}
                 <div 
                   className="quill-content"
-                  dangerouslySetInnerHTML={{ __html: product.description }} 
+                  dangerouslySetInnerHTML={{ __html: description }} 
                 />
               </div>
             )}
