@@ -310,53 +310,39 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   // Set Photo Role for a Color: 'primary' (대표 1), 'hover' (대표 2), or 'none' (일반)
   const handleSetPhotoRole = (imgUrl, colorName, newRole) => {
     setFormData(prev => {
-      let updatedSwatches = [...(prev.colorSwatches || [])];
+      let updatedSwatches = (prev.colorSwatches || []).map(swatch => {
+        if (swatch.name === colorName) {
+          const groupImages = swatch.imageUrls || [];
+          const newGroup = groupImages.includes(imgUrl) ? groupImages : [...groupImages, imgUrl];
+          
+          let newPrimary = swatch.imageUrl;
+          let newHover = swatch.hoverImageUrl;
 
-      if (updatedSwatches.length === 0) {
-        updatedSwatches = [{ name: 'Black', colorHex: '#111111', imageUrl: '', hoverImageUrl: '', imageUrls: [] }];
-      }
+          if (newRole === 'primary') {
+            if (newHover === imgUrl) newHover = '';
+            newPrimary = imgUrl;
+          } else if (newRole === 'hover') {
+            if (newPrimary === imgUrl) newPrimary = '';
+            newHover = imgUrl;
+          } else {
+            if (newPrimary === imgUrl) newPrimary = '';
+            if (newHover === imgUrl) newHover = '';
+          }
 
-      const targetColorIndex = updatedSwatches.findIndex(s => s.name === colorName) >= 0
-        ? updatedSwatches.findIndex(s => s.name === colorName)
-        : 0;
+          return { ...swatch, imageUrl: newPrimary, hoverImageUrl: newHover, imageUrls: newGroup };
+        } else {
+          // Remove imgUrl from other color swatches if assigned elsewhere
+          const newGroup = (swatch.imageUrls || []).filter(u => u !== imgUrl);
+          const newPrimary = swatch.imageUrl === imgUrl ? '' : swatch.imageUrl;
+          const newHover = swatch.hoverImageUrl === imgUrl ? '' : swatch.hoverImageUrl;
+          return { ...swatch, imageUrl: newPrimary, hoverImageUrl: newHover, imageUrls: newGroup };
+        }
+      });
 
-      const targetSwatch = { ...updatedSwatches[targetColorIndex] };
-      const groupImages = targetSwatch.imageUrls || [];
-      if (!groupImages.includes(imgUrl)) groupImages.push(imgUrl);
-      targetSwatch.imageUrls = groupImages;
-
-      if (newRole === 'primary') {
-        if (targetSwatch.hoverImageUrl === imgUrl) targetSwatch.hoverImageUrl = '';
-        targetSwatch.imageUrl = imgUrl;
-
-        const remainingImages = (prev.imageUrls || []).filter(u => u !== imgUrl);
-        const newImageUrls = [imgUrl, ...remainingImages];
-
-        updatedSwatches[targetColorIndex] = targetSwatch;
-        return {
-          ...prev,
-          imageUrls: newImageUrls,
-          colorSwatches: updatedSwatches
-        };
-      } else if (newRole === 'hover') {
-        if (targetSwatch.imageUrl === imgUrl) targetSwatch.imageUrl = '';
-        targetSwatch.hoverImageUrl = imgUrl;
-
-        updatedSwatches[targetColorIndex] = targetSwatch;
-        return {
-          ...prev,
-          colorSwatches: updatedSwatches
-        };
-      } else {
-        if (targetSwatch.imageUrl === imgUrl) targetSwatch.imageUrl = '';
-        if (targetSwatch.hoverImageUrl === imgUrl) targetSwatch.hoverImageUrl = '';
-
-        updatedSwatches[targetColorIndex] = targetSwatch;
-        return {
-          ...prev,
-          colorSwatches: updatedSwatches
-        };
-      }
+      return {
+        ...prev,
+        colorSwatches: updatedSwatches
+      };
     });
   };
 

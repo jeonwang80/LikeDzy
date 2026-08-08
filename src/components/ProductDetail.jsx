@@ -57,26 +57,25 @@ export default function ProductDetail({ product, onBack }) {
 
   const activeColor = colorSwatches[selectedColorIdx] || colorSwatches[0] || null;
 
-  // Filter and order images specifically for the selected active color
+  // Filter and order images strictly for the selected active color
   const displayImages = useMemo(() => {
     if (!activeColor) return images;
     
-    // 1. Gather photos specifically assigned to activeColor
-    let colorPhotos = [];
-    if (activeColor.imageUrls && activeColor.imageUrls.length > 0) {
-      colorPhotos = images.filter(url => activeColor.imageUrls.includes(url));
-    }
-    
-    if (colorPhotos.length === 0) {
-      colorPhotos = images.filter(url => {
-        if (activeColor.imageUrl && activeColor.imageUrl === url) return true;
-        if (activeColor.hoverImageUrl && activeColor.hoverImageUrl === url) return true;
-        const mapped = (product.colorSwatches || []).find(s => s.imageUrl === url || s.hoverImageUrl === url);
-        return mapped && mapped.name === activeColor.name;
-      });
-    }
+    // 1. Find all photos assigned specifically to activeColor
+    let colorPhotos = images.filter(url => {
+      if (activeColor.imageUrls && activeColor.imageUrls.includes(url)) return true;
+      if (activeColor.imageUrl && activeColor.imageUrl === url) return true;
+      if (activeColor.hoverImageUrl && activeColor.hoverImageUrl === url) return true;
 
-    // 2. If no photo explicitly assigned to this swatch yet, fallback by index/swatch imageUrl:
+      const mapped = (product.colorSwatches || []).find(s => 
+        (s.imageUrl && s.imageUrl === url) || 
+        (s.hoverImageUrl && s.hoverImageUrl === url) || 
+        (s.imageUrls && s.imageUrls.includes(url))
+      );
+      return mapped && mapped.name === activeColor.name;
+    });
+
+    // 2. Fallback if no photos explicitly assigned to this color yet:
     if (colorPhotos.length === 0) {
       const fallbackLead = activeColor.imageUrl 
         || (images.length > selectedColorIdx ? images[selectedColorIdx] : images[0]);
@@ -86,7 +85,7 @@ export default function ProductDetail({ product, onBack }) {
       return images;
     }
 
-    // 3. Sort colorPhotos so 대표 1 (primary) is first, 대표 2 (hover) is second
+    // 3. Sort colorPhotos so 대표 1 (primary) is 1st, 대표 2 (hover) is 2nd
     const primary = activeColor.imageUrl;
     const hover = activeColor.hoverImageUrl;
     const sorted = [...colorPhotos];
@@ -104,9 +103,8 @@ export default function ProductDetail({ product, onBack }) {
       sorted.splice(targetIdx, 0, hover);
     }
 
-    // Append remaining uncategorized product images if any
-    const remaining = images.filter(img => !sorted.includes(img));
-    return [...sorted, ...remaining];
+    // Return ONLY photos belonging to this selected color
+    return sorted;
   }, [product, activeColor, selectedColorIdx, images]);
 
   // Sizes pill array (from product options or default Alo Yoga sizes)
