@@ -55,6 +55,8 @@ export default function ProductDetail({ product, onBack }) {
     ? product.colorSwatches
     : (product.colors && product.colors.length > 0 ? product.colors : []);
 
+  const activeColor = colorSwatches[selectedColorIdx] || colorSwatches[0] || null;
+
   // Filter and order images specifically for the selected active color
   const displayImages = useMemo(() => {
     if (!activeColor) return images;

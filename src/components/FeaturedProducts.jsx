@@ -145,8 +145,16 @@ const AloProductCard = ({ product, onProductSelect, isWishlisted, onToggleWishli
   const [isHovered, setIsHovered] = useState(false);
 
   const activeColor = product.colorSwatches?.[selectedColorIdx] || product.colorSwatches?.[0];
-  const primaryImg = activeColor?.imageUrl || product.images?.[0] || '/models/model_1.png';
-  const hoverImg = activeColor?.hoverImageUrl || (product.images?.length > 1 ? product.images[1] : primaryImg);
+  const primaryImg = activeColor?.imageUrl 
+    || (activeColor?.imageUrls && activeColor.imageUrls[0]) 
+    || product.images?.[selectedColorIdx] 
+    || product.images?.[0] 
+    || '/models/model_1.png';
+
+  const hoverImg = activeColor?.hoverImageUrl 
+    || (activeColor?.imageUrls && activeColor.imageUrls[1]) 
+    || (product.images?.length > 1 ? (product.images.find(img => img !== primaryImg) || product.images[1]) : primaryImg);
+
   const mainImage = isHovered ? hoverImg : primaryImg;
 
   return (
