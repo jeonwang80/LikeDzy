@@ -219,6 +219,15 @@ export default function CollectionList({ onProductSelect }) {
   );
 }
 
+const getSafeImageUrl = (url, fallback = '/models/model_1.png') => {
+  if (!url || typeof url !== 'string') return fallback;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('blob:') || trimmed.startsWith('data:') || trimmed.startsWith('/')) {
+    return trimmed;
+  }
+  return fallback;
+};
+
 // Alo Yoga Product Card Component
 const CollectionItem = ({ product, onProductSelect, isWishlisted, onToggleWishlist }) => {
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
@@ -235,7 +244,7 @@ const CollectionItem = ({ product, onProductSelect, isWishlisted, onToggleWishli
     || (activeColor?.imageUrls && activeColor.imageUrls[1]) 
     || (product.images?.length > 1 ? (product.images.find(img => img !== primaryImg) || product.images[1]) : primaryImg);
 
-  const mainImage = isHovered ? hoverImg : primaryImg;
+  const mainImage = getSafeImageUrl(isHovered ? hoverImg : primaryImg);
 
   return (
     <div 
@@ -251,6 +260,10 @@ const CollectionItem = ({ product, onProductSelect, isWishlisted, onToggleWishli
           alt={product.name} 
           className="alo-card-img" 
           loading="lazy" 
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = '/models/model_1.png';
+          }}
         />
 
         {/* Wishlist Heart Icon */}

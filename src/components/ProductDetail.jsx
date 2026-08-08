@@ -188,10 +188,14 @@ export default function ProductDetail({ product, onBack }) {
                 onClick={() => setZoomImage(imgUrl)}
               >
                 <img 
-                  src={imgUrl} 
+                  src={imgUrl && (imgUrl.startsWith('http') || imgUrl.startsWith('blob:') || imgUrl.startsWith('data:') || imgUrl.startsWith('/')) ? imgUrl : '/models/model_1.png'} 
                   alt={`${name} - view ${idx + 1}`} 
                   className="alo-detail-img" 
                   loading={idx === 0 ? "eager" : "lazy"}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = '/models/model_1.png';
+                  }}
                 />
                 {idx === 0 && (
                   <span className="alo-model-tag">Model is wearing size M</span>

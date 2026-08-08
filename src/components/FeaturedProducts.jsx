@@ -140,6 +140,15 @@ export default function FeaturedProducts({ onProductSelect, onViewAll }) {
   );
 }
 
+const getSafeImageUrl = (url, fallback = '/models/model_1.png') => {
+  if (!url || typeof url !== 'string') return fallback;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('blob:') || trimmed.startsWith('data:') || trimmed.startsWith('/')) {
+    return trimmed;
+  }
+  return fallback;
+};
+
 const AloProductCard = ({ product, onProductSelect, isWishlisted, onToggleWishlist }) => {
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
@@ -155,7 +164,7 @@ const AloProductCard = ({ product, onProductSelect, isWishlisted, onToggleWishli
     || (activeColor?.imageUrls && activeColor.imageUrls[1]) 
     || (product.images?.length > 1 ? (product.images.find(img => img !== primaryImg) || product.images[1]) : primaryImg);
 
-  const mainImage = isHovered ? hoverImg : primaryImg;
+  const mainImage = getSafeImageUrl(isHovered ? hoverImg : primaryImg);
 
   return (
     <div 
@@ -170,6 +179,10 @@ const AloProductCard = ({ product, onProductSelect, isWishlisted, onToggleWishli
           alt={product.name} 
           className="alo-card-img" 
           loading="lazy" 
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = '/models/model_1.png';
+          }}
         />
 
         <button 
