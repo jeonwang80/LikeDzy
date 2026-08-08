@@ -1,4 +1,7 @@
-export const FALLBACK_PRODUCT_IMAGE = '/models/model_1.png';
+export const FALLBACK_PRODUCT_IMAGE = '/images/product-placeholder.svg';
+
+const isLegacyModelImage = (url) =>
+  typeof url === 'string' && url.toLowerCase().includes('model_1.png');
 
 export function formatProductPrice(product, language = 'ko') {
   const currencyByLanguage = {
@@ -73,7 +76,7 @@ export function sortProducts(products) {
 export function getSafeImageUrl(url, fallback = FALLBACK_PRODUCT_IMAGE) {
   if (!url || typeof url !== 'string') return fallback;
   const trimmed = url.trim();
-  if (!trimmed || trimmed.startsWith('blob:')) return fallback;
+  if (!trimmed || trimmed.startsWith('blob:') || isLegacyModelImage(trimmed)) return fallback;
   if (/^(https?:\/\/|data:|\/)/.test(trimmed)) return trimmed;
   return fallback;
 }
@@ -84,27 +87,42 @@ export function resolveProductCardImages(product, colorIndex = 0) {
     ...(activeColor?.imageUrls || []),
     ...(product?.images || []),
     product?.imageUrl,
-  ].filter((url) => typeof url === 'string' && url && !url.startsWith('blob:'));
+  ].filter((url) =>
+    typeof url === 'string'
+    && url
+    && !url.startsWith('blob:')
+    && !isLegacyModelImage(url)
+  );
 
-  const productImages = candidates.filter((url) => !url.includes('model_1.png'));
+  const productImages = candidates;
   const primary =
-    (activeColor?.imageUrl && !activeColor.imageUrl.includes('model_1.png') && activeColor.imageUrl)
-    || (activeColor?.hoverImageUrl && !activeColor.hoverImageUrl.includes('model_1.png') && activeColor.hoverImageUrl)
+    (activeColor?.imageUrl && !isLegacyModelImage(activeColor.imageUrl) && activeColor.imageUrl)
+    || (activeColor?.hoverImageUrl && !isLegacyModelImage(activeColor.hoverImageUrl) && activeColor.hoverImageUrl)
     || productImages[0]
-    || candidates[0]
     || FALLBACK_PRODUCT_IMAGE;
 
   const hover =
     (activeColor?.hoverImageUrl
       && activeColor.hoverImageUrl !== primary
-      && !activeColor.hoverImageUrl.includes('model_1.png')
+      && !isLegacyModelImage(activeColor.hoverImageUrl)
       && activeColor.hoverImageUrl)
     || productImages.find((image) => image !== primary)
     || primary;
 
+  const safePrimary = getSafeImageUrl(primary);
+  const safeHover = getSafeImageUrl(hover);
+
+  if (safePrimary === FALLBACK_PRODUCT_IMAGE && safeHover !== FALLBACK_PRODUCT_IMAGE) {
+    return {
+      activeColor,
+      primary: safeHover,
+      hover: safeHover,
+    };
+  }
+
   return {
     activeColor,
-    primary: getSafeImageUrl(primary),
-    hover: getSafeImageUrl(hover),
+    primary: safePrimary,
+    hover: safeHover,
   };
 }

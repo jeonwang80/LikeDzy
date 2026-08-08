@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, doc, updateDoc, getDocs, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductEditor from './ProductEditor';
+import { FALLBACK_PRODUCT_IMAGE, getSafeImageUrl } from '../utils/productPresentation';
 
 function InventoryModal({ product, onClose }) {
   const [options, setOptions] = useState(product.options || []);
@@ -270,7 +271,15 @@ export default function AdminInventory() {
                   return (
                     <tr key={product.id}>
                       <td>
-                        <img src={displayImage || '/models/model_1.png'} alt={product.name} style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px', backgroundColor: '#f5f5f5' }} />
+                        <img
+                          src={getSafeImageUrl(displayImage)}
+                          alt={product.name}
+                          onError={(event) => {
+                            event.currentTarget.onerror = null;
+                            event.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+                          }}
+                          style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px', backgroundColor: '#f5f5f5' }}
+                        />
                       </td>
                       <td style={{ color: '#707072', fontFamily: 'monospace', fontSize: '0.8rem' }}>
                         {product.id.slice(0, 8).toUpperCase()}

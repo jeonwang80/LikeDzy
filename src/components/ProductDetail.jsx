@@ -3,7 +3,11 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { useCart } from '../context/CartContext';
 import ProductReviews from './ProductReviews';
 import ProductQnA from './ProductQnA';
-import { formatProductPrice, getSafeImageUrl } from '../utils/productPresentation';
+import {
+  FALLBACK_PRODUCT_IMAGE,
+  formatProductPrice,
+  getSafeImageUrl,
+} from '../utils/productPresentation';
 import './CollectionList.css';
 
 export default function ProductDetail({ product, onBack }) {
@@ -30,9 +34,16 @@ export default function ProductDetail({ product, onBack }) {
 
   const images = useMemo(() => {
     if (!product) return [];
-    if (product.imageUrls?.length) return product.imageUrls;
-    if (product.images?.length) return product.images;
-    return [product.imageUrl || '/models/model_1.png'];
+    const candidates = product.imageUrls?.length
+      ? product.imageUrls
+      : product.images?.length
+        ? product.images
+        : [product.imageUrl];
+    const safeImages = candidates
+      .map((url) => getSafeImageUrl(url))
+      .filter((url) => url !== FALLBACK_PRODUCT_IMAGE);
+
+    return safeImages.length ? safeImages : [FALLBACK_PRODUCT_IMAGE];
   }, [product]);
 
   // Options & Swatches
@@ -174,7 +185,7 @@ export default function ProductDetail({ product, onBack }) {
                   loading={idx === 0 ? "eager" : "lazy"}
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = '/models/model_1.png';
+                    e.target.src = FALLBACK_PRODUCT_IMAGE;
                   }}
                 />
                 {idx === 0 && (

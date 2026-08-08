@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { resolveProductCardImages } from '../utils/productPresentation';
+import {
+  FALLBACK_PRODUCT_IMAGE,
+  resolveProductCardImages,
+} from '../utils/productPresentation';
 
 export default function ProductCard({
   product,
@@ -40,8 +43,16 @@ export default function ProductCard({
           fetchPriority={priority ? 'high' : 'auto'}
           style={{ opacity: isHovered && hasHoverImage ? 0 : 1 }}
           onError={(event) => {
-            event.currentTarget.onerror = null;
-            event.currentTarget.src = '/models/model_1.png';
+            const image = event.currentTarget;
+
+            if (hasHoverImage && image.dataset.fallbackStep !== 'hover') {
+              image.dataset.fallbackStep = 'hover';
+              image.src = hover;
+              return;
+            }
+
+            image.onerror = null;
+            image.src = FALLBACK_PRODUCT_IMAGE;
           }}
         />
 
