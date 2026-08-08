@@ -143,7 +143,8 @@ export default function FeaturedProducts({ onProductSelect, onViewAll }) {
 const getSafeImageUrl = (url, fallback = '/models/model_1.png') => {
   if (!url || typeof url !== 'string') return fallback;
   const trimmed = url.trim();
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('blob:') || trimmed.startsWith('data:') || trimmed.startsWith('/')) {
+  if (trimmed.startsWith('blob:')) return fallback;
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('/')) {
     return trimmed;
   }
   return fallback;

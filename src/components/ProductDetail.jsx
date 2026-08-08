@@ -16,9 +16,18 @@ const DEFAULT_COLOR_PALETTES = [
     { name: 'Dune Grass', colorHex: '#A3B18A' },
     { name: 'Black', colorHex: '#111111' },
     { name: 'Cherry', colorHex: '#721B24' },
-    { name: 'Heather Gray', colorHex: '#9E9E9E' }
   ]
 ];
+
+const getSafeImageUrl = (url, fallback = '/models/model_1.png') => {
+  if (!url || typeof url !== 'string') return fallback;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('blob:')) return fallback;
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('/')) {
+    return trimmed;
+  }
+  return fallback;
+};
 
 export default function ProductDetail({ product, onBack }) {
   const { t, language } = useLanguage();
@@ -188,7 +197,7 @@ export default function ProductDetail({ product, onBack }) {
                 onClick={() => setZoomImage(imgUrl)}
               >
                 <img 
-                  src={imgUrl && (imgUrl.startsWith('http') || imgUrl.startsWith('blob:') || imgUrl.startsWith('data:') || imgUrl.startsWith('/')) ? imgUrl : '/models/model_1.png'} 
+                  src={getSafeImageUrl(imgUrl)} 
                   alt={`${name} - view ${idx + 1}`} 
                   className="alo-detail-img" 
                   loading={idx === 0 ? "eager" : "lazy"}
