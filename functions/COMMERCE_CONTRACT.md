@@ -1,6 +1,6 @@
 # Commerce service contract
 
-This implementation has not been deployed. Existing live data is not migrated automatically.
+This implementation was deployed to likedzy-store on 2026-09-06 (Asia/Seoul). Existing live data is not migrated automatically. See docs/08_PRODUCTION_DEPLOYMENT.md for deployment details and remaining sales-opening configuration.
 
 ## Inventory
 
