@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { collection, query, where, orderBy, onSnapshot, addDoc, doc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, query, where, orderBy, onSnapshot, addDoc, doc, deleteDoc, limit, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 import { db, storage } from '../firebase';
+import { useAuth } from '../context/AuthContext';
+import { safeRating, toSafeDate } from '../utils/boardPresentation';
 
 export default function ProductReviews({ productId }) {
+  const { currentUser, isAdmin } = useAuth();
   const [reviews, setReviews] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({ author: '', password: '', rating: 5, content: '' });
+  const [form, setForm] = useState({ author: '', rating: 5, content: '' });
+  const [pageSize, setPageSize] = useState(20);
+  const [hasMore, setHasMore] = useState(false);
   
   // 사진 첨부 상태
   const [imageFiles, setImageFiles] = useState([]);
@@ -21,12 +26,22 @@ export default function ProductReviews({ productId }) {
   useEffect(() => {
     if (!productId) return;
     const q = query(
-      collection(db, 'reviews'), 
+      collection(db, 'reviewsV2'),
       where('productId', '==', productId),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'), limit(pageSize)
     );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setReviews(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() })));
+    let active = true;
+    let revision = 0;
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const currentRevision = ++revision;
+      const entries = await Promise.all(snapshot.docs.map(async (entry) => {
+        const data = entry.data();
+        const imageUrls = await Promise.all((data.imagePaths || []).slice(0, 4).map((path) => getDownloadURL(ref(storage, path)).catch(() => '')));
+        return { id: entry.id, ...data, imageUrls: imageUrls.filter(Boolean), createdAt: toSafeDate(data.createdAt) };
+      }));
+      if (!active || currentRevision !== revision) return;
+      setReviews(entries);
+      setHasMore(snapshot.size >= pageSize);
       setLoading(false);
       setErrorMsg(null);
     }, (error) => {
@@ -34,12 +49,16 @@ export default function ProductReviews({ productId }) {
       setErrorMsg("리뷰를 불러오는 중 오류가 발생했습니다. (설정 확인 필요)");
       setLoading(false);
     });
-    return () => unsubscribe();
-  }, [productId]);
+    return () => { active = false; unsubscribe(); };
+  }, [productId, pageSize]);
 
   const handleImageChange = (e) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
+      if (newFiles.some((file) => !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 10 * 1024 * 1024)) {
+        alert('사진은 JPG, PNG, WebP, GIF 형식, 한 장당 10MB 이하로 선택해 주세요.');
+        return;
+      }
       if (imageFiles.length + newFiles.length > 4) {
         alert("사진은 최대 4장까지만 첨부할 수 있습니다.");
         return;
@@ -57,30 +76,36 @@ export default function ProductReviews({ productId }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.author || !form.password || !form.content) return alert('모든 항목을 입력해주세요.');
+    if (!currentUser) return alert('로그인 후 리뷰를 작성해 주세요.');
+    if (!form.author.trim() || !form.content.trim()) return alert('닉네임과 내용을 입력해 주세요.');
     setIsSubmitting(true);
     try {
-      let uploadedUrls = [];
+      const uploadedPaths = [];
       if (imageFiles.length > 0) {
-        const options = { maxSizeMB: 0.5, maxWidthOrHeight: 1200, useWebWorker: true }; // 사진 용량 최적화
+        const options = { maxSizeMB: 0.5, maxWidthOrHeight: 1200, useWebWorker: true, fileType: 'image/webp' };
         for (const file of imageFiles) {
           const compressedFile = await imageCompression(file, options);
-          const imageRef = ref(storage, `reviews/${Date.now()}_${compressedFile.name}`);
-          const snapshot = await uploadBytes(imageRef, compressedFile);
-          const url = await getDownloadURL(snapshot.ref);
-          uploadedUrls.push(url);
+          const path = `users/${currentUser.uid}/reviews/${crypto.randomUUID()}.webp`;
+          await uploadBytes(ref(storage, path), compressedFile, { contentType: 'image/webp' });
+          uploadedPaths.push(path);
         }
       }
 
-      await addDoc(collection(db, 'reviews'), {
+      await addDoc(collection(db, 'reviewsV2'), {
         productId,
-        ...form,
-        imageUrls: uploadedUrls,
-        createdAt: new Date()
+        schemaVersion: 2,
+        userId: currentUser.uid,
+        author: form.author.trim(),
+        content: form.content.trim(),
+        rating: safeRating(form.rating),
+        purchaseVerified: false,
+        imagePaths: uploadedPaths,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
       alert('리뷰가 등록되었습니다.');
       setShowModal(false);
-      setForm({ author: '', password: '', rating: 5, content: '' });
+      setForm({ author: '', rating: 5, content: '' });
       setImageFiles([]);
       setPreviewUrls([]);
     } catch (error) {
@@ -92,15 +117,11 @@ export default function ProductReviews({ productId }) {
   };
 
   const handleDeleteClick = async (review) => {
-    const pwd = window.prompt("리뷰 작성 시 입력한 비밀번호를 입력하세요.");
-    if (pwd === null) return; // 취소 누름
-    if (pwd !== review.password) {
-      alert("비밀번호가 일치하지 않습니다.");
-      return;
-    }
+    if (!currentUser || (!isAdmin && review.userId !== currentUser.uid)) return;
     if (window.confirm("정말 이 리뷰를 삭제하시겠습니까?")) {
       try {
-        await deleteDoc(doc(db, 'reviews', review.id));
+        await deleteDoc(doc(db, 'reviewsV2', review.id));
+        await Promise.allSettled((review.imagePaths || []).map((path) => deleteObject(ref(storage, path))));
         alert("리뷰가 삭제되었습니다.");
       } catch (error) {
         console.error("Delete error:", error);
@@ -110,17 +131,19 @@ export default function ProductReviews({ productId }) {
   };
 
   const renderStars = (rating) => {
-    return '★'.repeat(rating) + '☆'.repeat(5 - rating);
+    const value = safeRating(rating);
+    return '★'.repeat(value) + '☆'.repeat(5 - value);
   };
 
   return (
     <div style={{ marginTop: '3rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h3 style={{ fontSize: '1.25rem', margin: 0 }}>고객 리뷰 ({reviews.length})</h3>
-        <button onClick={() => setShowModal(true)} style={{ padding: '0.5rem 1rem', background: '#1e293b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+        <button onClick={() => currentUser ? setShowModal(true) : window.location.assign('#/login')} style={{ padding: '0.5rem 1rem', background: '#1e293b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
           리뷰 작성하기
         </button>
       </div>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>로그인 후 작성할 수 있습니다. 공개 리뷰와 사진에 전화번호, 주소 등 개인정보를 포함하지 마세요. 구매 인증 여부는 별도 확인 전까지 미인증으로 표시됩니다.</p>
 
       {loading ? (
         <p style={{ color: '#94a3b8' }}>리뷰를 불러오는 중...</p>
@@ -139,12 +162,12 @@ export default function ProductReviews({ productId }) {
                     {review.createdAt ? review.createdAt.toLocaleDateString() : ''}
                   </span>
                 </div>
-                <button 
+                {(isAdmin || currentUser?.uid === review.userId) && <button
                   onClick={() => handleDeleteClick(review)}
                   style={{ border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)' }}
                 >
                   삭제
-                </button>
+                </button>}
               </div>
               
               {/* 첨부된 사진 렌더링 */}
@@ -164,12 +187,13 @@ export default function ProductReviews({ productId }) {
 
               <p style={{ margin: '0 0 1rem 0', lineHeight: '1.6' }}>{review.content}</p>
               <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 'bold' }}>
-                작성자: {review.author}
+                작성자: {review.author} · {review.purchaseVerified ? '구매 인증' : '구매 미인증'}
               </div>
             </div>
           ))}
         </div>
       )}
+      {hasMore && <button type="button" className="btn-secondary" onClick={() => setPageSize((size) => size + 20)}>리뷰 더 보기</button>}
 
       {/* 사진 확대 모달 */}
       {expandedImage && createPortal(
@@ -194,12 +218,8 @@ export default function ProductReviews({ productId }) {
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>이름</label>
-                  <input required value={form.author} onChange={e => setForm({...form, author: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '4px' }} placeholder="홍길동" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>비밀번호</label>
-                  <input required type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '4px' }} placeholder="4자리 이상" />
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>닉네임</label>
+                  <input required maxLength={40} value={form.author} onChange={e => setForm({...form, author: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '4px' }} placeholder="공개할 닉네임" />
                 </div>
               </div>
               
@@ -216,7 +236,7 @@ export default function ProductReviews({ productId }) {
 
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>리뷰 내용</label>
-                <textarea required value={form.content} onChange={e => setForm({...form, content: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '4px', minHeight: '100px', fontFamily: 'inherit' }} placeholder="솔직한 리뷰를 남겨주세요." />
+                <textarea required maxLength={3000} value={form.content} onChange={e => setForm({...form, content: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '4px', minHeight: '100px', fontFamily: 'inherit' }} placeholder="솔직한 리뷰를 남겨주세요." />
               </div>
 
               <div>

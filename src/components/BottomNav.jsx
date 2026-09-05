@@ -14,7 +14,7 @@ export default function BottomNav() {
   const viewMode = searchParams.get('view') || 'home';
 
   // 현재 경로가 어드민이면 쇼핑몰 하단 네비게이션 숨김
-  if (location.pathname.startsWith('/admin')) {
+  if (location.pathname.startsWith('/admin') || location.pathname === '/checkout') {
     return null;
   }
 

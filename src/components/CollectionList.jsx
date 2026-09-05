@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
 import { useLanguage } from '../i18n/LanguageContext';
-import { presentProduct, sortProducts } from '../utils/productPresentation';
+import { presentProduct } from '../utils/productPresentation';
+import { normalizeCategoryCode } from '../utils/categoryMatching';
+import { useProductCatalog } from '../hooks/useProductCatalog';
 import ProductCard from './ProductCard';
 import { formatCategoryPath, getCategoryName, useCategoryMasters } from '../hooks/useCategoryMasters';
 import './CollectionList.css';
@@ -14,10 +14,8 @@ export default function CollectionList({ onProductSelect }) {
   const { language, t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
-  const { categories: categoryMasters } = useCategoryMasters({ activeOnly: true });
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState('newest');
+  const { categories: categoryMasters, loading: categoriesLoading } = useCategoryMasters({ activeOnly: true });
+  const [sortBy, setSortBy] = useState('display');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [wishlist, setWishlist] = useState(() => {
     try {
@@ -27,15 +25,18 @@ export default function CollectionList({ onProductSelect }) {
     }
   });
 
-  const selectedCategory = new URLSearchParams(location.search).get('category') || 'ALL';
+  const selectedCategory = normalizeCategoryCode(new URLSearchParams(location.search).get('category')) || 'ALL';
+  const { products, loading, loadingMore, hasMore, total, error, loadMore, reload } = useProductCatalog({
+    category: selectedCategory, categoryMasters, categoriesLoading, sortBy, language,
+  });
 
   const selectedCategoryLabel = useMemo(() => {
     if (selectedCategory === 'ALL') return t('collection.title');
-    const exactCategory = categoryMasters.find((category) => category.code === selectedCategory);
+    const exactCategory = categoryMasters.find((category) => normalizeCategoryCode(category.code) === selectedCategory);
     if (exactCategory) return formatCategoryPath(exactCategory, language);
 
     const codeParts = selectedCategory.split('-');
-    const matchingCategory = categoryMasters.find((category) => category.code?.startsWith(`${selectedCategory}-`));
+    const matchingCategory = categoryMasters.find((category) => normalizeCategoryCode(category.code).startsWith(`${selectedCategory}-`));
     if (!matchingCategory) return selectedCategory;
     if (codeParts.length === 1) return getCategoryName(matchingCategory, 1, language) || selectedCategory;
     if (codeParts.length === 2) return [1, 2].map((level) => getCategoryName(matchingCategory, level, language)).filter(Boolean).join(' / ');
@@ -46,9 +47,10 @@ export default function CollectionList({ onProductSelect }) {
     const topLevelCategories = [];
     const registeredCodes = new Set();
     categoryMasters.forEach((category) => {
-      if (!category.level1Code || registeredCodes.has(category.level1Code)) return;
-      registeredCodes.add(category.level1Code);
-      topLevelCategories.push({ code: category.level1Code, label: getCategoryName(category, 1, language) });
+      const level1Code = normalizeCategoryCode(category.level1Code);
+      if (!level1Code || registeredCodes.has(level1Code)) return;
+      registeredCodes.add(level1Code);
+      topLevelCategories.push({ code: level1Code, label: getCategoryName(category, 1, language) });
     });
 
     const baseFilters = topLevelCategories.length > 0
@@ -70,41 +72,7 @@ export default function CollectionList({ onProductSelect }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-    const unsubscribe = onSnapshot(
-      collection(db, 'products'),
-      (snapshot) => {
-        const nextProducts = snapshot.docs.map((productDoc) => ({
-          id: productDoc.id,
-          ...productDoc.data(),
-        }));
-        setProducts(sortProducts(nextProducts));
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Error listening to collection:', error);
-        setLoading(false);
-      },
-    );
-
-    return unsubscribe;
-  }, []);
-
-  const filteredProducts = useMemo(() => {
-    const presented = products.map((product) => presentProduct(product, language));
-    return presented
-      .filter((product) => {
-        if (selectedCategory === 'ALL') return true;
-        return product.category.toUpperCase().includes(selectedCategory);
-      })
-      .sort((a, b) => {
-        if (sortBy === 'price-asc') return a.numericPrice - b.numericPrice;
-        if (sortBy === 'price-desc') return b.numericPrice - a.numericPrice;
-        if (sortBy === 'name') return a.name.localeCompare(b.name);
-        return 0;
-      });
-  }, [language, products, selectedCategory, sortBy]);
+  const filteredProducts = useMemo(() => products.map((product) => presentProduct(product, language)), [products, language]);
 
   const toggleWishlist = (productId, event) => {
     event.stopPropagation();
@@ -112,12 +80,13 @@ export default function CollectionList({ onProductSelect }) {
       const next = current.includes(productId)
         ? current.filter((id) => id !== productId)
         : [...current, productId];
-      localStorage.setItem('likedzy_wishlist', JSON.stringify(next));
+      try { localStorage.setItem('likedzy_wishlist', JSON.stringify(next)); } catch { /* Keep the current selection. */ }
       return next;
     });
   };
 
   const sortLabel = {
+    display: t('collection.sortDisplay'),
     newest: t('collection.sortNewest'),
     'price-asc': t('collection.sortLow'),
     'price-desc': t('collection.sortHigh'),
@@ -164,6 +133,7 @@ export default function CollectionList({ onProductSelect }) {
             {showSortDropdown && (
               <div className="sort-dropdown-menu">
                 {[
+                  ['display', t('collection.sortDisplay')],
                   ['newest', t('collection.sortNewest')],
                   ['price-asc', t('collection.sortLow')],
                   ['price-desc', t('collection.sortHigh')],
@@ -186,7 +156,7 @@ export default function CollectionList({ onProductSelect }) {
         </div>
 
         <div className="collection-count-badge">
-          {filteredProducts.length} {t('collection.products')}
+          {total ?? filteredProducts.length}{total === null && hasMore ? '+' : ''} {t('collection.products')}
         </div>
       </div>
 
@@ -200,6 +170,8 @@ export default function CollectionList({ onProductSelect }) {
             </div>
           ))}
         </div>
+      ) : error && filteredProducts.length === 0 ? (
+        <div role="alert" className="collection-empty-state"><p>{error}</p><button type="button" onClick={reload}>다시 시도</button></div>
       ) : filteredProducts.length === 0 ? (
         <div className="collection-empty-state">
           <span>NO PRODUCTS YET</span>
@@ -219,6 +191,14 @@ export default function CollectionList({ onProductSelect }) {
               priority={index < 4}
             />
           ))}
+        </div>
+      )}
+      {!loading && filteredProducts.length > 0 && error && <p role="alert" style={{ textAlign: 'center' }}>{error}</p>}
+      {!loading && hasMore && (
+        <div style={{ padding: '2rem', textAlign: 'center' }}>
+          <button type="button" className="outdoor-view-all-btn" disabled={loadingMore} onClick={loadMore}>
+            {loadingMore ? '상품을 불러오는 중…' : '상품 더 보기'}
+          </button>
         </div>
       )}
     </section>

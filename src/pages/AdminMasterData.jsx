@@ -8,6 +8,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import AdminAuthorization from '../components/AdminAuthorization';
+import AdminCommerceSettings from '../components/AdminCommerceSettings';
 import { db } from '../firebase';
 import { useCategoryMasters } from '../hooks/useCategoryMasters';
 
@@ -236,9 +237,9 @@ export default function AdminMasterData() {
     <div className="admin-page admin-master-page">
       <header className="admin-page-header">
         <div>
-          <span className="admin-page-eyebrow">MASTER DATA / CATEGORY</span>
+          <span className="admin-page-eyebrow">MASTER DATA / STORE</span>
           <h1>기준정보</h1>
-          <p>분류 코드와 한국어·영어·베트남어 명칭을 스프레드시트 방식으로 관리합니다.</p>
+          <p>판매·배송 정책과 카테고리, 관리자 계정을 한곳에서 관리합니다.</p>
         </div>
         <span className="admin-page-count">{activeCount} ACTIVE / {categories.length} TOTAL</span>
       </header>
@@ -250,6 +251,8 @@ export default function AdminMasterData() {
         </div>
         <p>각 행에서 3레벨 코드와 다국어 명칭, 표시 순서를 한 번에 입력하고 저장합니다.</p>
       </section>
+
+      <AdminCommerceSettings />
 
       <AdminAuthorization />
 

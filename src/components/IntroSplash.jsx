@@ -1,85 +1,75 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import './IntroSplash.css'; // 별도 CSS 파일 사용
+import './IntroSplash.css';
+
+const SESSION_KEY = 'likedzy-intro-seen';
+const MAX_SPLASH_MS = 3500;
 
 export default function IntroSplash({ onComplete }) {
-  const [stage, setStage] = useState('loading'); // 'loading', 'entering', 'zooming', 'hidden'
-  const [bgImageUrl, setBgImageUrl] = useState(null); 
-  const [isCustomImage, setIsCustomImage] = useState(false);
+  const [stage, setStage] = useState('loading');
+  const [bgImageUrl, setBgImageUrl] = useState('');
+  const completeRef = useRef(onComplete);
+  const completedRef = useRef(false);
+
+  useEffect(() => { completeRef.current = onComplete; }, [onComplete]);
+
+  const finish = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    try { sessionStorage.setItem(SESSION_KEY, '1'); } catch { /* Optional session preference. */ }
+    setStage('hidden');
+    completeRef.current?.();
+  }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    let zoomTimer;
-    let hideTimer;
-    
-    const startAnimations = () => {
-      if (!isMounted) return;
+    let disposed = false;
+    let animationTimer;
+    let image;
+    const maxTimer = window.setTimeout(finish, MAX_SPLASH_MS);
+    const start = () => {
+      if (disposed || completedRef.current) return;
       setStage('entering');
-      
-      zoomTimer = setTimeout(() => {
-        if (isMounted) setStage('zooming');
-      }, 1000); // 1초 대기 후 줌인
-
-      hideTimer = setTimeout(() => {
-        if (isMounted) {
-          setStage('hidden');
-          if (onComplete) onComplete();
-        }
-      }, 2000); // 총 2초 후 완료
+      animationTimer = window.setTimeout(finish, 1200);
     };
-
-    const fetchSplashImage = async () => {
+    const load = async () => {
       try {
-        const docSnap = await getDoc(doc(db, 'settings', 'main'));
-        if (docSnap.exists() && docSnap.data().splashImageUrl) {
-          const url = docSnap.data().splashImageUrl;
-          setBgImageUrl(url);
-          setIsCustomImage(true);
-          
-          // 이미지 프리로딩
-          const img = new Image();
-          img.src = url;
-          img.onload = startAnimations;
-          img.onerror = startAnimations; // 에러나도 진행
-        } else {
-          // 커스텀 이미지 없을 때
-          setBgImageUrl('/favicon.png');
-          setIsCustomImage(false);
-          startAnimations();
-        }
-      } catch (error) {
-        console.error("Error fetching splash image:", error);
-        setBgImageUrl('/favicon.png');
-        setIsCustomImage(false);
-        startAnimations();
+        if (sessionStorage.getItem(SESSION_KEY)) { finish(); return; }
+      } catch { /* Still provide the skip button when session storage is blocked. */ }
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { finish(); return; }
+      try {
+        const snapshot = await getDoc(doc(db, 'settings', 'main'));
+        if (disposed || completedRef.current) return;
+        const data = snapshot.exists() ? snapshot.data() : {};
+        if (data.splashEnabled === false) { finish(); return; }
+        if (!data.splashImageUrl) { start(); return; }
+        image = new Image();
+        image.onload = () => { setBgImageUrl(data.splashImageUrl); start(); };
+        image.onerror = start;
+        image.src = data.splashImageUrl;
+      } catch {
+        if (!disposed) finish();
       }
     };
-
-    fetchSplashImage();
-
+    load();
     return () => {
-      isMounted = false;
-      clearTimeout(zoomTimer);
-      clearTimeout(hideTimer);
+      disposed = true;
+      window.clearTimeout(maxTimer);
+      window.clearTimeout(animationTimer);
+      if (image) { image.onload = null; image.onerror = null; }
     };
-  }, [onComplete]);
+  }, [finish]);
 
   if (stage === 'hidden') return null;
-
   return (
-    <div className={`intro-splash-overlay ${stage === 'zooming' ? 'zoom-out' : ''}`}>
+    <div className="intro-splash-overlay" aria-label="LIKEDZY 소개">
+      <button type="button" onClick={finish} style={{ position: 'absolute', right: 24, top: 24, zIndex: 1, padding: '12px 18px', color: '#fff', background: '#222', border: '1px solid #fff', borderRadius: 24 }}>
+        건너뛰기
+      </button>
       {stage !== 'loading' && (
-        <div 
-          className="intro-splash-background"
-          style={isCustomImage ? {
-            backgroundImage: `url(${bgImageUrl})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          } : {}}
-        >
-          <div className="intro-splash-content" style={{ marginTop: '0' }}>
-            <h1 className="intro-splash-logo">LikeDzy</h1>
+        <div className="intro-splash-background" style={bgImageUrl ? { backgroundImage: `url(${bgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+          <div className="intro-splash-content">
+            <h1 className="intro-splash-logo">LIKEDZY</h1>
             <p className="intro-splash-text">프리미엄을 경험하다</p>
           </div>
         </div>

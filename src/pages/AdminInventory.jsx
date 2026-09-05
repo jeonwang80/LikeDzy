@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { collection, deleteDoc, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, limit, query, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductEditor from './ProductEditor';
+import InventoryModal from '../components/VariantInventory';
 import { FALLBACK_PRODUCT_IMAGE, formatProductPrice, getSafeImageUrl } from '../utils/productPresentation';
 import { formatCategoryPath, useCategoryMasters } from '../hooks/useCategoryMasters';
 
@@ -14,13 +15,9 @@ const sortProductList = (items) => [...items].sort((a, b) => {
   return timeB - timeA;
 });
 
-const getTotalStock = (product) => (
-  (product.options || []).reduce((total, option) => total + (Number(option.stock) || 0), 0)
-);
+const getTotalStock = (product) => product.skuStock || 0;
 
-const getTotalSales = (product) => (
-  (product.options || []).reduce((total, option) => total + (Number(option.sales) || 0), 0)
-);
+const getTotalSales = (product) => product.skuSales || 0;
 
 const getDisplayImage = (product) => (
   product.imageUrls?.[0]
@@ -29,142 +26,15 @@ const getDisplayImage = (product) => (
   || FALLBACK_PRODUCT_IMAGE
 );
 
-function InventoryModal({ product, onClose }) {
-  const [options, setOptions] = useState(product.options || []);
-  const [loading, setLoading] = useState(false);
-  const [expandedHistoryIdx, setExpandedHistoryIdx] = useState(null);
-
-  const handleAddOption = () => {
-    setOptions((current) => [...current, { name: '', stock: 0, sales: 0, history: [] }]);
-  };
-
-  const handleOptionChange = (index, field, value) => {
-    setOptions((current) => current.map((option, optionIndex) => (
-      optionIndex === index
-        ? { ...option, [field]: field === 'stock' ? parseInt(value, 10) || 0 : value }
-        : option
-    )));
-  };
-
-  const handleRemoveOption = (index) => {
-    setOptions((current) => current.filter((_, optionIndex) => optionIndex !== index));
-  };
-
-  const handleSave = async () => {
-    setLoading(true);
-    try {
-      const originalOptions = product.options || [];
-      const updatedOptions = options.map((option) => {
-        const originalOption = originalOptions.find((item) => item.name === option.name);
-        const diff = option.stock - (originalOption?.stock || 0);
-        const history = diff === 0
-          ? (option.history || [])
-          : [{ date: new Date().toISOString(), type: '관리자 수동 변경', amount: diff }, ...(option.history || [])];
-
-        return { ...option, history, sales: option.sales || 0 };
-      });
-
-      await updateDoc(doc(db, 'products', product.id), { options: updatedOptions });
-      onClose();
-    } catch (error) {
-      console.error(error);
-      alert('재고 저장 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="admin-modal-overlay" role="dialog" aria-modal="true" aria-label="재고 및 옵션 관리">
-      <section className="admin-drawer">
-        <header className="admin-drawer-header">
-          <div>
-            <span>INVENTORY CONTROL</span>
-            <h2>재고 및 옵션 관리</h2>
-            <p>{product.name} · {product.id.slice(0, 8).toUpperCase()}</p>
-          </div>
-          <button type="button" className="admin-icon-btn" onClick={onClose} aria-label="닫기">×</button>
-        </header>
-
-        <div className="admin-drawer-summary">
-          <div><span>옵션</span><strong>{options.length}</strong></div>
-          <div><span>총 재고</span><strong>{options.reduce((sum, item) => sum + (item.stock || 0), 0)}</strong></div>
-          <button type="button" className="admin-btn-secondary" onClick={handleAddOption}>+ 옵션 추가</button>
-        </div>
-
-        <div className="admin-option-list">
-          {options.length === 0 ? (
-            <div className="admin-empty-state compact">
-              <strong>등록된 옵션이 없습니다.</strong>
-              <span>사이즈 또는 색상 옵션을 추가하세요.</span>
-            </div>
-          ) : options.map((option, index) => (
-            <article className="admin-option-card" key={`${option.name}-${index}`}>
-              <div className="admin-option-grid">
-                <label>
-                  <span>옵션명</span>
-                  <input
-                    className="admin-input"
-                    value={option.name}
-                    onChange={(event) => handleOptionChange(index, 'name', event.target.value)}
-                    placeholder="예: Black / M"
-                  />
-                </label>
-                <label>
-                  <span>현재 재고</span>
-                  <input
-                    className="admin-input"
-                    type="number"
-                    min="0"
-                    value={option.stock}
-                    onChange={(event) => handleOptionChange(index, 'stock', event.target.value)}
-                  />
-                </label>
-                <div className="admin-option-readonly">
-                  <span>누적 판매</span>
-                  <strong>{option.sales || 0}</strong>
-                </div>
-                <button type="button" className="admin-icon-btn danger" onClick={() => handleRemoveOption(index)} aria-label="옵션 삭제">×</button>
-              </div>
-
-              {!!option.history?.length && (
-                <div className="admin-option-history">
-                  <button type="button" onClick={() => setExpandedHistoryIdx(expandedHistoryIdx === index ? null : index)}>
-                    변경 이력 {option.history.length}건 {expandedHistoryIdx === index ? '접기' : '보기'}
-                  </button>
-                  {expandedHistoryIdx === index && (
-                    <div>
-                      {option.history.map((history, historyIndex) => (
-                        <p key={`${history.date}-${historyIndex}`}>
-                          <span>{new Date(history.date).toLocaleString()}</span>
-                          <span>{history.type}</span>
-                          <strong className={history.amount > 0 ? 'positive' : 'negative'}>
-                            {history.amount > 0 ? `+${history.amount}` : history.amount}
-                          </strong>
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </article>
-          ))}
-        </div>
-
-        <footer className="admin-drawer-footer">
-          <button type="button" className="admin-btn-secondary" onClick={onClose} disabled={loading}>취소</button>
-          <button type="button" className="admin-btn-primary" onClick={handleSave} disabled={loading}>
-            {loading ? '저장 중...' : '재고 저장'}
-          </button>
-        </footer>
-      </section>
-    </div>
-  );
-}
-
 export default function AdminInventory() {
   const { categories: categoryMasters } = useCategoryMasters();
-  const [products, setProducts] = useState([]);
+  const [rawProducts, setProducts] = useState([]);
+  const [inventory, setInventory] = useState([]);
+  const products = useMemo(() => rawProducts.map((product) => ({ ...product,
+    skuStock: inventory.filter((item) => item.productId === product.id).reduce((sum, item) => sum + (Number(item.stock) || 0), 0),
+    skuSales: inventory.filter((item) => item.productId === product.id).reduce((sum, item) => sum + (Number(item.sold) || 0), 0),
+  })), [rawProducts, inventory]);
+  useEffect(() => onSnapshot(query(collection(db, 'inventory'), limit(1000)), (snapshot) => setInventory(snapshot.docs.map((entry) => entry.data())), () => setInventory([])), []);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -229,9 +99,9 @@ export default function AdminInventory() {
   };
 
   const handleDelete = async (product) => {
-    if (!window.confirm(`[${product.name}] 상품을 삭제할까요? 삭제 후 복구할 수 없습니다.`)) return;
+    if (!window.confirm(`[${product.name}] 상품의 판매를 ${product.isActive === false ? '재개' : '중지'}할까요? 주문 기록과 파일은 보존됩니다.`)) return;
     try {
-      await deleteDoc(doc(db, 'products', product.id));
+      await updateDoc(doc(db, 'products', product.id), { isActive: product.isActive === false });
     } catch (error) {
       console.error('Error deleting product:', error);
       alert('상품 삭제 중 오류가 발생했습니다.');
@@ -366,7 +236,7 @@ export default function AdminInventory() {
 
               <div className="admin-stock-summary">
                 <strong className={stock === 0 ? 'sold-out' : stock <= 5 ? 'low-stock' : ''}>{stock}개</strong>
-                <span>판매 {sales}개 · 옵션 {(product.options || []).length}개</span>
+                <span>판매 {sales}개 · SKU 기준 · 옵션 {(product.options || []).length}개</span>
               </div>
 
               <div className="admin-order-controls">
@@ -378,7 +248,7 @@ export default function AdminInventory() {
               <div className="admin-product-actions">
                 <button type="button" className="admin-btn-secondary" onClick={() => setSelectedProduct(product)}>재고</button>
                 <button type="button" className="admin-btn-primary" onClick={() => handleEdit(product)}>편집</button>
-                <button type="button" className="admin-more-btn" onClick={() => handleDelete(product)} aria-label="상품 삭제">삭제</button>
+                <button type="button" className="admin-more-btn" onClick={() => handleDelete(product)} aria-label="상품 삭제">{product.isActive === false ? '판매 재개' : '판매 중지'}</button>
               </div>
             </article>
           );
@@ -390,7 +260,7 @@ export default function AdminInventory() {
         <ProductEditor
           product={editingProduct}
           onClose={() => setIsEditorOpen(false)}
-          onSaved={() => setIsEditorOpen(false)}
+          onSaved={(savedProduct) => setEditingProduct(savedProduct)}
         />
       )}
     </div>

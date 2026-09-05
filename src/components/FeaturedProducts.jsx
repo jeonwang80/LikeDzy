@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import React, { useMemo, useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
-import { presentProduct, sortProducts } from '../utils/productPresentation';
+import { presentProduct } from '../utils/productPresentation';
+import { useProductCatalog } from '../hooks/useProductCatalog';
 import ProductCard from './ProductCard';
 import './FeaturedProducts.css';
 import './CollectionList.css';
@@ -11,8 +10,7 @@ const FEATURED_LIMIT = 8;
 
 export default function FeaturedProducts({ onProductSelect, onViewAll }) {
   const { language, t } = useLanguage();
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { products, loading, error, reload } = useProductCatalog({ pageSize: FEATURED_LIMIT, featured: true, language });
   const [wishlist, setWishlist] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('likedzy_wishlist') || '[]');
@@ -21,32 +19,10 @@ export default function FeaturedProducts({ onProductSelect, onViewAll }) {
     }
   });
 
-  useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, 'products'),
-      (snapshot) => {
-        const nextProducts = snapshot.docs.map((productDoc) => ({
-          id: productDoc.id,
-          ...productDoc.data(),
-        }));
-        setProducts(sortProducts(nextProducts));
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Error listening to products:', error);
-        setLoading(false);
-      },
-    );
-
-    return unsubscribe;
-  }, []);
-
-  const featuredProducts = useMemo(() => {
-    const presented = products.map((product) => presentProduct(product, language));
-    const selected = presented.filter((product) => product.isFeatured || product.isBestSeller);
-    const selectedIds = new Set(selected.map((product) => product.id));
-    const fallback = presented.filter((product) => !selectedIds.has(product.id));
-    return [...selected, ...fallback].slice(0, FEATURED_LIMIT);
+  const visibleProducts = useMemo(() => {
+    return products
+      .map((product) => presentProduct(product, language))
+      .slice(0, FEATURED_LIMIT);
   }, [language, products]);
 
   const toggleWishlist = (productId, event) => {
@@ -55,7 +31,7 @@ export default function FeaturedProducts({ onProductSelect, onViewAll }) {
       const next = current.includes(productId)
         ? current.filter((id) => id !== productId)
         : [...current, productId];
-      localStorage.setItem('likedzy_wishlist', JSON.stringify(next));
+      try { localStorage.setItem('likedzy_wishlist', JSON.stringify(next)); } catch { /* Keep the current selection. */ }
       return next;
     });
   };
@@ -72,9 +48,11 @@ export default function FeaturedProducts({ onProductSelect, onViewAll }) {
             </div>
           ))}
         </div>
+      ) : error ? (
+        <div role="alert" className="collection-empty-state"><p>{error}</p><button type="button" onClick={reload}>다시 시도</button></div>
       ) : (
         <div className="collection-grid-alo">
-          {featuredProducts.map((product, index) => (
+          {visibleProducts.map((product, index) => (
             <ProductCard
               key={product.id}
               product={product}

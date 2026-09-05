@@ -1,14 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
-  onAuthStateChanged, 
+  onIdTokenChanged,
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
   GoogleAuthProvider, 
   signInWithPopup,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendEmailVerification
 } from 'firebase/auth';
 import { auth } from '../firebase';
+import { resolveAdminAccess } from '../utils/adminAccess';
 
 const AuthContext = createContext();
 
@@ -19,9 +21,14 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(true);
+  const [adminError, setAdminError] = useState('');
 
-  function signup(email, password) {
-    return createUserWithEmailAndPassword(auth, email, password);
+  async function signup(email, password) {
+    const credential = await createUserWithEmailAndPassword(auth, email, password);
+    await sendEmailVerification(credential.user);
+    return credential;
   }
 
   function login(email, password) {
@@ -42,16 +49,33 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, user => {
+    let generation = 0;
+    const unsubscribe = onIdTokenChanged(auth, async (user) => {
+      const currentGeneration = ++generation;
       setCurrentUser(user);
       setLoading(false);
+      setIsAdmin(false);
+      setAdminError('');
+      setAdminLoading(true);
+      try {
+        const authorized = await resolveAdminAccess(user);
+        if (currentGeneration === generation) setIsAdmin(authorized);
+      } catch {
+        if (currentGeneration === generation) setAdminError('관리자 권한을 확인할 수 없습니다. 다시 로그인해 주세요.');
+      } finally {
+        if (currentGeneration === generation) setAdminLoading(false);
+      }
     });
 
-    return unsubscribe;
+    return () => { generation += 1; unsubscribe(); };
   }, []);
 
   const value = {
     currentUser,
+    isAdmin,
+    adminLoading,
+    adminError,
+    resendVerification: () => currentUser ? sendEmailVerification(currentUser) : Promise.reject(new Error('로그인이 필요합니다.')),
     signup,
     login,
     logout,

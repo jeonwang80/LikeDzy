@@ -1,0 +1,84 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() && request.auth.token.email_verified == true && (
+        request.auth.token.get('admin', false) == true
+        || request.auth.token.get('email', '') == 'jeonwang80@gmail.com'
+        || (exists(/databases/$(database)/documents/settings/admin)
+          && request.auth.uid in get(/databases/$(database)/documents/settings/admin).data.get('adminUids', []))
+      );
+    }
+    function owner(data) { return signedIn() && data.userId == request.auth.uid; }
+    function text(value, maximum) { return value is string && value.size() > 0 && value.size() <= maximum; }
+    function optionalText(value, maximum) { return value is string && value.size() <= maximum; }
+    function validQna() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['schemaVersion', 'productId', 'userId', 'author', 'content', 'isSecret', 'status', 'reply', 'createdAt', 'updatedAt'])
+        && d.schemaVersion == 2 && owner(d) && text(d.productId, 120) && text(d.author, 40)
+        && text(d.content, 3000) && d.isSecret is bool && d.status == '답변 대기' && d.reply == ''
+        && d.createdAt == request.time && d.updatedAt == request.time;
+    }
+    function validReviewPath(path) {
+      return path is string && path.matches('users/' + request.auth.uid + '/reviews/[A-Za-z0-9_-]+[.](jpg|jpeg|png|webp)');
+    }
+    function validReview() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['schemaVersion', 'productId', 'userId', 'author', 'content', 'rating', 'imagePaths', 'purchaseVerified', 'createdAt', 'updatedAt'])
+        && d.schemaVersion == 2 && owner(d) && text(d.productId, 120) && text(d.author, 40)
+        && text(d.content, 3000) && d.rating is int && d.rating >= 1 && d.rating <= 5
+        && d.purchaseVerified == false && d.imagePaths is list && d.imagePaths.size() <= 4
+        && (d.imagePaths.size() < 1 || validReviewPath(d.imagePaths[0]))
+        && (d.imagePaths.size() < 2 || validReviewPath(d.imagePaths[1]))
+        && (d.imagePaths.size() < 3 || validReviewPath(d.imagePaths[2]))
+        && (d.imagePaths.size() < 4 || validReviewPath(d.imagePaths[3]))
+        && d.createdAt == request.time && d.updatedAt == request.time;
+    }
+
+    match /products/{productId} { allow read: if true; allow write: if isAdmin(); }
+    match /categoryMasters/{categoryId} { allow read: if true; allow write: if isAdmin(); }
+    match /settings/{settingId} {
+      allow read: if settingId != 'admin' || isAdmin();
+      allow write: if isAdmin();
+    }
+    match /orders/{orderId} { allow read: if isAdmin() || owner(resource.data); allow write: if false; }
+    match /orderEvents/{eventId} { allow read: if isAdmin() || owner(resource.data); allow write: if false; }
+    match /inventory/{skuId} { allow read: if isAdmin(); allow write: if false; }
+    match /inventoryMovements/{movementId} { allow read: if isAdmin(); allow write: if false; }
+    match /stockAvailability/{skuId} { allow read: if true; allow write: if false; }
+    match /orderAccess/{id} { allow read, write: if false; }
+    match /orderRequests/{id} { allow read, write: if false; }
+    match /inventoryRequests/{id} { allow read, write: if false; }
+    match /orderRateLimits/{id} { allow read, write: if false; }
+
+    // Legacy documents may contain plaintext passwords/private questions.
+    // Keep them administrator-only until a separately reviewed migration.
+    match /qna/{id} {
+      allow read, delete: if isAdmin();
+      allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reply', 'status', 'updatedAt'])
+        && optionalText(request.resource.data.reply, 3000);
+      allow create: if false;
+    }
+    match /reviews/{id} { allow read, delete: if isAdmin(); allow create, update: if false; }
+    match /qnaV2/{id} {
+      allow read: if isAdmin() || resource.data.isSecret == false || owner(resource.data);
+      allow create: if signedIn() && validQna();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reply', 'status', 'updatedAt'])
+        && optionalText(request.resource.data.reply, 3000)
+        && request.resource.data.status in ['답변 대기', '답변 완료']
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isAdmin() || owner(resource.data);
+    }
+    match /reviewsV2/{id} {
+      allow read: if true;
+      allow create: if signedIn() && validReview();
+      allow update: if false;
+      allow delete: if isAdmin() || owner(resource.data);
+    }
+    match /visitorStats/{id} { allow read: if isAdmin(); allow write: if false; }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { Moon, Sun } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../firebase';
 import { getCategoryName, useCategoryMasters } from '../hooks/useCategoryMasters';
 import './Header.css';
 
@@ -43,10 +42,10 @@ const buildCategoryTree = (categories, language) => {
   }));
 };
 
-export default function Header({ onNavigateHome }) {
+export default function Header({ onNavigateHome, themeMode = 'dark', onThemeModeChange }) {
   const { t, language, setLanguage } = useLanguage();
   const { cart, setIsCartOpen } = useCart();
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
   const { categories } = useCategoryMasters({ activeOnly: true });
   const navigate = useNavigate();
   const location = useLocation();
@@ -55,7 +54,6 @@ export default function Header({ onNavigateHome }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileCategoryCode, setMobileCategoryCode] = useState('');
   const [activeMegaCode, setActiveMegaCode] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
 
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const categoryTree = useMemo(() => buildCategoryTree(categories, language), [categories, language]);
@@ -66,34 +64,6 @@ export default function Header({ onNavigateHome }) {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-    const checkAdminPermission = async () => {
-      if (!currentUser?.email) {
-        if (isMounted) setIsAdmin(false);
-        return;
-      }
-
-      try {
-        const adminDoc = await getDoc(doc(db, 'settings', 'admin'));
-        let allowedEmails = ['jeonwang80@gmail.com'];
-        if (adminDoc.exists() && Array.isArray(adminDoc.data()?.adminEmails)) {
-          allowedEmails = [...allowedEmails, ...adminDoc.data().adminEmails];
-        }
-        const isAllowed = allowedEmails.some((email) => (
-          email && email.trim().toLowerCase() === currentUser.email.trim().toLowerCase()
-        ));
-        if (isMounted) setIsAdmin(isAllowed);
-      } catch (error) {
-        console.error('Header admin check error:', error);
-        if (isMounted) setIsAdmin(false);
-      }
-    };
-
-    checkAdminPermission();
-    return () => { isMounted = false; };
-  }, [currentUser]);
 
   const closeNavigation = () => {
     setActiveMegaCode('');
@@ -141,7 +111,15 @@ export default function Header({ onNavigateHome }) {
           if (event.key === 'Escape') closeNavigation();
         }}
       >
-        <button type="button" className="header-logo" onMouseEnter={() => setActiveMegaCode('')} onClick={handleLogoClick}>LikeDzy</button>
+        <button
+          type="button"
+          className="header-logo"
+          onMouseEnter={() => setActiveMegaCode('')}
+          onClick={handleLogoClick}
+          aria-label="LikeDzy 홈으로 이동"
+        >
+          <img src="/likedzy-logo.png" alt="" aria-hidden="true" />
+        </button>
 
         <nav className="header-nav" aria-label="주요 카테고리">
           {categoryTree.length > 0 ? categoryTree.map((category) => (
@@ -163,6 +141,30 @@ export default function Header({ onNavigateHome }) {
         </nav>
 
         <div className="header-actions" onMouseEnter={() => setActiveMegaCode('')}>
+          <div className="theme-mode-switch" role="group" aria-label="화면 테마 선택">
+            <button
+              type="button"
+              className={themeMode === 'light' ? 'active' : ''}
+              onClick={() => onThemeModeChange?.('light')}
+              aria-label="라이트 모드"
+              aria-pressed={themeMode === 'light'}
+              title="라이트 모드"
+            >
+              <Sun size={14} strokeWidth={1.8} aria-hidden="true" />
+              <span>LIGHT</span>
+            </button>
+            <button
+              type="button"
+              className={themeMode === 'dark' ? 'active' : ''}
+              onClick={() => onThemeModeChange?.('dark')}
+              aria-label="다크 모드"
+              aria-pressed={themeMode === 'dark'}
+              title="다크 모드"
+            >
+              <Moon size={14} strokeWidth={1.8} aria-hidden="true" />
+              <span>DARK</span>
+            </button>
+          </div>
           <select className="lang-select" value={language} onChange={(event) => setLanguage(event.target.value)} aria-label="언어 선택">
             <option value="ko">KR</option>
             <option value="en">EN</option>

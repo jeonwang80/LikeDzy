@@ -6,6 +6,9 @@ import 'react-quill-new/dist/quill.snow.css';
 import imageCompression from 'browser-image-compression';
 import { db, storage } from '../firebase';
 import { formatCategoryPath, useCategoryMasters } from '../hooks/useCategoryMasters';
+import { formatProductPrice, getColorSwatchBackground } from '../utils/productPresentation';
+import AdminColorPicker from '../components/AdminColorPicker';
+import { buildCatalogFields } from '../utils/catalogQuery';
 import '../admin.css';
 import '../components/CollectionList.css';
 
@@ -14,6 +17,8 @@ const LEGACY_CATEGORY_OPTIONS = ['TOPS', 'BOTTOMS', 'OUTERWEAR', 'ACC'];
 export default function ProductEditor({ product, onClose, onSaved }) {
   const { categories: categoryMasters, loading: categoryMastersLoading } = useCategoryMasters({ activeOnly: true });
   const [loading, setLoading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('idle');
+  const [savedProductId, setSavedProductId] = useState(product?.id || '');
   const [editorMode, setEditorMode] = useState('form'); // 'visual' | 'form'
   const [activeLang, setActiveLang] = useState('ko'); // 'ko' | 'en' | 'vi'
   const [activeTab, setActiveTab] = useState('details'); // 'details' | 'reviews' | 'qna'
@@ -99,7 +104,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     };
   };
   
-  const defaultPerk1 = 'Complimentary Shipping Over ₩50,000 & Free Returns';
+  const defaultPerk1 = '배송비와 교환·반품 조건은 주문 안내에서 확인해 주세요.';
   const defaultPerk2 = 'Weather-ready performance fabric';
 
   const [formData, setFormData] = useState(() => {
@@ -110,8 +115,11 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         isFeatured: product.isFeatured !== undefined ? product.isFeatured : false,
         isNew: product.isNew !== undefined ? product.isNew : false,
         imageUrls: product.imageUrls || (product.imageUrl ? [product.imageUrl] : []),
-        colorSwatches: product.colorSwatches || (product.colors || []),
-        options: product.options || [
+        colorSwatches: (product.colorSwatches || product.colors || []).map((swatch) => ({
+          ...swatch,
+          secondaryColorHex: swatch.secondaryColorHex || '',
+        })),
+        options: product.sizeOptions || product.options || [
           { name: 'S' },
           { name: 'M' },
           { name: 'L' },
@@ -159,7 +167,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       vi: { name: '', category: '', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
       imageUrls: [],
       colorSwatches: [
-        { name: 'Black', colorHex: '#111111', imageUrl: '', hoverImageUrl: '', imageUrls: [] }
+        { name: 'Black', colorHex: '#111111', secondaryColorHex: '', imageUrl: '', hoverImageUrl: '', imageUrls: [] }
       ],
       options: [
         { name: 'S' },
@@ -234,6 +242,11 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         return;
       }
       const files = Array.from(e.target.files).slice(0, available);
+      if (files.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024)) {
+        alert('상품 사진은 JPG·PNG·WebP 형식, 파일당 10MB 이하만 가능합니다.');
+        e.target.value = '';
+        return;
+      }
       setImageFiles(prev => [...prev, ...files]);
       setPreviewUrls(prev => [...prev, ...files.map(file => URL.createObjectURL(file))]);
     }
@@ -272,6 +285,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         { 
           name: 'New Color', 
           colorHex: '#111111', 
+          secondaryColorHex: '',
           imageUrl: '', 
           hoverImageUrl: '',
           imageUrls: [] 
@@ -373,8 +387,14 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   const handleVideoChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      if (file.type !== 'video/mp4') {
+        alert('브라우저에서 안정적으로 재생되는 MP4(H.264) 파일을 선택해주세요.');
+        e.target.value = '';
+        return;
+      }
       if (file.size > 20 * 1024 * 1024) {
         alert("영상 용량은 20MB 이하만 가능합니다.");
+        e.target.value = '';
         return;
       }
       setVideoFile(file);
@@ -391,25 +411,66 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     setLoading(true);
+    setSaveStatus('saving');
 
     try {
-      let finalImageUrls = [...(formData.imageUrls || [])];
-      let finalVideoUrl = formData.videoUrl || '';
+      const existingImageUrls = [...(formData.imageUrls || [])];
+      const existingImageVariants = [...(formData.imageVariants || [])];
+      const pendingImageUrlMap = new Map();
 
-      if (imageFiles.length > 0) {
-        for (const file of imageFiles) {
-          const imageRef = ref(storage, `products/${Date.now()}_${file.name}`);
-          const snapshot = await uploadBytes(imageRef, file);
-          const url = await getDownloadURL(snapshot.ref);
-          finalImageUrls.push(url);
-        }
-      }
+      const imageUploadPromise = Promise.all(imageFiles.map(async (file, index) => {
+        const optimizeImage = async (options, variantName) => {
+          try {
+            return await imageCompression(file, { ...options, useWebWorker: true });
+          } catch (compressionError) {
+            console.warn(`${variantName} image optimization skipped:`, compressionError);
+            throw new Error(`${variantName} 이미지 변환에 실패했습니다. 다시 시도해 주세요.`);
+          }
+        };
 
-      if (videoFile) {
+        const [detailImage, thumbnailImage] = await Promise.all([
+          optimizeImage({ maxSizeMB: 2, maxWidthOrHeight: 2400, initialQuality: 0.95 }, 'Detail'),
+          optimizeImage({ maxSizeMB: 0.45, maxWidthOrHeight: 1200, initialQuality: 0.92 }, 'Thumbnail'),
+        ]);
+
+        const uploadKey = `${Date.now()}_${index}_${file.name}`;
+        const detailImageRef = ref(storage, `products/detail/${uploadKey}`);
+        const thumbnailImageRef = ref(storage, `products/thumbnails/${uploadKey}`);
+        const [detailSnapshot, thumbnailSnapshot] = await Promise.all([
+          uploadBytes(detailImageRef, detailImage, { contentType: detailImage.type, cacheControl: 'public, max-age=31536000, immutable' }),
+          uploadBytes(thumbnailImageRef, thumbnailImage, { contentType: thumbnailImage.type, cacheControl: 'public, max-age=31536000, immutable' }),
+        ]);
+        const [url, thumbnailUrl] = await Promise.all([
+          getDownloadURL(detailSnapshot.ref),
+          getDownloadURL(thumbnailSnapshot.ref),
+        ]);
+
+        const detailBitmap = await createImageBitmap(detailImage);
+        const thumbnailBitmap = await createImageBitmap(thumbnailImage);
+        const dimensions = { width: detailBitmap.width, thumbnailWidth: thumbnailBitmap.width };
+        detailBitmap.close(); thumbnailBitmap.close();
+        return { previewUrl: previewUrls[index], url, thumbnailUrl, ...dimensions };
+      }));
+
+      const videoUploadPromise = videoFile ? (async () => {
         const videoRef = ref(storage, `products/videos/${Date.now()}_${videoFile.name}`);
-        const snapshot = await uploadBytes(videoRef, videoFile);
-        finalVideoUrl = await getDownloadURL(snapshot.ref);
-      }
+        const snapshot = await uploadBytes(videoRef, videoFile, { contentType: 'video/mp4', cacheControl: 'public, max-age=31536000, immutable' });
+        return getDownloadURL(snapshot.ref);
+      })() : Promise.resolve(formData.videoUrl || '');
+
+      const [uploadedImages, finalVideoUrl] = await Promise.all([
+        imageUploadPromise,
+        videoUploadPromise,
+      ]);
+
+      uploadedImages.forEach(({ previewUrl, url }) => {
+        if (previewUrl) pendingImageUrlMap.set(previewUrl, url);
+      });
+      const finalImageUrls = [...existingImageUrls, ...uploadedImages.map(({ url }) => url)];
+      const finalImageVariants = [
+        ...existingImageVariants.filter((variant) => finalImageUrls.includes(variant.imageUrl)),
+        ...uploadedImages.map(({ url, thumbnailUrl, width, thumbnailWidth }) => ({ imageUrl: url, thumbnailUrl, width, thumbnailWidth })),
+      ];
 
       const name = formData.ko?.name || formData.en?.name || formData.vi?.name || '신규 상품';
       const category = formData.ko?.category || 'Apparel';
@@ -418,14 +479,19 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       const perk1 = formData.ko?.perk1 || defaultPerk1;
       const perk2 = formData.ko?.perk2 || defaultPerk2;
 
+      const resolveUploadedImageUrl = (url) => pendingImageUrlMap.get(url) || url;
       const processedSwatches = (formData.colorSwatches || []).map((swatch, sIdx) => {
-        let groupImgs = (swatch.imageUrls || []).filter(url => finalImageUrls.includes(url));
+        let groupImgs = (swatch.imageUrls || [])
+          .map(resolveUploadedImageUrl)
+          .filter(url => finalImageUrls.includes(url));
+        const mappedPrimaryImage = resolveUploadedImageUrl(swatch.imageUrl);
+        const mappedHoverImage = resolveUploadedImageUrl(swatch.hoverImageUrl);
         
-        if (swatch.imageUrl && !groupImgs.includes(swatch.imageUrl)) {
-          groupImgs.unshift(swatch.imageUrl);
+        if (mappedPrimaryImage && !groupImgs.includes(mappedPrimaryImage)) {
+          groupImgs.unshift(mappedPrimaryImage);
         }
-        if (swatch.hoverImageUrl && !groupImgs.includes(swatch.hoverImageUrl)) {
-          groupImgs.push(swatch.hoverImageUrl);
+        if (mappedHoverImage && !groupImgs.includes(mappedHoverImage)) {
+          groupImgs.push(mappedHoverImage);
         }
 
         // If a color swatch still has no images assigned, default to fallback photo by index
@@ -434,8 +500,8 @@ export default function ProductEditor({ product, onClose, onSaved }) {
           groupImgs = [fallbackUrl];
         }
 
-        const primaryImg = swatch.imageUrl || groupImgs[0] || '';
-        const hoverImg = swatch.hoverImageUrl || (groupImgs.length > 1 ? groupImgs[1] : primaryImg);
+        const primaryImg = mappedPrimaryImage || groupImgs[0] || '';
+        const hoverImg = mappedHoverImage || (groupImgs.length > 1 ? groupImgs[1] : primaryImg);
 
         return {
           ...swatch,
@@ -454,22 +520,49 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         perk1,
         perk2,
         colorSwatches: processedSwatches,
-        imageUrls: finalImageUrls, 
+        imageUrls: finalImageUrls,
+        imageVariants: finalImageVariants,
         videoUrl: finalVideoUrl, 
         updatedAt: new Date() 
       };
       delete finalData.imageUrl;
+      delete finalData.id;
+      delete finalData.skuStock;
+      delete finalData.skuSales;
+      finalData.sizeOptions = (formData.options || []).map((option) => ({ name: option.name }));
+      // Existing legacy stock/history is preserved, never written by the editor.
+      if (savedProductId) delete finalData.options;
+      else finalData.options = finalData.sizeOptions;
+      Object.assign(finalData, buildCatalogFields({ ...finalData, createdAt: formData.createdAt || product?.createdAt || new Date() }, categoryMasters));
 
-      if (product && product.id) {
-        await updateDoc(doc(db, 'products', product.id), finalData);
+      let persistedData = finalData;
+      let persistedProductId = savedProductId;
+
+      if (persistedProductId) {
+        await updateDoc(doc(db, 'products', persistedProductId), finalData);
       } else {
-        await addDoc(collection(db, 'products'), { ...finalData, createdAt: new Date() });
+        persistedData = { ...finalData, createdAt: new Date() };
+        const createdDocument = await addDoc(collection(db, 'products'), persistedData);
+        persistedProductId = createdDocument.id;
+        setSavedProductId(createdDocument.id);
       }
 
-      onSaved();
+      setFormData({ ...persistedData, options: persistedData.sizeOptions });
+      setImageFiles([]);
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
+      setPreviewUrls([]);
+      setVideoFile(null);
+      if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
+      setVideoPreviewUrl(null);
+      setSaveStatus('saved');
+      window.setTimeout(() => {
+        setSaveStatus((current) => current === 'saved' ? 'idle' : current);
+      }, 2500);
+      onSaved?.({ id: persistedProductId, ...persistedData });
     } catch (error) {
       console.error("Error saving product:", error);
       alert("저장 중 오류가 발생했습니다.");
+      setSaveStatus('idle');
     } finally {
       setLoading(false);
     }
@@ -506,6 +599,13 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     }));
   };
   const allPhotos = [...(formData.imageUrls || []), ...previewUrls];
+  const previewProduct = {
+    ...formData,
+    id: product?.id || 'draft-preview',
+    imageUrls: allPhotos,
+    images: allPhotos,
+    videoUrl: videoPreviewUrl || formData.videoUrl || '',
+  };
   const registrationChecks = [
     { label: '상품명', complete: Boolean(formData.ko?.name?.trim()) },
     { label: '카테고리', complete: Boolean(formData.ko?.category?.trim()) },
@@ -538,14 +638,14 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               className={`live-builder-mode-btn ${editorMode === 'form' ? 'active' : ''}`}
               onClick={() => setEditorMode('form')}
             >
-              빠른 등록
+              상품 정보 편집
             </button>
             <button 
               type="button" 
               className={`live-builder-mode-btn ${editorMode === 'visual' ? 'active' : ''}`}
               onClick={() => setEditorMode('visual')}
             >
-              스토어 미리보기
+              이미지 연결 · 미리보기
             </button>
           </div>
 
@@ -598,7 +698,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
               disabled={loading}
               className="admin-btn-primary"
             >
-              {loading ? '저장 중...' : '저장 및 반영'}
+              {saveStatus === 'saving' ? '최적화 및 저장 중...' : saveStatus === 'saved' ? '저장 완료 ✓' : '저장 및 반영'}
             </button>
           </div>
         </div>
@@ -838,7 +938,8 @@ export default function ProductEditor({ product, onClose, onSaved }) {
 
               </div>
 
-              {/* RIGHT COLUMN: Specs & Simple Color Swatches */}
+              {/* Legacy inline editor retained temporarily for migration reference, but editing now lives in form mode. */}
+              {editorMode === 'legacy' && (
               <div className="alo-detail-buy-panel">
                 
                 {/* Storefront visibility and badge controls */}
@@ -972,13 +1073,26 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {formData.colorSwatches && formData.colorSwatches.map((swatch, idx) => (
                       <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fff', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-                        <input 
-                          type="color" 
-                          value={swatch.colorHex || '#111111'} 
-                          onChange={e => handleColorSwatchChange(idx, 'colorHex', e.target.value)}
-                          style={{ width: '28px', height: '28px', border: 'none', cursor: 'pointer', background: 'none' }}
-                          title="색상 칩 컬러 지정"
+                        <AdminColorPicker
+                          value={swatch.colorHex || '#111111'}
+                          onChange={(nextColor) => handleColorSwatchChange(idx, 'colorHex', nextColor)}
+                          label="기본 컬러"
                         />
+                        <label className="visual-two-tone-toggle">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(swatch.secondaryColorHex)}
+                            onChange={(event) => handleColorSwatchChange(idx, 'secondaryColorHex', event.target.checked ? '#ffffff' : '')}
+                          />
+                          투톤
+                        </label>
+                        {swatch.secondaryColorHex && (
+                          <AdminColorPicker
+                            value={swatch.secondaryColorHex}
+                            onChange={(nextColor) => handleColorSwatchChange(idx, 'secondaryColorHex', nextColor)}
+                            label="보조 컬러"
+                          />
+                        )}
                         <input 
                           type="text" 
                           value={swatch.name || ''} 
@@ -1113,6 +1227,82 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                   </div>
                 </div>
 
+              </div>
+              )}
+
+              <div className="alo-detail-buy-panel admin-store-preview-summary">
+                <div className="admin-preview-status">
+                  <div>
+                    <span>LIVE STOREFRONT PREVIEW</span>
+                    <strong>상품 정보 편집값이 실시간으로 반영됩니다</strong>
+                  </div>
+                  <span>읽기 전용</span>
+                </div>
+
+                <div className="alo-detail-header-meta">
+                  <div className="admin-preview-badges">
+                    {formData.isFeatured && <span className="admin-preview-badge recommended">RECOMMENDED</span>}
+                    {formData.isNew && <span className="admin-preview-badge new">NEW</span>}
+                    {formData.isBestSeller && <span className="admin-preview-badge best">BEST SELLER</span>}
+                  </div>
+                  <span className="admin-preview-category">{currentLangData.category || 'CATEGORY'}</span>
+                  <h1 className="alo-detail-title">{currentLangData.name || '상품명을 입력하세요'}</h1>
+                  <div className="alo-detail-price-rating-row">
+                    <span className="alo-detail-price-text">{formatProductPrice(previewProduct, activeLang) || '가격 미설정'}</span>
+                    <span className="alo-detail-rating">TECHNICAL OUTDOOR</span>
+                  </div>
+                </div>
+
+                <div className="alo-detail-divider" />
+
+                <div className="alo-detail-option-group admin-preview-option-block">
+                  <div className="alo-option-label">
+                    <strong>Color:</strong>
+                    <span className="alo-option-value">{formData.colorSwatches?.[0]?.name || '미설정'}</span>
+                  </div>
+                  <div className="alo-color-swatches-lg">
+                    {(formData.colorSwatches || []).map((swatch, index) => (
+                      <span
+                        key={`${swatch.name}-${index}`}
+                        className={`alo-swatch-lg-circle ${index === 0 ? 'selected' : ''}`}
+                        style={{ background: getColorSwatchBackground(swatch) }}
+                        title={swatch.name}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="alo-fit-note-box">
+                  <strong>Fit:</strong> {currentLangData.sizeGuide || '사이즈 안내 미설정'}
+                </div>
+
+                <div className="alo-detail-option-group admin-preview-option-block">
+                  <div className="alo-option-label"><strong>Size:</strong></div>
+                  <div className="alo-size-pill-grid">
+                    {(formData.options || []).map((option, index) => (
+                      <span key={`${option.name}-${index}`} className={`alo-size-pill-btn ${index === 0 ? 'selected' : ''}`}>
+                        {option.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {(videoPreviewUrl || formData.videoUrl || formData.youtubeUrl) && (
+                  <div className="admin-preview-media-status">
+                    <strong>상품 동영상 연결됨</strong>
+                    <span>{videoPreviewUrl || formData.videoUrl ? 'MP4 영상' : 'YouTube 영상'}이 실제 상품 상세 이미지 다음에 노출됩니다.</span>
+                  </div>
+                )}
+
+                <div className="alo-cta-group admin-preview-cta">
+                  <button type="button" className="alo-add-to-bag-btn" disabled>ADD TO BAG</button>
+                  <button type="button" className="alo-add-to-wishlist-btn" disabled>♡ ADD TO WISHLIST</button>
+                </div>
+
+                <div className="alo-shipping-perks">
+                  {currentLangData.perk1 && <p>✓ {currentLangData.perk1}</p>}
+                  {currentLangData.perk2 && <p>✓ {currentLangData.perk2}</p>}
+                </div>
               </div>
             </div>
 
@@ -1331,7 +1521,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                       </label>
                     )}
                   </div>
-                  <button type="button" className="admin-inline-link" onClick={() => setEditorMode('visual')}>색상별 대표·호버 이미지 세부 설정 →</button>
+                  <button type="button" className="admin-inline-link" onClick={() => setEditorMode('visual')}>색상별 이미지 연결 및 스토어 노출 확인 →</button>
                 </section>
 
                 <section className="admin-form-section">
@@ -1347,9 +1537,30 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                   <header><span>05</span><div><h3>색상·사이즈</h3><p>고객이 선택할 옵션을 관리합니다.</p></div></header>
                   <div className="admin-color-option-list">
                     {(formData.colorSwatches || []).map((swatch, index) => (
-                      <div key={`${swatch.name}-${index}`}>
-                        <input type="color" value={swatch.colorHex || '#111111'} onChange={(event) => handleColorSwatchChange(index, 'colorHex', event.target.value)} />
+                      <div key={index} className={swatch.secondaryColorHex ? 'is-two-tone' : ''}>
+                        <div className="admin-color-pickers">
+                          <AdminColorPicker
+                            value={swatch.colorHex || '#111111'}
+                            onChange={(nextColor) => handleColorSwatchChange(index, 'colorHex', nextColor)}
+                            label="기본 컬러"
+                          />
+                          {swatch.secondaryColorHex && (
+                            <AdminColorPicker
+                              value={swatch.secondaryColorHex}
+                              onChange={(nextColor) => handleColorSwatchChange(index, 'secondaryColorHex', nextColor)}
+                              label="보조 컬러"
+                            />
+                          )}
+                        </div>
                         <input className="admin-input" value={swatch.name} onChange={(event) => handleColorSwatchChange(index, 'name', event.target.value)} />
+                        <label className="admin-two-tone-toggle">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(swatch.secondaryColorHex)}
+                            onChange={(event) => handleColorSwatchChange(index, 'secondaryColorHex', event.target.checked ? '#ffffff' : '')}
+                          />
+                          <span>투톤</span>
+                        </label>
                         <button type="button" onClick={() => handleRemoveColorSwatch(index)}>×</button>
                       </div>
                     ))}
@@ -1360,6 +1571,36 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                       <span key={`${option.name}-${index}`}>{option.name}<button type="button" onClick={() => handleRemoveOption(index)}>×</button></span>
                     ))}
                     <button type="button" onClick={handleAddOption}>+ 사이즈</button>
+                  </div>
+                </section>
+
+                <section className="admin-form-section">
+                  <header><span>06</span><div><h3>상품 동영상</h3><p>등록한 영상은 상품 상세 이미지 다음에 노출됩니다.</p></div></header>
+                  <div className="admin-media-editor">
+                    <label className="admin-form-field">
+                      <span>MP4 직접 업로드 · 최대 20MB</span>
+                      <input type="file" accept="video/mp4" onChange={handleVideoChange} />
+                      <small>권장: H.264/AAC · 세로 3:4 또는 4:5 · 1080px · 6~15초</small>
+                    </label>
+
+                    {(videoPreviewUrl || formData.videoUrl) && (
+                      <div className="admin-media-preview">
+                        <video src={videoPreviewUrl || formData.videoUrl} controls playsInline />
+                        <button type="button" onClick={handleRemoveVideo}>MP4 삭제</button>
+                      </div>
+                    )}
+
+                    <label className="admin-form-field">
+                      <span>YouTube 영상 URL · 대체 방식</span>
+                      <input
+                        className="admin-input"
+                        type="url"
+                        placeholder="https://youtube.com/watch?v=..."
+                        value={formData.youtubeUrl || ''}
+                        onChange={(event) => handleChange(null, 'youtubeUrl', event.target.value)}
+                      />
+                      <small>YouTube는 채널명과 로고가 표시될 수 있습니다. 깔끔한 상품 영상은 MP4 직접 업로드를 권장합니다.</small>
+                    </label>
                   </div>
                 </section>
               </aside>

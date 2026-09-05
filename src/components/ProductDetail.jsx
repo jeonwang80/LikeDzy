@@ -1,12 +1,17 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useCart } from '../context/CartContext';
 import ProductReviews from './ProductReviews';
 import ProductQnA from './ProductQnA';
+import { useProductStock } from '../hooks/useProductStock';
+import { sanitizeProductHtml } from '../utils/sanitizeProductHtml';
 import {
   FALLBACK_PRODUCT_IMAGE,
   formatProductPrice,
+  getColorSwatchBackground,
   getSafeImageUrl,
+  resolveProductCardImages,
 } from '../utils/productPresentation';
 import './CollectionList.css';
 
@@ -18,12 +23,35 @@ const normalizeImageList = (values) => ([...new Set(
     .filter((value) => value !== FALLBACK_PRODUCT_IMAGE)
 )]);
 
+const getYouTubeEmbedUrl = (value) => {
+  if (!value || typeof value !== 'string') return '';
+
+  try {
+    const url = new URL(value.trim());
+    let videoId = '';
+
+    if (url.hostname === 'youtu.be') {
+      videoId = url.pathname.slice(1).split('/')[0];
+    } else if (url.hostname.endsWith('youtube.com')) {
+      if (url.pathname === '/watch') videoId = url.searchParams.get('v') || '';
+      else if (url.pathname.startsWith('/shorts/')) videoId = url.pathname.split('/')[2] || '';
+      else if (url.pathname.startsWith('/embed/')) videoId = url.pathname.split('/')[2] || '';
+    }
+
+    return /^[\w-]{6,}$/.test(videoId)
+      ? `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`
+      : '';
+  } catch {
+    return '';
+  }
+};
+
 export default function ProductDetail({ product, onBack }) {
   const { language } = useLanguage();
   const { addToCart, setIsCartOpen } = useCart();
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [selectedSizeIdx, setSelectedSizeIdx] = useState(0);
-  const [selectedOptionIdx, setSelectedOptionIdx] = useState(0);
+  const { variants, loading: stockLoading, error: stockError } = useProductStock(product?.id);
   const [zoomImage, setZoomImage] = useState(null);
   const [isWishlisted, setIsWishlisted] = useState(() => {
     try {
@@ -39,6 +67,23 @@ export default function ProductDetail({ product, onBack }) {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  useEffect(() => {
+    if (!zoomImage) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setZoomImage(null);
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [zoomImage]);
 
   const images = useMemo(() => {
     if (!product) return [];
@@ -60,7 +105,8 @@ export default function ProductDetail({ product, onBack }) {
   }, [product]);
 
   // Options & Swatches
-  const hasOptions = product?.options && product.options.length > 0;
+  const productSizes = product?.sizeOptions || product?.options || [];
+  const hasOptions = productSizes.length > 0;
   const colorSwatches = (product?.colorSwatches && product.colorSwatches.length > 0)
     ? product.colorSwatches
     : (product?.colors && product.colors.length > 0 ? product.colors : []);
@@ -96,27 +142,23 @@ export default function ProductDetail({ product, onBack }) {
   if (!product) return null;
 
   // Sizes pill array (from product options or default Alo Yoga sizes)
-  const sizes = hasOptions 
-    ? product.options.map(opt => ({ name: opt.name, stock: opt.stock }))
-    : [
-        { name: 'S', stock: 10 },
-        { name: 'M', stock: 10 },
-        { name: 'L', stock: 10 },
-        { name: 'XL', stock: 10 },
-        { name: '2XL', stock: 5 }
-      ];
+  const sizes = (hasOptions ? productSizes : [{ name: '기본' }]).map((option) => {
+    const variant = variants.find((item) => item.optionName === option.name && item.colorName === (activeColor?.name || '기본'));
+    return { name: option.name, variantId: variant?.id || '', stock: Math.max(0, Number(variant?.available) || 0) };
+  });
 
   // Language specific fields
   const langData = product[language] || product.ko || {};
   const name = langData.name || product.name || '';
   const fabric = langData.fabric || product.fabric || '';
-  const description = langData.description || product.description || '';
+  const description = sanitizeProductHtml(langData.description || product.description || '');
   const sizeGuide = langData.sizeGuide || product.sizeGuide || '';
-  const perk1 = langData.perk1 || product.perk1 || 'Complimentary Shipping Over ₩50,000 & Free Returns';
+  const perk1 = langData.perk1 || product.perk1 || '배송비와 교환·반품 조건은 주문 안내에서 확인해 주세요.';
   const perk2 = langData.perk2 || product.perk2 || 'Weather-ready performance fabric';
 
   // Prices formatting
   const displayPrice = product.displayPrice || formatProductPrice(product, language);
+  const youtubeEmbedUrl = getYouTubeEmbedUrl(product.youtubeUrl);
 
   const toggleWishlist = () => {
     try {
@@ -131,16 +173,22 @@ export default function ProductDetail({ product, onBack }) {
   };
 
   const handleAddToCart = () => {
-    const selectedOpt = hasOptions 
-      ? product.options[selectedOptionIdx] 
-      : { name: sizes[selectedSizeIdx]?.name || '기본', stock: 999 };
+    const selectedOpt = sizes[selectedSizeIdx];
     
-    if (selectedOpt.stock <= 0) {
+    if (stockLoading || stockError || !selectedOpt?.variantId || selectedOpt.stock <= 0) {
       alert('해당 옵션은 품절되었습니다.');
       return false;
     }
 
-    addToCart({ ...product, name }, selectedOpt, 1);
+    const cartImages = resolveProductCardImages(product, selectedColorIdx);
+    addToCart({
+      ...product,
+      name,
+      cartColorName: activeColor?.name || '기본',
+      cartColorBackground: getColorSwatchBackground(activeColor, '#9a9c96'),
+      cartThumbnailUrl: cartImages.primary,
+      cartImageUrl: cartImages.primaryOriginal,
+    }, selectedOpt, 1);
     return true;
   };
 
@@ -177,11 +225,35 @@ export default function ProductDetail({ product, onBack }) {
                     e.target.src = FALLBACK_PRODUCT_IMAGE;
                   }}
                 />
-                {idx === 0 && (
-                  <span className="alo-model-tag">PRODUCT VIEW 01</span>
-                )}
               </div>
             ))}
+
+            {product.videoUrl && (
+              <div className="alo-detail-img-frame alo-detail-media-frame">
+                <video
+                  className="alo-detail-product-video"
+                  src={product.videoUrl}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  poster={getSafeImageUrl(displayImages[0])}
+                  controlsList="nodownload noplaybackrate"
+                />
+              </div>
+            )}
+
+            {youtubeEmbedUrl && (
+              <div className="alo-detail-img-frame alo-detail-media-frame">
+                <iframe
+                  className="alo-detail-product-video"
+                  src={youtubeEmbedUrl}
+                  title={`${name} product video`}
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            )}
           </div>
 
           {/* ========================================================
@@ -203,16 +275,17 @@ export default function ProductDetail({ product, onBack }) {
             <div className="alo-detail-divider" />
 
             {/* 2. Color Swatches Section */}
-            <div className="alo-detail-option-group">
+            <div className="alo-detail-option-group alo-detail-color-panel">
               <div className="alo-option-label">
-                <strong>Color:</strong> <span style={{ color: '#555' }}>{activeColor?.name || 'Gravel'}</span>
+                <strong>Color:</strong>
+                <span className="alo-option-value">{activeColor?.name || 'Gravel'}</span>
               </div>
               <div className="alo-color-swatches-lg">
                 {colorSwatches.map((swatch, idx) => (
                   <button
                     key={idx}
                     className={`alo-swatch-lg-circle ${selectedColorIdx === idx ? 'selected' : ''}`}
-                    style={{ backgroundColor: swatch.colorHex || '#ccc' }}
+                    style={{ background: getColorSwatchBackground(swatch) }}
                     onClick={() => setSelectedColorIdx(idx)}
                     title={swatch.name}
                   />
@@ -238,7 +311,6 @@ export default function ProductDetail({ product, onBack }) {
                     className={`alo-size-pill-btn ${selectedSizeIdx === idx ? 'selected' : ''} ${sz.stock <= 0 ? 'disabled' : ''}`}
                     onClick={() => {
                       setSelectedSizeIdx(idx);
-                      setSelectedOptionIdx(idx);
                     }}
                     disabled={sz.stock <= 0}
                   >
@@ -250,8 +322,10 @@ export default function ProductDetail({ product, onBack }) {
 
             {/* 5. CTA Buttons: ADD TO BAG & ADD TO WISHLIST */}
             <div className="alo-cta-group">
+              <p role="status">{stockError || (stockLoading ? '재고 확인 중…' : !sizes.some((item) => item.stock > 0) ? '현재 선택 색상은 품절 또는 판매 준비 중입니다.' : '')}</p>
               <button 
                 className="alo-add-to-bag-btn"
+                disabled={stockLoading || !!stockError || !sizes[selectedSizeIdx]?.variantId || sizes[selectedSizeIdx]?.stock <= 0 || product.isActive === false}
                 onClick={() => {
                   const success = handleAddToCart();
                   if (success) setIsCartOpen(true);
@@ -341,11 +415,33 @@ export default function ProductDetail({ product, onBack }) {
       </div>
 
       {/* Lightbox Image Modal */}
-      {zoomImage && (
-        <div className="alo-lightbox-modal" onClick={() => setZoomImage(null)}>
-          <img src={zoomImage} alt="Zoomed view" className="alo-lightbox-img" />
-          <button className="alo-lightbox-close">✕</button>
-        </div>
+      {zoomImage && createPortal(
+        <div
+          className="alo-lightbox-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="상품 이미지 확대 보기"
+          onClick={() => setZoomImage(null)}
+        >
+          <img
+            src={zoomImage}
+            alt={`${name} 확대 이미지`}
+            className="alo-lightbox-img"
+            onClick={(event) => event.stopPropagation()}
+          />
+          <button
+            type="button"
+            className="alo-lightbox-close"
+            onClick={(event) => {
+              event.stopPropagation();
+              setZoomImage(null);
+            }}
+            aria-label="확대 이미지 닫기"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>,
+        document.body,
       )}
     </div>
   );

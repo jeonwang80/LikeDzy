@@ -1,45 +1,60 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { collection, query, where, orderBy, onSnapshot, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, addDoc, doc, deleteDoc, limit, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useAuth } from '../context/AuthContext';
+import { toSafeDate } from '../utils/boardPresentation';
 
 export default function ProductQnA({ productId }) {
+  const { currentUser, isAdmin } = useAuth();
   const [qnas, setQnas] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({ author: '', password: '', content: '', isSecret: false });
-  const [viewPassword, setViewPassword] = useState({});
+  const [form, setForm] = useState({ author: '', content: '', isSecret: true });
+  const [pageSize, setPageSize] = useState(20);
+  const [hasMore, setHasMore] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  // Re-check visibility during render as well, so logout cannot expose stale private content.
+  const visibleQnas = qnas.filter((entry) => entry.productId === productId && (entry.isSecret === false || isAdmin || entry.userId === currentUser?.uid));
 
   useEffect(() => {
     if (!productId) return;
-    const q = query(
-      collection(db, 'qna'), 
-      where('productId', '==', productId),
-      orderBy('createdAt', 'desc')
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setQnas(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() })));
+    const results = new Map();
+    const queries = [query(collection(db, 'qnaV2'), where('productId', '==', productId), where('isSecret', '==', false), orderBy('createdAt', 'desc'), limit(pageSize))];
+    if (currentUser) queries.push(query(collection(db, 'qnaV2'), where('productId', '==', productId), where('userId', '==', currentUser.uid), orderBy('createdAt', 'desc'), limit(pageSize)));
+    const unsubscribes = queries.map((q, index) => onSnapshot(q, (snapshot) => {
+      results.set(index, snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data(), createdAt: toSafeDate(entry.data().createdAt) })));
+      const unique = new Map([...results.values()].flat().map((entry) => [entry.id, entry]));
+      setQnas([...unique.values()].sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)));
+      setHasMore([...results.values()].some((entries) => entries.length >= pageSize));
+      setErrorMsg('');
       setLoading(false);
-    });
-    return () => unsubscribe();
-  }, [productId]);
+    }, () => { setErrorMsg('문의 목록을 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.'); setLoading(false); }));
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
+  }, [productId, currentUser, pageSize]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.author || !form.password || !form.content) return alert('모든 항목을 입력해주세요.');
+    if (!currentUser) return alert('로그인 후 문의를 작성해 주세요.');
+    if (!form.author.trim() || !form.content.trim()) return alert('닉네임과 문의 내용을 입력해 주세요.');
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, 'qna'), {
+      await addDoc(collection(db, 'qnaV2'), {
         productId,
-        ...form,
+        schemaVersion: 2,
+        userId: currentUser.uid,
+        author: form.author.trim(),
+        content: form.content.trim(),
+        isSecret: form.isSecret,
         status: '답변 대기',
         reply: '',
-        createdAt: new Date()
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
       alert('문의가 등록되었습니다.');
       setShowModal(false);
-      setForm({ author: '', password: '', content: '', isSecret: false });
+      setForm({ author: '', content: '', isSecret: true });
     } catch (error) {
       console.error(error);
       alert('등록 중 오류가 발생했습니다.');
@@ -48,26 +63,11 @@ export default function ProductQnA({ productId }) {
     }
   };
 
-  const handleUnlock = (qnaId, correctPassword) => {
-    const input = prompt('비밀번호를 입력해주세요:');
-    if (input === null) return;
-    if (input === correctPassword) {
-      setViewPassword(prev => ({ ...prev, [qnaId]: true }));
-    } else {
-      alert('비밀번호가 일치하지 않습니다.');
-    }
-  };
-
   const handleDeleteClick = async (qna) => {
-    const pwd = window.prompt("문의 작성 시 입력한 비밀번호를 입력하세요.");
-    if (pwd === null) return; // 취소 누름
-    if (pwd !== qna.password) {
-      alert("비밀번호가 일치하지 않습니다.");
-      return;
-    }
+    if (!currentUser || (!isAdmin && qna.userId !== currentUser.uid)) return;
     if (window.confirm("정말 이 문의를 삭제하시겠습니까?")) {
       try {
-        await deleteDoc(doc(db, 'qna', qna.id));
+        await deleteDoc(doc(db, 'qnaV2', qna.id));
         alert("문의가 삭제되었습니다.");
       } catch (error) {
         console.error("Delete error:", error);
@@ -79,21 +79,21 @@ export default function ProductQnA({ productId }) {
   return (
     <div style={{ marginTop: '3rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h3 style={{ fontSize: '1.25rem', margin: 0 }}>상품 Q&A ({qnas.length})</h3>
-        <button onClick={() => setShowModal(true)} style={{ padding: '0.5rem 1rem', background: '#1e293b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+        <h3 style={{ fontSize: '1.25rem', margin: 0 }}>상품 Q&A ({visibleQnas.length})</h3>
+        <button onClick={() => currentUser ? setShowModal(true) : window.location.assign('#/login')} style={{ padding: '0.5rem 1rem', background: '#1e293b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
           문의하기
         </button>
       </div>
 
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>로그인 후 작성할 수 있습니다. 비밀 문의는 작성한 계정과 관리자만 볼 수 있으며, 기존 문의는 고객센터에서 확인해 드립니다.</p>
+      {errorMsg && <p role="alert">{errorMsg}</p>}
       {loading ? (
         <p style={{ color: '#94a3b8' }}>문의 내역을 불러오는 중...</p>
-      ) : qnas.length === 0 ? (
+      ) : visibleQnas.length === 0 ? (
         <p style={{ color: '#94a3b8', padding: '2rem 0', textAlign: 'center', background: 'var(--card-bg)', borderRadius: '8px' }}>등록된 문의가 없습니다.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {qnas.map(qna => {
-            const isLocked = qna.isSecret && !viewPassword[qna.id];
-            
+          {visibleQnas.map(qna => {
             return (
               <div key={qna.id} style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', alignItems: 'flex-start' }}>
@@ -114,23 +114,15 @@ export default function ProductQnA({ productId }) {
                     <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
                       {qna.createdAt ? qna.createdAt.toLocaleDateString() : ''}
                     </span>
-                    <button 
+                    {(isAdmin || currentUser?.uid === qna.userId) && <button
                       onClick={() => handleDeleteClick(qna)}
                       style={{ border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)' }}
                     >
                       삭제
-                    </button>
+                    </button>}
                   </div>
                 </div>
                 
-                {isLocked ? (
-                  <div style={{ margin: '1rem 0', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '4px', textAlign: 'center' }}>
-                    <p style={{ color: '#94a3b8', marginBottom: '1rem' }}>비밀글입니다. 작성자와 관리자만 볼 수 있습니다.</p>
-                    <button onClick={() => handleUnlock(qna.id, qna.password)} style={{ padding: '0.5rem 1rem', background: 'transparent', color: '#3b82f6', border: '1px solid #3b82f6', borderRadius: '4px', cursor: 'pointer' }}>
-                      비밀번호 입력
-                    </button>
-                  </div>
-                ) : (
                   <>
                     <p style={{ margin: '1rem 0', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{qna.content}</p>
                     
@@ -141,7 +133,6 @@ export default function ProductQnA({ productId }) {
                       </div>
                     )}
                   </>
-                )}
                 
                 <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 'bold', marginTop: '1rem' }}>
                   작성자: {qna.author}
@@ -151,6 +142,7 @@ export default function ProductQnA({ productId }) {
           })}
         </div>
       )}
+      {hasMore && <button type="button" className="btn-secondary" onClick={() => setPageSize((size) => size + 20)}>문의 더 보기</button>}
 
       {showModal && createPortal(
         <div className="admin-modal-overlay" style={{ zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -163,18 +155,14 @@ export default function ProductQnA({ productId }) {
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>이름</label>
-                  <input required value={form.author} onChange={e => setForm({...form, author: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px' }} placeholder="홍길동" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>비밀번호</label>
-                  <input required type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px' }} placeholder="4자리 이상" />
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>닉네임</label>
+                  <input required maxLength={40} value={form.author} onChange={e => setForm({...form, author: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '4px' }} placeholder="공개할 닉네임" />
                 </div>
               </div>
 
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>문의 내용</label>
-                <textarea required value={form.content} onChange={e => setForm({...form, content: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px', minHeight: '100px', fontFamily: 'inherit' }} placeholder="궁금한 점을 남겨주세요." />
+                <textarea required maxLength={3000} value={form.content} onChange={e => setForm({...form, content: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '4px', minHeight: '100px', fontFamily: 'inherit' }} placeholder="공개 문의에 전화번호나 주소를 입력하지 마세요." />
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>

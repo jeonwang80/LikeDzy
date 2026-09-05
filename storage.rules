@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() && request.auth.token.email_verified == true && (
+        request.auth.token.get('admin', false) == true
+        || request.auth.token.get('email', '') == 'jeonwang80@gmail.com'
+        || (firestore.exists(/databases/(default)/documents/settings/admin)
+          && request.auth.uid in firestore.get(/databases/(default)/documents/settings/admin).data.get('adminUids', []))
+      );
+    }
+    function image() {
+      return request.resource.size > 0 && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp|gif)');
+    }
+    function productMedia() {
+      return image() || (request.resource.size > 0 && request.resource.size <= 20 * 1024 * 1024
+        && request.resource.contentType == 'video/mp4');
+    }
+    match /products/{path=**} {
+      allow read: if true;
+      allow create, update: if isAdmin() && productMedia();
+      allow delete: if isAdmin();
+    }
+    match /details/{path=**} {
+      allow read: if true;
+      allow create, update: if isAdmin() && image();
+      allow delete: if isAdmin();
+    }
+    match /settings/{path=**} {
+      allow read: if true;
+      allow create, update: if isAdmin() && productMedia();
+      allow delete: if isAdmin();
+    }
+    match /users/{uid}/reviews/{fileName} {
+      allow read: if true;
+      allow create: if resource == null && signedIn() && request.auth.uid == uid && image()
+        && fileName.matches('[A-Za-z0-9_-]+[.](jpg|jpeg|png|webp)');
+      allow update: if false;
+      allow delete: if (signedIn() && request.auth.uid == uid) || isAdmin();
+    }
+    match /reviews/{path=**} { allow read: if true; allow write: if false; }
+    match /{path=**} { allow read, write: if false; }
+  }
+}

@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Outlet, Navigate, useLocation, useNavigate, NavLink } from 'react-router-dom';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import '../admin.css';
 
@@ -12,68 +11,19 @@ const NAV_ITEMS = [
   { to: '/admin/orders', index: '03', label: '주문 관리', description: '결제·배송 상태' },
   { to: '/admin/board', index: '04', label: '고객 응대', description: '문의·리뷰' },
   { to: '/admin/stats', index: '05', label: '통계', description: '방문 데이터' },
-  { to: '/admin/master-data', index: '06', label: '기준정보', description: '카테고리·승인 계정' },
+  { to: '/admin/master-data', index: '06', label: '기준정보', description: '판매·배송·카테고리' },
 ];
 
 export default function AdminLayout() {
-  const [user, setUser] = useState(null);
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [resetMessage, setResetMessage] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const { resetPassword } = useAuth();
+  const { currentUser: user, isAdmin: isAuthorized, adminLoading: loading, adminError, resetPassword } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const currentNav = NAV_ITEMS.find((item) => (
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
   )) || NAV_ITEMS[0];
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (!currentUser) {
-        setUser(null);
-        setIsAuthorized(false);
-        setLoading(false);
-        return;
-      }
-
-      setUser(currentUser);
-
-      try {
-        const adminDocRef = doc(db, 'settings', 'admin');
-        const adminDoc = await getDoc(adminDocRef);
-        let allowedEmails = ['jeonwang80@gmail.com'];
-
-        if (adminDoc.exists() && Array.isArray(adminDoc.data()?.adminEmails)) {
-          allowedEmails = [...allowedEmails, ...adminDoc.data().adminEmails];
-        } else if (!adminDoc.exists()) {
-          await setDoc(adminDocRef, { adminEmails: [currentUser.email] }, { merge: true });
-          allowedEmails.push(currentUser.email);
-        }
-
-        const isAllowed = allowedEmails.some((email) => (
-          email && currentUser.email
-          && email.trim().toLowerCase() === currentUser.email.trim().toLowerCase()
-        ));
-
-        if (isAllowed) {
-          setIsAuthorized(true);
-        } else {
-          setIsAuthorized(false);
-          await signOut(auth);
-          alert(`[${currentUser.email}] 계정은 관리자 권한이 없습니다.`);
-        }
-      } catch (error) {
-        console.error('Admin permission check error:', error);
-        setIsAuthorized(true);
-      } finally {
-        setLoading(false);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -103,7 +53,13 @@ export default function AdminLayout() {
     );
   }
 
-  if (!user || !isAuthorized) return <Navigate to="/admin/login" replace />;
+  if (!user) return <Navigate to="/admin/login" replace />;
+  if (!isAuthorized) return (
+    <div className="admin-auth-loading" role="alert">
+      <strong>{adminError || (user.emailVerified ? '이 계정에 관리자 권한이 없습니다.' : '관리자는 이메일 인증을 완료해야 합니다.')}</strong>
+      <button type="button" className="admin-btn-secondary" onClick={handleLogout}>로그아웃하고 다시 로그인</button>
+    </div>
+  );
 
   return (
     <div className="admin-layout">

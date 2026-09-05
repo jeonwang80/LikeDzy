@@ -1,5 +1,13 @@
 export const FALLBACK_PRODUCT_IMAGE = '/images/product-placeholder.svg';
 
+export function getColorSwatchBackground(swatch, fallback = '#cccccc') {
+  const primary = swatch?.colorHex || fallback;
+  const secondary = swatch?.secondaryColorHex;
+
+  if (!secondary) return primary;
+  return `linear-gradient(135deg, ${primary} 0%, ${primary} 50%, ${secondary} 50%, ${secondary} 100%)`;
+}
+
 const isLegacyModelImage = (url) =>
   typeof url === 'string' && url.toLowerCase().includes('model_1.png');
 
@@ -24,10 +32,22 @@ export function formatProductPrice(product, language = 'ko') {
   return product?.price || '';
 }
 
+export function normalizeProductBadge(value) {
+  const badge = value?.trim();
+  if (!badge) return '';
+
+  const normalized = badge.toUpperCase().replace(/\s+/g, ' ');
+  if (['추천', 'RECOMMEND', 'RECOMMENDED', 'FEATURED'].includes(normalized)) return 'RECOMMENDED';
+  if (['BEST', 'BESTSELLER', 'BEST SELLER', '베스트', '베스트셀러'].includes(normalized)) return 'BEST SELLER';
+  if (['NEW', '신규', '신상품'].includes(normalized)) return 'NEW';
+  return badge;
+}
+
 export function getProductBadge(product) {
-  if (product?.badgeText?.trim()) return product.badgeText.trim();
+  if (product?.badgeText?.trim()) return normalizeProductBadge(product.badgeText);
   if (product?.isBestSeller) return 'BEST SELLER';
   if (product?.isNew) return 'NEW';
+  if (product?.isFeatured) return 'RECOMMENDED';
   return '';
 }
 
@@ -83,6 +103,9 @@ export function getSafeImageUrl(url, fallback = FALLBACK_PRODUCT_IMAGE) {
 
 export function resolveProductCardImages(product, colorIndex = 0) {
   const activeColor = product?.colorSwatches?.[colorIndex] || product?.colorSwatches?.[0];
+  const thumbnailByImageUrl = new Map((product?.imageVariants || [])
+    .filter((variant) => variant?.imageUrl && variant?.thumbnailUrl)
+    .map((variant) => [variant.imageUrl, variant.thumbnailUrl]));
   const candidates = [
     ...(activeColor?.imageUrls || []),
     ...(product?.images || []),
@@ -109,14 +132,18 @@ export function resolveProductCardImages(product, colorIndex = 0) {
     || productImages.find((image) => image !== primary)
     || primary;
 
-  const safePrimary = getSafeImageUrl(primary);
-  const safeHover = getSafeImageUrl(hover);
+  const safePrimaryOriginal = getSafeImageUrl(primary);
+  const safeHoverOriginal = getSafeImageUrl(hover);
+  const safePrimary = getSafeImageUrl(thumbnailByImageUrl.get(primary) || primary);
+  const safeHover = getSafeImageUrl(thumbnailByImageUrl.get(hover) || hover);
 
   if (safePrimary === FALLBACK_PRODUCT_IMAGE && safeHover !== FALLBACK_PRODUCT_IMAGE) {
     return {
       activeColor,
       primary: safeHover,
       hover: safeHover,
+      primaryOriginal: safeHoverOriginal,
+      hoverOriginal: safeHoverOriginal,
     };
   }
 
@@ -124,5 +151,7 @@ export function resolveProductCardImages(product, colorIndex = 0) {
     activeColor,
     primary: safePrimary,
     hover: safeHover,
+    primaryOriginal: safePrimaryOriginal,
+    hoverOriginal: safeHoverOriginal,
   };
 }

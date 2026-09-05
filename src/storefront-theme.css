@@ -1,0 +1,495 @@
+/*
+ * LikeDzy Technical Earth storefront theme.
+ * This file is intentionally isolated so the previous monochrome storefront
+ * can be restored by removing this import and the body class in Storefront.jsx.
+ */
+
+html[data-storefront-theme='dark'],
+body.storefront-theme {
+  --colors-ink: #f4f1e8;
+  --colors-on-primary: #242824;
+  --colors-canvas: #2b302b;
+  --colors-soft-cloud: #343a34;
+  --colors-charcoal: #d2d6ce;
+  --colors-ash: #c0c6bc;
+  --colors-mute: #abb2a8;
+  --colors-stone: #7f887e;
+  --colors-hairline: #4b524a;
+  --colors-hairline-soft: #3d433c;
+  --colors-sale: #ff5c35;
+  --colors-success: #a8b891;
+
+  --bg-color: var(--colors-canvas);
+  --bg-secondary: var(--colors-soft-cloud);
+  --text-color: var(--colors-ink);
+  --text-muted: var(--colors-mute);
+  --border-color: var(--colors-hairline);
+  --glass-bg: rgba(43, 48, 43, 0.9);
+  --glass-border: var(--colors-hairline);
+  --btn-bg: var(--colors-success);
+  --btn-text: var(--colors-on-primary);
+  --card-bg: var(--colors-soft-cloud);
+  --storefront-backdrop:
+    radial-gradient(80% 60% at 88% 8%, rgba(154, 177, 133, 0.32) 0%, rgba(154, 177, 133, 0.1) 42%, rgba(154, 177, 133, 0) 70%),
+    radial-gradient(70% 55% at 3% 78%, rgba(105, 132, 137, 0.18) 0%, rgba(105, 132, 137, 0) 68%),
+    linear-gradient(135deg, #252a27 0%, #2c332d 42%, #374034 70%, #282d29 100%);
+
+  background: var(--storefront-backdrop);
+  background-attachment: fixed;
+  color: var(--colors-ink);
+}
+
+body.storefront-theme ::selection {
+  background: var(--colors-success);
+  color: var(--colors-on-primary);
+}
+
+body.storefront-theme main {
+  background: var(--storefront-backdrop);
+  background-attachment: fixed;
+  color: var(--colors-ink);
+}
+
+body.storefront-theme .hero-section-wide,
+body.storefront-theme .hero-content-area,
+body.storefront-theme .product-detail-view {
+  background: transparent;
+  color: var(--colors-ink);
+}
+
+body.storefront-theme .hero-wide-banner.has-images {
+  background: var(--colors-canvas);
+}
+
+/* The brand wordmark always stays black on a warm technical shell. */
+body.storefront-theme .storefront-header {
+  --colors-ink: #111111;
+  --colors-canvas: #f0eee6;
+  --colors-soft-cloud: #e5e3da;
+  --colors-charcoal: #39393b;
+  --colors-mute: #686b66;
+  --colors-stone: #92968f;
+  --colors-hairline: #c9c8c0;
+  --colors-hairline-soft: #deddd5;
+  background: #f0eee6;
+  color: #111111;
+}
+
+body.storefront-theme .storefront-header.scrolled {
+  background: rgba(240, 238, 230, 0.97);
+}
+
+body.storefront-theme .storefront-header .header-logo,
+body.storefront-theme .footer-logo {
+  color: #000000 !important;
+}
+
+body.storefront-theme .category-mega-menu,
+body.storefront-theme .mobile-category-menu {
+  background: #f0eee6;
+}
+
+body.storefront-theme .footer {
+  --colors-ink: #111111;
+  --colors-canvas: #f0eee6;
+  --colors-mute: #686b66;
+  --colors-hairline: #c9c8c0;
+  background: #f0eee6;
+  color: #111111;
+}
+
+body.storefront-theme .heading-xl,
+body.storefront-theme .heading-lg,
+body.storefront-theme .heading-md,
+body.storefront-theme .body-strong,
+body.storefront-theme .section-title,
+body.storefront-theme .hero-title,
+body.storefront-theme .detail-title,
+body.storefront-theme .detail-price {
+  color: var(--colors-ink);
+}
+
+body.storefront-theme .body-md,
+body.storefront-theme .hero-subtitle,
+body.storefront-theme .detail-description,
+body.storefront-theme .detail-tab-content,
+body.storefront-theme .quill-content,
+body.storefront-theme .detail-tab-content p {
+  color: var(--colors-charcoal) !important;
+}
+
+body.storefront-theme .caption-md,
+body.storefront-theme .caption-sm,
+body.storefront-theme .hero-eyebrow {
+  color: var(--colors-mute);
+}
+
+body.storefront-theme .story-section {
+  background: #242824;
+}
+
+body.storefront-theme .story-title,
+body.storefront-theme .story-signature {
+  color: var(--colors-ink);
+}
+
+body.storefront-theme .story-text {
+  color: var(--colors-mute);
+}
+
+/* Product listing */
+body.storefront-theme .collection-view-container,
+body.storefront-theme .product-detail-alo-page {
+  background: transparent;
+  color: var(--colors-ink);
+}
+
+body.storefront-theme .collection-title,
+body.storefront-theme .alo-product-title,
+body.storefront-theme .alo-product-price,
+body.storefront-theme .alo-detail-title,
+body.storefront-theme .alo-detail-price-text,
+body.storefront-theme .alo-detail-rating,
+body.storefront-theme .alo-option-label,
+body.storefront-theme .alo-back-link-btn {
+  color: var(--colors-ink);
+}
+
+body.storefront-theme .alo-card-details {
+  gap: 4px;
+}
+
+body.storefront-theme .alo-product-title {
+  font-size: clamp(0.9rem, 1vw, 1rem);
+  line-height: 1.4;
+}
+
+body.storefront-theme .alo-color-title {
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+body.storefront-theme .alo-product-price {
+  font-size: clamp(0.9rem, 1vw, 1rem);
+  line-height: 1.35;
+}
+
+body.storefront-theme .collection-subtitle,
+body.storefront-theme .collection-count-badge,
+body.storefront-theme .alo-color-title,
+body.storefront-theme .alo-swatch-more,
+body.storefront-theme .alo-size-guide-link,
+body.storefront-theme .alo-shipping-perks {
+  color: var(--colors-mute);
+}
+
+body.storefront-theme .alo-card-media,
+body.storefront-theme .alo-detail-img-frame {
+  background: #ffffff;
+}
+
+body.storefront-theme .alo-product-card:focus-visible {
+  outline-color: var(--colors-success);
+}
+
+body.storefront-theme .alo-wishlist-btn {
+  top: 10px;
+  right: 10px;
+  width: 42px;
+  height: 42px;
+  color: #111111;
+}
+
+body.storefront-theme .alo-wishlist-btn.active {
+  color: #111111;
+  transform: none;
+}
+
+body.storefront-theme .alo-wishlist-btn:hover {
+  transform: none;
+}
+
+body.storefront-theme .alo-heart-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  transition: transform 180ms ease;
+}
+
+body.storefront-theme .alo-wishlist-btn:hover .alo-heart-icon {
+  transform: scale(1.08);
+}
+
+body.storefront-theme .alo-quick-bag-btn {
+  border-color: rgba(13, 16, 14, 0.18);
+  background: rgba(240, 238, 230, 0.94);
+  color: #0d100e;
+}
+
+body.storefront-theme .alo-quick-bag-btn:hover {
+  background: var(--colors-success);
+  color: var(--colors-on-primary);
+}
+
+body.storefront-theme .alo-badge-pill {
+  background: var(--colors-success);
+  color: var(--colors-on-primary);
+  font-size: 0.7rem;
+  padding: 4px 8px;
+}
+
+body.storefront-theme .alo-badge-pill.badge-best-seller {
+  background: #a8b891;
+}
+
+body.storefront-theme .alo-badge-pill.badge-new {
+  background: #d6b46d;
+}
+
+body.storefront-theme .alo-badge-pill.badge-recommended {
+  background: #91a8b4;
+}
+
+body.storefront-theme .alo-badge-pill.badge-default {
+  background: #c8c1b5;
+}
+
+body.storefront-theme .alo-badge-wrapper {
+  min-height: 23px;
+  display: flex;
+  align-items: flex-start;
+}
+
+@media (max-width: 768px) {
+  body.storefront-theme .alo-wishlist-btn {
+    top: 8px;
+    right: 8px;
+    width: 34px;
+    height: 34px;
+  }
+
+  body.storefront-theme .alo-heart-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+body.storefront-theme .alo-swatch-circle.selected,
+body.storefront-theme .alo-swatch-lg-circle.selected {
+  box-shadow: 0 0 0 2px var(--colors-canvas), 0 0 0 4px var(--colors-success);
+}
+
+body.storefront-theme .alo-product-card .alo-card-media {
+  border-radius: 4px 4px 0 0;
+}
+
+body.storefront-theme .alo-card-tools-row {
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  border-radius: 0 0 4px 4px;
+  background: #ffffff;
+}
+
+body.storefront-theme .alo-color-swatches {
+  box-sizing: border-box;
+  flex: 1;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  gap: 12px;
+  border-radius: 0;
+  background: transparent;
+}
+
+body.storefront-theme .alo-color-swatches .alo-swatch-circle {
+  width: 17px;
+  height: 17px;
+  border-color: rgba(13, 16, 14, 0.35);
+}
+
+body.storefront-theme .alo-color-swatches .alo-swatch-circle.selected {
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--colors-success);
+}
+
+body.storefront-theme .alo-color-swatches .alo-swatch-more {
+  color: #5f655f;
+}
+
+body.storefront-theme .alo-quick-bag-btn-overlay {
+  display: none;
+}
+
+body.storefront-theme .alo-card-tools-row .alo-quick-bag-btn-tools {
+  position: static;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+}
+
+body.storefront-theme .alo-detail-color-panel {
+  gap: 14px;
+  padding: 16px 18px 18px;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #111111;
+}
+
+body.storefront-theme .alo-detail-color-panel .alo-option-label {
+  gap: 6px;
+  color: #111111;
+}
+
+body.storefront-theme .alo-detail-color-panel .alo-option-value {
+  color: #5f655f;
+}
+
+body.storefront-theme .alo-detail-color-panel .alo-color-swatches-lg {
+  gap: 14px;
+}
+
+body.storefront-theme .alo-detail-color-panel .alo-swatch-lg-circle {
+  width: 24px;
+  height: 24px;
+  border-color: rgba(13, 16, 14, 0.35);
+}
+
+body.storefront-theme .alo-detail-color-panel .alo-swatch-lg-circle.selected {
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--colors-success);
+}
+
+/* Filters, empty states, and purchase controls */
+body.storefront-theme .pill-btn,
+body.storefront-theme .alo-size-pill-btn {
+  border-color: var(--colors-hairline);
+  background: var(--colors-soft-cloud);
+  color: var(--colors-ink);
+}
+
+body.storefront-theme .pill-btn:hover,
+body.storefront-theme .alo-size-pill-btn:hover {
+  border-color: var(--colors-success);
+  background: #3e453e;
+}
+
+body.storefront-theme .pill-btn.active,
+body.storefront-theme .alo-size-pill-btn.selected {
+  border-color: var(--colors-success);
+  background: var(--colors-success);
+  color: var(--colors-on-primary);
+}
+
+body.storefront-theme .sort-dropdown-menu,
+body.storefront-theme .collection-empty-state,
+body.storefront-theme .alo-fit-note-box {
+  border-color: var(--colors-hairline);
+  background: var(--colors-soft-cloud);
+  color: var(--colors-charcoal);
+}
+
+body.storefront-theme .sort-dropdown-menu button {
+  color: var(--colors-charcoal);
+}
+
+body.storefront-theme .sort-dropdown-menu button:hover {
+  background: #414741;
+  color: var(--colors-ink);
+}
+
+body.storefront-theme .collection-empty-state > span,
+body.storefront-theme .collection-empty-state > p {
+  color: var(--colors-mute);
+}
+
+body.storefront-theme .collection-empty-state > strong {
+  color: var(--colors-ink);
+}
+
+body.storefront-theme .collection-empty-state > button {
+  background: var(--colors-sale);
+  color: #ffffff;
+}
+
+body.storefront-theme .alo-add-to-bag-btn,
+body.storefront-theme .product-mobile-buybar button {
+  border: 1px solid #d8d5cb;
+  background: #d8d5cb;
+  color: #171817;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+body.storefront-theme .alo-add-to-bag-btn:hover {
+  border-color: #f0eee6;
+  background: #f0eee6;
+  color: #111311;
+}
+
+body.storefront-theme .alo-add-to-wishlist-btn {
+  border-color: #6f756d;
+  background: rgba(255, 255, 255, 0.035);
+  color: #f0eee6;
+}
+
+body.storefront-theme .alo-add-to-wishlist-btn:hover {
+  border-color: #b8beb4;
+  background: #394039;
+  color: #ffffff;
+}
+
+body.storefront-theme .alo-add-to-wishlist-btn.active {
+  border-color: #d8d5cb;
+  background: #d8d5cb;
+  color: #171817;
+}
+
+body.storefront-theme .alo-detail-divider,
+body.storefront-theme .detail-tabs-container {
+  border-color: var(--colors-hairline);
+  background-color: var(--colors-hairline);
+}
+
+body.storefront-theme .detail-tabs-container {
+  background: transparent;
+}
+
+body.storefront-theme .detail-tab-btn {
+  color: var(--colors-mute);
+}
+
+body.storefront-theme .detail-tab-btn.active {
+  border-bottom-color: var(--colors-success);
+  color: var(--colors-ink);
+}
+
+body.storefront-theme .alo-model-tag {
+  background: rgba(240, 238, 230, 0.92);
+  color: #111111;
+}
+
+body.storefront-theme .product-mobile-buybar {
+  border-color: var(--colors-hairline);
+  background: rgba(43, 48, 43, 0.96);
+  color: var(--colors-ink);
+}
+
+body.storefront-theme .skeleton-img,
+body.storefront-theme .skeleton-line {
+  background: linear-gradient(90deg, #343a34 25%, #404740 50%, #343a34 75%);
+  background-size: 200% 100%;
+}
+
+body.storefront-theme .bottom-nav-container {
+  background: rgba(43, 48, 43, 0.96);
+  border-color: var(--colors-hairline);
+  backdrop-filter: blur(14px);
+}
+
+body.storefront-theme .bottom-nav-badge {
+  background: var(--colors-sale);
+  color: #ffffff;
+}

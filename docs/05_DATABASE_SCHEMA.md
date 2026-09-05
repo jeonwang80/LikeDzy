@@ -15,6 +15,8 @@
 | `qna` | 상품 문의와 답변 |
 | `visitorStats` | 일자별 방문 집계 |
 
+`settings/commerce`에는 무통장 입금 계좌, 배송비, 무료배송 기준, 입금기한, 기본 택배사와 주문 활성화 여부를 저장합니다. 신규 주문은 `inventoryState: reserved`로 옵션 재고를 예약하고, 입금 확인 시 `sold`, 취소 시 `released`로 전환합니다. 주문 문서에는 상품금액·배송비·최종금액을 숫자로 각각 보존하며 계좌 정보는 주문 당시 값으로 스냅샷을 남깁니다.
+
 ## products 주요 필드
 
 ```js
@@ -68,6 +70,8 @@
 - 기준정보 컬렉션의 읽기·쓰기 권한은 관리자 인증 정책에 맞춰 Firestore Rules에서 별도로 허용해야 합니다.
 
 ## settings/main 주요 필드
+
+주문 구조 v2의 `inventory`, `stockAvailability`, `inventoryMovements`, `orderAccess`, `orderRequests`, `orderEvents`와 신규 `qnaV2`/`reviewsV2` 접근 정책은 `functions/COMMERCE_CONTRACT.md` 및 [주문·재고 검증 기록](07_COMMERCE_VALIDATION.md)을 참조한다. 구버전 데이터는 자동 이전하지 않았다.
 
 ```js
 {
