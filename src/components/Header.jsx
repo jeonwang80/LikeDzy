@@ -166,18 +166,17 @@ export default function Header({ onNavigateHome, themeMode = 'dark', onThemeMode
             </button>
           </div>
           <select className="lang-select" value={language} onChange={(event) => setLanguage(event.target.value)} aria-label="언어 선택">
-            <option value="ko">KR</option>
-            <option value="en">EN</option>
-            <option value="vi">VI</option>
+            <option value="ko">KR · KRW</option>
+            <option value="en">EN · VND</option>
           </select>
 
           {currentUser ? (
             <div className="header-account-links">
               {isAdmin && <Link to="/admin" className="header-admin-link">ADMIN</Link>}
-              <Link to="/mypage" className="header-account-link">마이페이지</Link>
+              <Link to="/mypage" className="header-account-link">{language === 'ko' ? '마이페이지' : 'My account'}</Link>
             </div>
           ) : (
-            <Link to="/login" className="header-account-link">로그인</Link>
+            <Link to="/login" className="header-account-link">{language === 'ko' ? '로그인' : 'Sign in'}</Link>
           )}
 
           <button type="button" className="header-cart-btn" onClick={() => setIsCartOpen(true)} aria-label={`장바구니 ${cartItemCount}개`}>

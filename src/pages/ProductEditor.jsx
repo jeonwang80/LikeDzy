@@ -30,15 +30,11 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   const [baseCurrency, setBaseCurrency] = useState('KRW');
   const [rawPrice, setRawPrice] = useState(() => {
     if (product && product.prices) {
-      return product.prices.KRW.toString();
+      return String(product.prices.KRW ?? '');
     }
     return product?.price ? product.price.toString().replace(/[^0-9.]/g, '') : '';
   });
 
-  const EXCHANGE_RATES = {
-    USD_TO_KRW: 1400,
-    USD_TO_VND: 25000,
-  };
 
   const quillRefKo = useRef(null);
   const quillRefEn = useRef(null);
@@ -81,28 +77,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
     toolbar: { container: [[{ 'header': [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'], [{ 'color': [] }, { 'background': [] }], [{ 'align': [] }], ['image', 'video']], handlers: { image: () => imageHandler(quillRefVi) } }
   }), []);
 
-  const calculatePrices = (base, amount) => {
-    const num = parseFloat(amount);
-    if (isNaN(num)) return { KRW: 0, USD: 0, VND: 0 };
-    
-    let usd = 0;
-    if (base === 'USD') usd = num;
-    else if (base === 'KRW') usd = num / EXCHANGE_RATES.USD_TO_KRW;
-    else if (base === 'VND') usd = num / EXCHANGE_RATES.USD_TO_VND;
 
-    const rawKRW = usd * EXCHANGE_RATES.USD_TO_KRW;
-    const rawVND = usd * EXCHANGE_RATES.USD_TO_VND;
-
-    const flooredUSD = Math.floor(usd * 10) / 10;
-    const flooredKRW = Math.floor(rawKRW / 1000) * 1000;
-    const flooredVND = Math.floor(rawVND / 1000) * 1000;
-
-    return {
-      USD: flooredUSD,
-      KRW: flooredKRW,
-      VND: flooredVND
-    };
-  };
   
   const defaultPerk1 = '배송비와 교환·반품 조건은 주문 안내에서 확인해 주세요.';
   const defaultPerk2 = 'Weather-ready performance fabric';
@@ -206,31 +181,18 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   };
 
   const handlePriceChange = (e) => {
-    const value = e.target.value.replace(/[^0-9.]/g, '');
+    const value = e.target.value.replace(/[^0-9]/g, '');
     setRawPrice(value);
-    
-    const calculated = calculatePrices(baseCurrency, value);
-    const formattedPriceString = `KRW ₩${calculated.KRW.toLocaleString()} / USD $${calculated.USD.toLocaleString()} / VND ₫${calculated.VND.toLocaleString()}`;
-    
-    setFormData(prev => ({
-      ...prev,
-      prices: calculated,
-      price: formattedPriceString
-    }));
+    setFormData(prev => {
+      const prices = { ...prev.prices, [baseCurrency]: Number(value) };
+      return { ...prev, prices, price: 'KRW ₩' + (prices.KRW || 0).toLocaleString() + ' / VND ₫' + (prices.VND || 0).toLocaleString() };
+    });
   };
-  
+
   const handleCurrencyChange = (e) => {
     const newBase = e.target.value;
     setBaseCurrency(newBase);
-    if (rawPrice) {
-       const calculated = calculatePrices(newBase, rawPrice);
-       const formattedPriceString = `KRW ₩${calculated.KRW.toLocaleString()} / USD $${calculated.USD.toLocaleString()} / VND ₫${calculated.VND.toLocaleString()}`;
-       setFormData(prev => ({
-         ...prev,
-         prices: calculated,
-         price: formattedPriceString
-       }));
-    }
+    setRawPrice(String(formData.prices?.[newBase] ?? ''));
   };
 
   const handleImageChange = (e) => {
@@ -1023,7 +985,6 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                         style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}
                       >
                         <option value="KRW">KRW (원)</option>
-                        <option value="USD">USD ($)</option>
                         <option value="VND">VND (동)</option>
                       </select>
 
@@ -1455,17 +1416,16 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                       <small>06 기준정보에서 사용 중인 카테고리가 표시됩니다.</small>
                     </label>
                     <label className="admin-form-field">
-                      <span>기준 통화</span>
+                      <span>편집할 통화</span>
                       <select className="admin-select" value={baseCurrency} onChange={handleCurrencyChange}>
                         <option value="KRW">KRW (원)</option>
-                        <option value="USD">USD (달러)</option>
                         <option value="VND">VND (동)</option>
                       </select>
                     </label>
                     <label className="admin-form-field span-2">
                       <span>판매 가격</span>
                       <input className="admin-input admin-price-input" value={rawPrice} onChange={handlePriceChange} inputMode="decimal" placeholder="숫자만 입력" />
-                      <small>KRW ₩{formData.prices?.KRW?.toLocaleString() || 0} · USD ${formData.prices?.USD?.toLocaleString() || 0} · VND ₫{formData.prices?.VND?.toLocaleString() || 0}</small>
+                      <small>통화별 판매가를 각각 입력합니다. KRW ₩{formData.prices?.KRW?.toLocaleString() || 0} · VND ₫{formData.prices?.VND?.toLocaleString() || 0}</small>
                     </label>
                   </div>
                 </section>

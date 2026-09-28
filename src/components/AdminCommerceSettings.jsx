@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { DELIVERY_CARRIERS, normalizeCommerceSettings } from '../utils/commerce';
+import { DELIVERY_CARRIERS, normalizeCommerceSettings, isCommerceReady } from '../utils/commerce';
+import { marketSettings } from '../utils/market';
 
 export default function AdminCommerceSettings() {
   const [settings, setSettings] = useState(() => normalizeCommerceSettings());
@@ -19,9 +20,14 @@ export default function AdminCommerceSettings() {
   }, []);
 
   const updateSetting = (key, value) => setSettings((current) => ({ ...current, [key]: value }));
+  const updateVietnam = (key, value) => setSettings((current) => ({ ...current, vietnam: { ...current.vietnam, [key]: value } }));
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (settings.vietnam?.orderEnabled && !isCommerceReady(marketSettings(settings, 'VND'))) {
+      setMessage('베트남 주문을 켜려면 VND 배송비·무료배송 기준, 현지 입금 계좌, 영어 정책 및 공통 사업자 확인을 완료해 주세요.');
+      return;
+    }
     const requiredBusinessFields = ['businessName', 'representativeName', 'businessNumber', 'customerServicePhone', 'customerServiceEmail', 'businessAddress'];
     if (settings.orderEnabled && (
       !settings.bankName.trim()
@@ -99,6 +105,17 @@ export default function AdminCommerceSettings() {
           {['termsText', 'privacyText', 'returnsText'].map((field, index) => <label key={field} className="admin-form-field commerce-span-2"><span>{['이용약관', '개인정보 처리방침', '배송·교환·반품 안내'][index]}</span><textarea className="admin-input" rows="8" maxLength="20000" value={settings[field] || ''} onChange={(event) => { updateSetting(field, event.target.value); updateSetting('policyConfirmed', false); }} placeholder="실제 운영 정책과 개인정보 처리 내용을 확인한 문구를 입력하세요. 미확정 상태에서는 일반 주문이 차단됩니다." /></label>)}
           <label className="commerce-safety-check"><input type="checkbox" checked={settings.policyConfirmed === true} onChange={(event) => updateSetting('policyConfirmed', event.target.checked)} /><span>위 약관·개인정보·배송 및 반품 정책을 실제 운영 기준으로 검토·확정했습니다.</span></label>
         </div>
+      <section style={{ width: '100%' }}>
+        <h3>영어 스토어 · 베트남동 (VND)</h3>
+        <p>위 한국어·원화 설정과 별도입니다. 원화 금액을 환산하지 않으며, 상품별 VND 판매가를 사용합니다.</p>
+        <label className="commerce-safety-check"><input type="checkbox" checked={settings.vietnam?.orderEnabled === true} onChange={(event) => updateVietnam('orderEnabled', event.target.checked)} />베트남 주문 접수</label>
+        <div className="commerce-settings-grid">
+          {[['shippingFee', '베트남 배송비 (VND)'], ['freeShippingThreshold', '무료배송 기준 (VND, 0이면 미적용)']].map(([key, label]) => <label className="admin-form-field" key={key}><span>{label}</span><input className="admin-input" type="number" min="0" step="1" value={settings.vietnam?.[key] ?? ''} onChange={(event) => updateVietnam(key, event.target.value === '' ? null : Number(event.target.value))} /></label>)}
+          {[['bankName', '베트남 입금 은행'], ['accountNumber', 'VND 입금 계좌'], ['accountHolder', '예금주'], ['defaultCarrier', '베트남 택배사'], ['remoteAreaNotice', '영어 배송 안내']].map(([key, label]) => <label className="admin-form-field" key={key}><span>{label}</span><input className="admin-input" value={settings.vietnam?.[key] || ''} onChange={(event) => updateVietnam(key, event.target.value)} /></label>)}
+          {[['termsText', 'English terms'], ['privacyText', 'English privacy policy'], ['returnsText', 'English delivery and returns']].map(([key, label]) => <label className="admin-form-field commerce-span-2" key={key}><span>{label}</span><textarea className="admin-input" rows="5" value={settings.vietnam?.[key] || ''} onChange={(event) => { updateVietnam(key, event.target.value); updateVietnam('policyConfirmed', false); }} /></label>)}
+        </div>
+        <label className="commerce-safety-check"><input type="checkbox" checked={settings.vietnam?.policyConfirmed === true} onChange={(event) => updateVietnam('policyConfirmed', event.target.checked)} />베트남 판매용 영어 정책을 확인했습니다.</label>
+      </section>
       <div className="commerce-settings-footer">
         <span role="status" className={message.includes('저장했습니다') ? 'success' : ''}>{loading ? '설정을 불러오는 중입니다.' : message}</span>
         <button type="submit" className="admin-btn-primary" disabled={saving || loading}>{saving ? '저장 중…' : '기준정보 저장'}</button>

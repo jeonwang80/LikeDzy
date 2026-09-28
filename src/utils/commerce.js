@@ -67,6 +67,8 @@ export const normalizeCommerceSettings = (value = {}) => ({
 
 export const isCommerceReady = (settings) => Boolean(
   settings?.orderEnabled
+  && (settings.currency !== 'VND' || (Number.isSafeInteger(settings.shippingFee) && settings.shippingFee >= 0
+    && Number.isSafeInteger(settings.freeShippingThreshold) && settings.freeShippingThreshold >= 0))
   && settings?.purchaseSafetyConfirmed
   && settings?.businessInfoConfirmed
   && settings?.policyConfirmed
@@ -85,6 +87,7 @@ export const isCommerceReady = (settings) => Boolean(
 );
 
 export const calculateShippingFee = (subtotal, settings) => {
+  if (settings?.currency === 'VND' && (!Number.isSafeInteger(settings.shippingFee) || !Number.isSafeInteger(settings.freeShippingThreshold))) return null;
   const normalized = normalizeCommerceSettings(settings);
   if (normalized.freeShippingThreshold > 0 && subtotal >= normalized.freeShippingThreshold) return 0;
   return normalized.shippingFee;
@@ -96,10 +99,10 @@ export const getDepositDeadline = (hours, from = new Date()) => (
   new Date(from.getTime() + Math.max(1, Number(hours) || 48) * 60 * 60 * 1000)
 );
 
-export const formatKoreanDateTime = (value) => {
+export const formatKoreanDateTime = (value, language = 'ko') => {
   const date = value?.toDate ? value.toDate() : new Date(value);
   if (Number.isNaN(date.getTime())) return '-';
-  return new Intl.DateTimeFormat('ko-KR', {
+  return new Intl.DateTimeFormat(language === 'ko' ? 'ko-KR' : 'en-GB', {
     year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
   }).format(date);
 };

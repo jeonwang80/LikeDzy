@@ -1,3 +1,4 @@
+import { currencyForLanguage, formatMoney, productPrice } from './market.js';
 export const FALLBACK_PRODUCT_IMAGE = '/images/product-placeholder.svg';
 
 export function getColorSwatchBackground(swatch, fallback = '#cccccc') {
@@ -12,17 +13,14 @@ const isLegacyModelImage = (url) =>
   typeof url === 'string' && url.toLowerCase().includes('model_1.png');
 
 export function formatProductPrice(product, language = 'ko') {
-  const currencyByLanguage = {
-    ko: { key: 'KRW', symbol: '₩' },
-    en: { key: 'USD', symbol: '$' },
-    vi: { key: 'VND', symbol: '₫' },
-  };
-
-  const currency = currencyByLanguage[language] || currencyByLanguage.ko;
-  const localizedPrice = product?.prices?.[currency.key];
+  if (language !== 'ko') {
+    const price = productPrice(product, 'VND');
+    return price === null ? 'Price unavailable' : formatMoney(price, 'VND');
+  }
+  const localizedPrice = product?.prices?.KRW;
 
   if (typeof localizedPrice === 'number') {
-    return `${currency.symbol}${localizedPrice.toLocaleString()}`;
+    return `₩${localizedPrice.toLocaleString()}`;
   }
 
   if (typeof product?.price === 'number') {
@@ -67,8 +65,7 @@ export function presentProduct(product, language = 'ko') {
     category: localized.category || product?.category || 'OUTDOOR',
     displayPrice: formatProductPrice(product, language),
     numericPrice:
-      product?.prices?.[language === 'en' ? 'USD' : language === 'vi' ? 'VND' : 'KRW']
-      ?? (typeof product?.price === 'number' ? product.price : 0),
+      productPrice(product, currencyForLanguage(language)) ?? 0,
     images,
     colorSwatches: product?.colorSwatches?.length
       ? product.colorSwatches

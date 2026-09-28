@@ -1,10 +1,18 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { currencyForLanguage } from '../utils/market';
 import { translations } from './translations';
 
 const LanguageContext = createContext();
 
 export const LanguageProvider = ({ children }) => {
-  const [language, setLanguage] = useState('ko');
+  const [language, updateLanguage] = useState(() => {
+    try { return ['en', 'vi'].includes(localStorage.getItem('likedzy-language')) ? 'en' : 'ko'; } catch { return 'ko'; }
+  });
+  const setLanguage = (value) => updateLanguage(value === 'ko' ? 'ko' : 'en');
+  useEffect(() => {
+    document.documentElement.lang = language;
+    try { localStorage.setItem('likedzy-language', language); } catch { /* Persistence is optional. */ }
+  }, [language]);
 
   const t = (key) => {
     const keys = key.split('.');
@@ -17,7 +25,7 @@ export const LanguageProvider = ({ children }) => {
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ language, currency: currencyForLanguage(language), setLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );

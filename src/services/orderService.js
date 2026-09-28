@@ -3,7 +3,7 @@ import { functions } from '../firebase';
 
 const call = async (name, data) => (await httpsCallable(functions, name)(data)).data;
 
-export const createBankTransferOrder = ({ cart, customer, expectedTotal, idempotencyKey, guestAccessToken }) => call('createBankTransferOrder', {
+export const createBankTransferOrder = ({ cart, customer, expectedTotal, idempotencyKey, guestAccessToken, currency = 'KRW' }) => call('createBankTransferOrder', {
   cart: cart.map((item) => ({
     variantId: item.option?.variantId || '',
     productId: item.product.id,
@@ -11,7 +11,7 @@ export const createBankTransferOrder = ({ cart, customer, expectedTotal, idempot
     colorName: item.product.cartColorName || '기본',
     quantity: item.quantity,
   })),
-  customer, expectedTotal, idempotencyKey, guestAccessToken,
+  customer, expectedTotal, idempotencyKey, guestAccessToken, currency,
 });
 export const getOrder = (orderId, guestAccessToken = '') => call('getOrder', { orderId, guestAccessToken });
 export const recoverOrderAttempt = (attempt) => call('getOrder', { idempotencyKey: attempt.idempotencyKey, guestAccessToken: attempt.guestAccessToken, abortIfMissing: true });

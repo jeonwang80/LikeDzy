@@ -31,7 +31,7 @@ export function buildCatalogFields(product = {}, categoryMasters = []) {
   };
   for (const [language, suffix, currency] of [['ko', 'Ko', 'KRW'], ['en', 'En', 'USD'], ['vi', 'Vi', 'VND']]) {
     fields[`sortName${suffix}`] = String(product[language]?.name || product.ko?.name || product.name || '').normalize('NFKC').toLowerCase();
-    fields[`price${currency}`] = numericPrice(product.prices?.[currency] ?? product.price);
+    fields[`price${currency}`] = numericPrice(product.prices?.[currency] ?? (currency === 'KRW' ? product.price : product[`price${currency}`]));
   }
   return fields;
 }
@@ -40,7 +40,7 @@ export function getCatalogOrdering(sortBy = 'display', language = 'ko') {
   if (sortBy === 'newest') return [['createdAt', 'desc']];
   if (sortBy === 'name') return [[`sortName${language === 'en' ? 'En' : language === 'vi' ? 'Vi' : 'Ko'}`, 'asc']];
   if (sortBy === 'price-asc' || sortBy === 'price-desc') {
-    return [[`price${language === 'en' ? 'USD' : language === 'vi' ? 'VND' : 'KRW'}`, sortBy === 'price-desc' ? 'desc' : 'asc']];
+    return [[`price${language === 'ko' ? 'KRW' : 'VND'}`, sortBy === 'price-desc' ? 'desc' : 'asc']];
   }
   return [['orderIndex', 'asc'], ['createdAt', 'desc']];
 }

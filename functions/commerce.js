@@ -44,21 +44,22 @@ const TRANSITIONS = {
   [STATUS.RETURN_REQUESTED]: [STATUS.RETURN_RECEIVED],
 };
 
-function normalizeCustomer(customer = {}) {
+function normalizeCustomer(customer = {}, currency = 'KRW') {
   if (customer.agreements?.orderConfirmed !== true || customer.agreements?.privacyAgreed !== true) fail("failed-precondition", "필수 주문 확인이 완료되지 않았습니다.");
   const result = {};
   for (const field of ["buyerName", "buyerPhone", "recipientName", "recipientPhone", "postcode", "address1"]) {
     result[field] = text(customer[field], field.includes("Phone") ? 30 : 200);
-    if (!result[field]) fail("invalid-argument", "주문자와 배송지 필수 정보를 입력해 주세요.");
+    if (!result[field] && !(currency === 'VND' && field === 'postcode')) fail("invalid-argument", "주문자와 배송지 필수 정보를 입력해 주세요.");
   }
   for (const field of ["buyerPhone", "recipientPhone"]) {
     if (!/^\+?[\d ()-]{8,30}$/.test(result[field]) || result[field].replace(/\D/g, "").length < 8) fail("invalid-argument", "연락처를 확인해 주세요.");
   }
-  if (!/^\d{5}$/.test(result.postcode)) fail("invalid-argument", "우편번호 5자리를 확인해 주세요.");
+  if ((currency === 'KRW' || result.postcode) && !/^\d{5}$/.test(result.postcode)) fail("invalid-argument", "우편번호 5자리를 확인해 주세요.");
   result.address2 = text(customer.address2);
   result.depositorName = text(customer.depositorName, 80) || result.buyerName;
   result.notes = text(customer.notes, 300);
   const type = customer.cashReceipt?.type || "none";
+  if (currency === 'VND' && type !== 'none') fail('invalid-argument', 'Korean cash receipts are only available for KRW orders.');
   if (!["none", "personal", "business"].includes(type)) fail("invalid-argument", "현금영수증 종류를 확인해 주세요.");
   const identity = type === "none" ? "" : text(customer.cashReceipt?.identity, 40).replace(/\D/g, "");
   if ((type === "personal" && !/^\d{10,11}$/.test(identity)) || (type === "business" && !/^\d{10}$/.test(identity))) fail("invalid-argument", "현금영수증 발급번호를 확인해 주세요.");
@@ -186,6 +187,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
   function creationResult(orderId, order) {
     return {
       id: orderId, orderNumber: order.orderNumber, totalAmountNumber: order.totalAmountNumber,
+      currency: order.currency || 'KRW',
       shippingFee: order.shippingFee, isTestOrder: order.isTestOrder, deadline: iso(order.depositDeadlineAt), bank: order.bankSnapshot,
     };
   }
@@ -195,13 +197,15 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     if (!isEmulator && !adminUser && !context.app?.appId) fail("failed-precondition", "안전한 주문 연결을 확인할 수 없습니다. 페이지를 새로고침해 주세요.");
     // This separate transaction commits even if later validation/order creation fails.
     await consumeAttempt("create", context, 10);
+    const currency = data?.currency ?? 'KRW';
+    if (!['KRW', 'VND'].includes(currency)) fail('invalid-argument', 'Unsupported order currency.');
     const idempotencyKey = secret(data?.idempotencyKey, "주문 요청");
     const accessToken = secret(data.guestAccessToken, "주문 조회");
     const cart = normalizeCart(data.cart);
-    const customer = normalizeCustomer(data.customer);
+    const customer = normalizeCustomer(data.customer, currency);
     const expectedTotal = integer(data.expectedTotal, "주문 금액", 1, 1000000000);
     const actorUid = context.auth?.uid || null;
-    const fingerprint = hash(JSON.stringify({ cart, customer, expectedTotal, actorUid, tokenHash: hash(accessToken) }));
+    const fingerprint = hash(JSON.stringify({ cart, customer, expectedTotal, actorUid, tokenHash: hash(accessToken), ...(currency === 'VND' ? { currency } : {}) }));
     const requestId = hash(idempotencyKey);
     const requestRef = ref("orderRequests", requestId);
     const orderRef = ref("orders", requestId);
@@ -216,9 +220,20 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         return creationResult(orderRef.id, saved.data());
       }
       const settingsSnapshot = await transaction.get(ref("settings", "commerce"));
-      const savedSettings = settingsSnapshot.exists ? settingsSnapshot.data() : {};
+      const baseSettings = settingsSnapshot.exists ? settingsSnapshot.data() : {};
+      const vietnam = baseSettings.vietnam || {};
+      const savedSettings = currency === 'KRW' ? baseSettings : {
+        ...baseSettings, ...vietnam, orderEnabled: vietnam.orderEnabled === true, policyConfirmed: vietnam.policyConfirmed === true,
+        bankName: vietnam.bankName || '', accountNumber: vietnam.accountNumber || '', accountHolder: vietnam.accountHolder || '',
+        termsText: vietnam.termsText || '', privacyText: vietnam.privacyText || '', returnsText: vietnam.returnsText || '',
+        shippingFee: vietnam.shippingFee, freeShippingThreshold: vietnam.freeShippingThreshold, defaultCarrier: vietnam.defaultCarrier || '',
+      };
+      if (currency === 'VND' && (!Number.isSafeInteger(vietnam.shippingFee) || vietnam.shippingFee < 0
+        || !Number.isSafeInteger(vietnam.freeShippingThreshold) || vietnam.freeShippingThreshold < 0)) {
+        fail('failed-precondition', 'Vietnam shipping settings are not ready.');
+      }
       const ready = liveReady(savedSettings);
-      const isTestOrder = !ready && adminUser;
+      const isTestOrder = currency === 'KRW' && !ready && adminUser;
       if (!ready && !isTestOrder) fail("failed-precondition", "현재 주문 접수를 준비 중입니다.");
       if (!isEmulator && !isTestOrder && !context.app?.appId) fail("failed-precondition", "안전한 주문 연결을 확인할 수 없습니다. 페이지를 새로고침해 주세요.");
       const settings = isTestOrder ? TEST_SETTINGS : savedSettings;
@@ -240,8 +255,8 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       }
       const orderItems = cart.map((item) => {
         const product = products.get(item.productId);
-        const unitPrice = integer(Number(product.prices?.KRW ?? product.priceKRW), "상품 판매가", 1, 100000000);
-        return { ...item, productName: text(product.name), unitPrice, lineAmount: unitPrice * item.quantity };
+        const unitPrice = integer(Number(product.prices?.[currency] ?? product[`price${currency}`]), "상품 판매가", 1, 100000000);
+        return { ...item, productName: text(currency === 'VND' ? product.en?.name || product.name : product.ko?.name || product.name), unitPrice, lineAmount: unitPrice * item.quantity };
       });
       const subtotal = orderItems.reduce((total, item) => total + item.lineAmount, 0);
       const fee = integer(Number(settings.shippingFee ?? 3000), "배송비");
@@ -252,8 +267,8 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       const hours = integer(Number(settings.depositDeadlineHours ?? 48), "입금 기한", 1, 720);
       const orderNumber = `LD${new Date(currentTime).toISOString().slice(0, 10).replace(/-/g, "")}-${orderRef.id.slice(0, 12).toUpperCase()}`;
       const order = {
-        schemaVersion: 2, orderNumber, userId: actorUid, items: orderItems, subtotal, shippingFee, totalAmountNumber,
-        totalAmount: `₩${totalAmountNumber.toLocaleString("ko-KR")}`, paymentMethod: "bank_transfer", isTestOrder,
+        schemaVersion: 2, currency, orderNumber, userId: actorUid, items: orderItems, subtotal, shippingFee, totalAmountNumber,
+        totalAmount: currency === 'VND' ? `${totalAmountNumber.toLocaleString('en-US')} ₫` : `₩${totalAmountNumber.toLocaleString("ko-KR")}`, paymentMethod: "bank_transfer", isTestOrder,
         status: STATUS.WAITING, inventoryState: "reserved", name: customer.buyerName, phone: customer.buyerPhone,
         depositName: customer.depositorName, recipientName: customer.recipientName, recipientPhone: customer.recipientPhone,
         postcode: customer.postcode, address1: customer.address1, address2: customer.address2,

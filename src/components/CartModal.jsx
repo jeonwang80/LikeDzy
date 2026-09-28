@@ -1,14 +1,20 @@
+import { useStoreCopy } from '../i18n/storeCopy';
 import React, { useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { db } from '../firebase';
-import { calculateShippingFee, formatKRW, normalizeCommerceSettings } from '../utils/commerce';
+import { calculateShippingFee, normalizeCommerceSettings } from '../utils/commerce';
 import { FALLBACK_PRODUCT_IMAGE, getColorSwatchBackground, getSafeImageUrl } from '../utils/productPresentation';
+import { useLanguage } from '../i18n/LanguageContext';
+import { formatMoney, marketSettings, productPrice } from '../utils/market';
 import './CartModal.css';
 
 export default function CartModal() {
+  const copy = useStoreCopy();
   const navigate = useNavigate();
+  const { language, currency } = useLanguage();
+  const money = (value) => formatMoney(value, currency);
   const { cart, updateQuantity, removeFromCart, isCartOpen, setIsCartOpen } = useCart();
   const [settings, setSettings] = useState(() => normalizeCommerceSettings());
 
@@ -18,11 +24,11 @@ export default function CartModal() {
     () => {},
   ), []);
 
-  const subtotal = useMemo(() => cart.reduce(
-    (sum, item) => sum + (Number(item.product.prices?.KRW) || 0) * item.quantity,
+  const subtotal = useMemo(() => cart.some((item) => productPrice(item.product, currency) === null) ? null : cart.reduce(
+    (sum, item) => sum + (productPrice(item.product, currency) || 0) * item.quantity,
     0,
-  ), [cart]);
-  const shippingFee = calculateShippingFee(subtotal, settings);
+  ), [cart, currency]);
+  const shippingFee = calculateShippingFee(subtotal, marketSettings(settings, currency));
   const totalQuantity = cart.reduce((total, item) => total + item.quantity, 0);
 
   if (!isCartOpen) return null;
@@ -55,21 +61,21 @@ export default function CartModal() {
     <div className="admin-modal-overlay cart-modal-overlay" onClick={(event) => {
       if (event.target === event.currentTarget) setIsCartOpen(false);
     }}>
-      <aside className="cart-sidebar" aria-label="장바구니">
+      <aside className="cart-sidebar" aria-label={copy("장바구니")}>
         <header className="cart-drawer-header">
           <div>
             <span>LIKEDZY / CART · {totalQuantity} ITEMS</span>
-            <h2>장바구니</h2>
+            <h2>{copy("장바구니")}</h2>
           </div>
-          <button type="button" onClick={() => setIsCartOpen(false)} aria-label="장바구니 닫기">&times;</button>
+          <button type="button" onClick={() => setIsCartOpen(false)} aria-label={copy("장바구니 닫기")}>&times;</button>
         </header>
 
         <div className="cart-drawer-body">
           {cart.length === 0 ? (
             <div className="cart-empty-state">
               <span>YOUR BAG IS EMPTY</span>
-              <strong>장바구니가 비어있습니다.</strong>
-              <p>마음에 드는 아웃도어 아이템을 담아보세요.</p>
+              <strong>{copy("장바구니가 비어있습니다.")}</strong>
+              <p>{copy("마음에 드는 아웃도어 아이템을 담아보세요.")}</p>
             </div>
           ) : (
             <div className="cart-item-list">
@@ -91,21 +97,21 @@ export default function CartModal() {
                       <div className="cart-item-heading">
                         <div>
                           <span>LIKEDZY TECHNICAL OUTDOOR</span>
-                          <h3>{item.product.name}</h3>
+                          <h3>{item.product[language]?.name || item.product.name}</h3>
                         </div>
-                        <button type="button" onClick={() => removeFromCart(item.product.id, item.option?.name, item.product.cartColorName)}>삭제</button>
+                        <button type="button" onClick={() => removeFromCart(item.product.id, item.option?.name, item.product.cartColorName)}>{copy("삭제")}</button>
                       </div>
                       <div className="cart-item-meta">
                         <span className="cart-color-meta"><i style={{ background: itemColor.background }} aria-hidden="true" /> COLOR · {itemColor.name}</span>
                         <span>SIZE · {item.option?.name || '기본'}</span>
                       </div>
                       <div className="cart-item-controls">
-                        <div className="cart-quantity-control" aria-label="수량 조절">
-                          <button type="button" onClick={() => updateQuantity(item.product.id, item.option?.name, item.quantity - 1, item.product.cartColorName)} aria-label="수량 줄이기">−</button>
+                        <div className="cart-quantity-control" aria-label={copy("수량 조절")}>
+                          <button type="button" onClick={() => updateQuantity(item.product.id, item.option?.name, item.quantity - 1, item.product.cartColorName)} aria-label={copy("수량 줄이기")}>−</button>
                           <span>{item.quantity}</span>
-                          <button type="button" onClick={() => updateQuantity(item.product.id, item.option?.name, item.quantity + 1, item.product.cartColorName)} aria-label="수량 늘리기">＋</button>
+                          <button type="button" onClick={() => updateQuantity(item.product.id, item.option?.name, item.quantity + 1, item.product.cartColorName)} aria-label={copy("수량 늘리기")}>＋</button>
                         </div>
-                        <strong>{formatKRW((Number(item.product.prices?.KRW) || 0) * item.quantity)}</strong>
+                        <strong>{money(productPrice(item.product, currency) === null ? null : productPrice(item.product, currency) * item.quantity)}</strong>
                       </div>
                     </div>
                   </article>
@@ -119,14 +125,13 @@ export default function CartModal() {
           <footer className="cart-drawer-footer">
             <div className="cart-shipping-note">
               <span>DELIVERY</span>
-              <strong>{shippingFee === 0 ? '무료배송 적용' : `배송비 ${formatKRW(shippingFee)}`}</strong>
+              <strong>{shippingFee === 0 ? copy("무료배송 적용") : `${language === 'ko' ? '배송비' : 'Shipping'} ${money(shippingFee)}`}</strong>
             </div>
             <div className="cart-total-row">
-              <span>예상 결제금액</span>
-              <strong>{formatKRW(subtotal + shippingFee)}</strong>
+              <span>{copy("예상 결제금액")}</span>
+              <strong>{money(shippingFee === null || cart.some((item) => productPrice(item.product, currency) === null) ? null : subtotal + shippingFee)}</strong>
             </div>
-            <button type="button" className="cart-checkout-button" onClick={handleCheckout}>
-              주문서 작성 <span>→</span>
+            <button type="button" className="cart-checkout-button" onClick={handleCheckout}>{copy("주문서 작성")}<span>→</span>
             </button>
           </footer>
         )}
