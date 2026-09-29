@@ -3,58 +3,71 @@ import { collection, limit, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../firebase';
 import { setVariantStock } from '../services/orderService';
 import { randomKey } from '../utils/checkoutSession';
+import { sortSizeOptions } from '../utils/sizeOrder';
+import './VariantInventory.css';
+const cellKey = (color, size) => JSON.stringify([color, size]);
+
+export function InventoryGrid({ product, records, loading, readError, onSave, onClose }) {
+  const [drafts, setDrafts] = useState({});
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [errors, setErrors] = useState({});
+  const colors = useMemo(() => [...new Set((product.colorSwatches?.length ? product.colorSwatches : product.colors?.length ? product.colors : [{ name: '기본' }]).map(c => c.name || '기본'))], [product]);
+  const sizes = useMemo(() => [...new Set(sortSizeOptions((product.sizeOptions || product.options)?.length ? product.sizeOptions || product.options : [{ name: '기본' }]).map(s => s.name || '기본'))], [product]);
+  const byKey = useMemo(() => new Map(records.map(r => [cellKey(r.colorName, r.optionName), r])), [records]);
+  const reset = key => {
+    setDrafts(current => { const next = { ...current }; delete next[key]; return next; });
+    setErrors(current => { const next = { ...current }; delete next[key]; return next; });
+  };
+  const close = () => { if (!busy && (!Object.keys(drafts).length || window.confirm('저장하지 않은 재고 입력을 버리고 닫을까요?'))) onClose(); };
+  const save = async () => {
+    const entries = Object.entries(drafts);
+    const invalid = Object.fromEntries(entries.filter(([,d]) => !/^\d+$/.test(d.stock) || !Number.isSafeInteger(Number(d.stock)) || Number(d.stock) > 1000000).map(([key]) => [key, '0~1,000,000의 정수를 입력하세요.']));
+    if (Object.keys(invalid).length) { setErrors(invalid); setMessage('표시된 수량을 확인해 주세요.'); return; }
+    setBusy(true); setErrors({}); setMessage('저장 중…');
+    let success = 0; const failed = {};
+    for (const [key, draft] of entries) {
+      const [colorName, optionName] = JSON.parse(key);
+      try {
+        await onSave({ productId: product.id, colorName, optionName, stock: Number(draft.stock), expectedVersion: draft.version, requestId: draft.requestId });
+        reset(key); success++;
+      } catch (error) { failed[key] = error.message || '저장 실패. 다시 시도해 주세요.'; }
+    }
+    setErrors(failed); setMessage(`${success}개 저장 완료${Object.keys(failed).length ? ` · ${Object.keys(failed).length}개 실패: 표시된 칸을 확인해 주세요.` : ''}`); setBusy(false);
+  };
+  const count = Object.keys(drafts).length;
+  return <div className="admin-modal-overlay" role="dialog" aria-modal="true" aria-label="색상·사이즈별 재고 관리">
+    <section className="admin-drawer inventory-grid-drawer">
+      <header className="admin-drawer-header"><div><span>SKU INVENTORY</span><h2>색상·사이즈별 재고</h2><p>{product.name}</p></div><button type="button" className="admin-icon-btn" disabled={busy} onClick={close} aria-label="닫기">×</button></header>
+      <div className="inventory-grid-content">
+        <p className="inventory-grid-hint">색상 × 사이즈별 <strong>판매가능 수량</strong>을 입력하세요. 변경한 칸만 저장됩니다.</p>
+        {readError && <p role="alert">재고 조회 실패: 관리자 권한과 연결을 확인해 주세요.</p>}
+        {message && <p role="status">{message}</p>}
+        {loading ? <p>재고 확인 중…</p> : <div className="inventory-table-scroll" tabIndex={0} aria-label="재고 입력 표, 가로 스크롤 가능"><table className="inventory-matrix"><thead><tr><th scope="col">색상 / 사이즈</th>{sizes.map(size => <th scope="col" key={size}>{size}</th>)}</tr></thead><tbody>{colors.map(color => <tr key={color}><th scope="row">{color}</th>{sizes.map(size => {
+          const key = cellKey(color,size); const record = byKey.get(key); const draft = drafts[key];
+          const stale = draft && draft.version !== (record?.version || 0);
+          const error = errors[key] || (stale ? '재고가 변경됐습니다. 최신값으로 초기화 후 입력하세요.' : '');
+          return <td key={size} className={`${draft ? 'is-edited' : ''} ${error ? 'has-error' : ''}`}>
+            <input aria-label={`${color} / ${size} 판매가능 수량`} aria-invalid={!!error} type="number" inputMode="numeric" min="0" max="1000000" step="1" disabled={busy || readError} value={draft?.stock ?? record?.stock ?? ''} placeholder="미등록" onChange={e => { const stock=e.target.value; setDrafts(current => ({...current,[key]:{stock,version:current[key]?.version ?? record?.version ?? 0,requestId:randomKey()}})); setErrors(current=>({...current,[key]:''})); }} />
+            <small>예약 {record?.reserved || 0} · 판매 {record?.sold || 0}</small>
+            {error && <span className="inventory-cell-error" role="alert">{error}</span>}
+            {draft && <button type="button" disabled={busy} onClick={()=>reset(key)}>입력 초기화</button>}
+          </td>;
+        })}</tr>)}</tbody></table></div>}
+        <p className="inventory-grid-hint">빈칸은 미등록, 0은 품절입니다. 예약 수량은 제외하고 입력하세요.</p>
+        <details className="inventory-grid-help"><summary>기존 재고 및 입력 안내</summary><p>주문 중 바뀐 재고는 덮어쓰지 않습니다. 저장에 실패한 칸만 다시 확인해 주세요. 기존 재고는 색상별로 자동 배분하지 않습니다.</p>{(product.options || []).map(option => <span key={option.name}>{option.name}: {Number(option.stock)||0}개 / </span>)}</details>
+      </div>
+      <footer className="admin-drawer-footer"><span className="inventory-change-count">변경 {count}개</span><button type="button" className="admin-btn-secondary" disabled={busy || !count} onClick={()=>{setDrafts({});setErrors({});setMessage('');}}>전체 입력 초기화</button><button type="button" className="admin-btn-primary" disabled={busy || loading || readError || !count} onClick={save}>{busy ? '저장 중…' : '변경사항 저장'}</button><button type="button" className="admin-btn-secondary" disabled={busy} onClick={close}>닫기</button></footer>
+    </section>
+  </div>;
+}
 
 export default function VariantInventory({ product, onClose }) {
   const [records, setRecords] = useState([]);
-  const [drafts, setDrafts] = useState({});
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState('');
-  const [message, setMessage] = useState('');
-  useEffect(() => onSnapshot(query(collection(db, 'inventory'), where('productId', '==', product.id), limit(200)), (snapshot) => {
-    setRecords(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })));
-    setLoading(false);
-  }, () => { setMessage('재고 조회 실패: 관리자 권한과 연결을 확인해 주세요.'); setLoading(false); }), [product.id]);
-  const combinations = useMemo(() => {
-    const colors = product.colorSwatches?.length ? product.colorSwatches : product.colors?.length ? product.colors : [{ name: '기본' }];
-    const savedSizes = product.sizeOptions || product.options;
-    const sizes = savedSizes?.length ? savedSizes : [{ name: '기본' }];
-    return colors.flatMap((color) => sizes.map((size) => ({ colorName: color.name || '기본', optionName: size.name || '기본' })));
-  }, [product]);
-  const save = async (combination, key, record) => {
-    const draft = drafts[key];
-    if (!draft || !Number.isInteger(Number(draft.stock)) || Number(draft.stock) < 0) return setMessage('0 이상의 정수 재고를 입력해 주세요.');
-    setBusy(key); setMessage('');
-    try {
-      await setVariantStock({ productId: product.id, ...combination, stock: Number(draft.stock), expectedVersion: draft.version, requestId: draft.requestId });
-      setDrafts((current) => { const next = { ...current }; delete next[key]; return next; });
-      setMessage(`${combination.colorName} / ${combination.optionName} 저장 완료`);
-    } catch (error) { setMessage(`${error.message || '재고 저장 실패'} 현재 서버 재고: ${record?.stock ?? '미등록'}. 충돌 시 입력 초기화 후 다시 확인해 주세요.`); }
-    finally { setBusy(''); }
-  };
-  return <div className="admin-modal-overlay" role="dialog" aria-modal="true" aria-label="색상·사이즈별 재고 관리">
-    <section className="admin-drawer">
-      <header className="admin-drawer-header"><div><span>SKU INVENTORY</span><h2>색상·사이즈별 재고</h2><p>{product.name}</p></div><button className="admin-icon-btn" onClick={onClose} aria-label="닫기">×</button></header>
-      <div className="admin-option-list">
-        <p>판매가능 수량은 예약 수량을 제외한 재고입니다. 주문과 동시에 바뀐 재고는 덮어쓰지 않고 충돌을 안내합니다.</p>
-        <p>기존 사이즈 재고는 색상별로 자동 배분하지 않습니다. 실재고를 확인한 뒤 조합별로 등록해 주세요. 미등록 조합은 판매되지 않습니다.</p>
-        <details><summary>기존 재고 참고 (새 SKU에 자동 합산되지 않음)</summary>{(product.options || []).map((option) => <p key={option.name}>{option.name}: {Number(option.stock) || 0}개</p>)}</details>
-        {message && <p role="status">{message}</p>}
-        {loading ? <p>재고 확인 중…</p> : combinations.map((combination) => {
-          const key = JSON.stringify([combination.colorName, combination.optionName]);
-          const record = records.find((item) => item.colorName === combination.colorName && item.optionName === combination.optionName);
-          const draft = drafts[key];
-          const stale = draft && draft.version !== (record?.version || 0);
-          return <article className="admin-option-card" key={key}>
-            <strong>{combination.colorName} / {combination.optionName}</strong>
-            <p>현재 판매가능 {record?.stock ?? '미등록'} · 예약 {record?.reserved || 0} · 판매 {record?.sold || 0}</p>
-            <label>판매가능 수량<input className="admin-input" type="number" min="0" step="1" value={draft?.stock ?? record?.stock ?? ''} placeholder="실재고 확인 후 입력" onChange={(event) => setDrafts((current) => ({ ...current, [key]: { stock: event.target.value, version: current[key]?.version ?? record?.version ?? 0, requestId: randomKey() } }))} /></label>
-            {stale && <p role="alert">주문 또는 다른 관리자가 재고를 변경했습니다. 입력 초기화 후 다시 입력해 주세요.</p>}
-            <button className="admin-btn-primary" disabled={!!busy || !draft || stale} onClick={() => save(combination, key, record)}>{busy === key ? '저장 중…' : '이 조합 저장'}</button>
-            <button className="admin-btn-secondary" disabled={!!busy} onClick={() => setDrafts((current) => { const next = { ...current }; delete next[key]; return next; })}>입력 초기화</button>
-          </article>;
-        })}
-      </div>
-      <footer className="admin-drawer-footer"><button className="admin-btn-secondary" onClick={onClose}>닫기</button></footer>
-    </section>
-  </div>;
+  const [readError, setReadError] = useState(false);
+  useEffect(() => onSnapshot(query(collection(db, 'inventory'), where('productId', '==', product.id), limit(200)), snapshot => {
+    setRecords(snapshot.docs.map(entry => ({id:entry.id,...entry.data()}))); setLoading(false); setReadError(false);
+  }, () => {setReadError(true);setLoading(false);}), [product.id]);
+  return <InventoryGrid key={product.id} product={product} records={records} loading={loading} readError={readError} onSave={setVariantStock} onClose={onClose}/>;
 }
