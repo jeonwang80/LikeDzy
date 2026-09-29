@@ -1,4 +1,5 @@
-.sg-overlay{position:fixed;inset:0;z-index:20000;background:#0007;display:flex;justify-content:flex-end;color:#171717;font-family:inherit;color-scheme:light}
+/* ProductEditor is a full-screen overlay at 99999; its nested drawer must sit above it. */
+.sg-overlay{position:fixed;inset:0;z-index:100100;background:#0007;display:flex;justify-content:flex-end;color:#171717;font-family:inherit;color-scheme:light}
 .sg-drawer{width:min(760px,100%);height:100dvh;background:white;display:flex;flex-direction:column;box-shadow:-10px 0 40px #0002;animation:sg-slide .25s ease-out;outline:none}
 @keyframes sg-slide{from{transform:translateX(100%)}to{transform:translateX(0)}}
 .sg-header{display:flex;align-items:center;justify-content:space-between;padding:20px 26px;border-bottom:1px solid #e3e3e3;flex-shrink:0}
