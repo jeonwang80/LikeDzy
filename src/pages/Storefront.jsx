@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import Header from '../components/Header';
 import HeroSection from '../components/HeroSection';
@@ -63,25 +63,17 @@ export default function Storefront() {
 
   useEffect(() => {
     if (viewMode !== 'product' || !productId) return undefined;
-    let cancelled = false;
-    const loadProduct = async () => {
-      setProductState({ id: productId, loading: true, error: '' });
-      try {
-        const snapshot = await getDoc(doc(db, 'products', productId));
-        if (cancelled) return;
+    return onSnapshot(doc(db, 'products', productId), (snapshot) => {
         if (!snapshot.exists() || snapshot.data().isActive === false) {
           setProductState({ id: productId, loading: false, error: '이 상품을 찾을 수 없습니다. 판매가 종료되었을 수 있습니다.' });
           return;
         }
         setSelectedProduct({ id: snapshot.id, ...snapshot.data() });
         setProductState({ id: productId, loading: false, error: '' });
-      } catch (error) {
+      }, (error) => {
         console.error('Product load failed:', error);
-        if (!cancelled) setProductState({ id: productId, loading: false, error: '상품을 불러오지 못했습니다. 연결을 확인하고 다시 시도해 주세요.' });
-      }
-    };
-    loadProduct();
-    return () => { cancelled = true; };
+        setProductState({ id: productId, loading: false, error: '상품을 불러오지 못했습니다. 연결을 확인하고 다시 시도해 주세요.' });
+      });
   }, [viewMode, productId, productRetry]);
 
   const navigateToHome = () => {

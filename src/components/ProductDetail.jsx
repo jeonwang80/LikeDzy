@@ -1,4 +1,5 @@
 import { normalizeProductImages } from '../utils/productImages';
+import SizeGuideDrawer from './SizeGuideDrawer';
 import React, { useEffect, useState, useMemo } from 'react';
 import { sortSizeOptions } from '../utils/sizeOrder';
 import { createPortal } from 'react-dom';
@@ -56,6 +57,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
   const [selectedSizeIdx, setSelectedSizeIdx] = useState(0);
   const { variants, loading: stockLoading, error: stockError } = useProductStock(product?.id);
   const [zoomImage, setZoomImage] = useState(null);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('likedzy_wishlist') || '[]');
@@ -197,6 +199,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
 
   return (
     <div className="product-detail-alo-page fade-in">
+      {guideOpen && <SizeGuideDrawer guide={product.measurementGuide} name={product[language]?.name || product.name} language={language} onClose={() => setGuideOpen(false)} />}
       <div className="alo-detail-container">
         {/* Top Back Navigation */}
         <div style={{ marginBottom: '1.5rem' }}>
@@ -305,7 +308,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
             <div className="alo-detail-option-group">
               <div className="alo-option-label" style={{ justifyContent: 'space-between' }}>
                 <span><strong>Size:</strong> {sizes[selectedSizeIdx]?.name}</span>
-                <span className="alo-size-guide-link">Size Guide</span>
+                {product.measurementGuide?.rows?.length > 0 && <button type="button" className="alo-size-guide-link sg-trigger" onClick={() => setGuideOpen(true)}>{language === 'ko' ? '사이즈 가이드' : 'Size Guide'}</button>}
               </div>
               <div className="alo-size-pill-grid">
                 {sizes.map((sz, idx) => (

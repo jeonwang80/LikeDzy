@@ -1,4 +1,6 @@
 import { normalizeProductImages, removeProductImage } from '../utils/productImages';
+import SizeGuideDrawer from '../components/SizeGuideDrawer';
+import { validateGuide } from '../utils/measurementGuide';
 import React, { useState, useRef, useMemo } from 'react';
 import { sortSizeOptions } from '../utils/sizeOrder';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
@@ -20,6 +22,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
   const product = useMemo(() => normalizeProductImages(originalProduct), [originalProduct]);
   const { categories: categoryMasters, loading: categoryMastersLoading } = useCategoryMasters({ activeOnly: true });
   const [loading, setLoading] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState('idle');
   const [savedProductId, setSavedProductId] = useState(product?.id || '');
   const [editorMode, setEditorMode] = useState('form'); // 'visual' | 'form'
@@ -377,6 +380,8 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    const guideError = validateGuide(formData.measurementGuide);
+    if (guideError) { alert(guideError); return; }
     setLoading(true);
     setSaveStatus('saving');
 
@@ -586,6 +591,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
 
   return (
     <div className="product-live-editor-overlay fade-in">
+      {guideOpen && <SizeGuideDrawer guide={formData.measurementGuide} name={formData.ko?.name} editable onClose={() => setGuideOpen(false)} onApply={guide => handleChange(null, 'measurementGuide', guide)} />}
       
       {/* 1. TOP STICKY BUILDER HEADER CONTROL BAR */}
       <header className="live-builder-header">
@@ -601,6 +607,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
         </div>
 
         <div className="live-builder-controls">
+          <button type="button" className="live-builder-mode-btn" disabled={loading} onClick={() => setGuideOpen(true)}>스타일 가이드</button>
           {/* Mode Switcher */}
           <div className="live-builder-mode-switcher">
             <button 
@@ -1246,7 +1253,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                 </div>
 
                 <div className="alo-detail-option-group admin-preview-option-block">
-                  <div className="alo-option-label"><strong>Size:</strong></div>
+                  <div className="alo-option-label"><strong>Size:</strong><button type="button" className="sg-trigger" onClick={() => setGuideOpen(true)}>스타일 가이드</button></div>
                   <div className="alo-size-pill-grid">
                     {sortSizeOptions(formData.options || []).map((option, index) => (
                       <span key={`${option.name}-${index}`} className={`alo-size-pill-btn ${index === 0 ? 'selected' : ''}`}>

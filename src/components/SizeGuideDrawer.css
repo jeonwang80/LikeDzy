@@ -1,0 +1,15 @@
+.sg-overlay{position:fixed;inset:0;z-index:20000;background:#0007;display:flex;justify-content:flex-end;color:#171717;font-family:inherit;color-scheme:light}
+.sg-drawer{width:min(760px,100%);height:100dvh;background:white;display:flex;flex-direction:column;box-shadow:-10px 0 40px #0002;animation:sg-slide .25s ease-out;outline:none}
+@keyframes sg-slide{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.sg-header{display:flex;align-items:center;justify-content:space-between;padding:20px 26px;border-bottom:1px solid #e3e3e3;flex-shrink:0}
+.sg-header h2{font-size:19px;margin:0}.sg-header button{border:0;background:none;font-size:30px;padding:0 8px;cursor:pointer}
+.sg-content{overflow-y:auto;padding:24px 26px;flex:1;min-height:0;font-size:14px;line-height:1.6}.sg-product{font-size:18px;font-weight:600;margin-top:0}
+.sg-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:24px 0 16px}.sg-tools button,.sg-footer button{padding:9px 14px;border:1px solid #c8c8c8;background:white;cursor:pointer;color:#171717}
+.sg-tools button[aria-pressed=true],.sg-footer button:last-child{background:#151515;color:white;border-color:#151515}
+.sg-table-scroll{overflow-x:auto;margin:16px 0}.sg-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:auto}.sg-table th,.sg-table td{border:1px solid #dedede;padding:12px 9px;text-align:center;min-width:65px}.sg-table th{font-weight:600;background:#fafafa}.sg-table th:first-child{min-width:128px;text-align:left}
+.sg-table input{width:68px;min-height:38px;border:1px solid #bbb;padding:6px;background:white;color:#171717;font:inherit;border-radius:3px}.sg-table .sg-remove{display:block;margin:5px auto 0;border:0;background:none;color:#934444;cursor:pointer;font-size:11px}
+.sg-note{color:#626262;font-size:12px}.sg-content h3{margin:32px 0 10px;font-size:17px}.sg-diagram{display:block;width:100%;max-width:540px;margin:auto;background:white}.sg-instructions{padding-left:24px}.sg-instructions li{padding-left:7px;margin:14px 0}.sg-instructions li::marker{color:#b32632;font-weight:700}.sg-instructions p{margin:3px 0;color:#555}
+.sg-footer{padding:16px 26px;border-top:1px solid #ddd;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;background:white}.sg-footer p{width:100%;color:#b32632;margin:0}
+.sg-trigger{background:none;border:0;text-decoration:underline;cursor:pointer;color:inherit;font:inherit;padding:4px}
+@media(max-width:600px){.sg-content{padding:18px 16px}.sg-header{padding:16px}.sg-table th,.sg-table td{padding:9px 7px}.sg-footer{padding:14px 16px}}
+@media(prefers-reduced-motion:reduce){.sg-drawer{animation:none}}
