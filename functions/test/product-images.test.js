@@ -1,4 +1,12 @@
 const test=require('node:test');const assert=require('node:assert/strict');
+test('ALL images survive reload, remain outside color roles, and disappear when deleted',async()=>{
+ const {normalizeProductImages,removeProductImage}=await import('../../src/utils/productImages.js');
+ const p={imageUrls:['navy','green','label'],commonImageUrls:['label','deleted'],colorSwatches:[{name:'Navy',imageUrl:'navy',hoverImageUrl:'label',imageUrls:['navy','label'],images:['label']},{name:'Green',imageUrl:'green',imageUrls:['green']}]};
+ const saved=normalizeProductImages(p);assert.deepEqual(saved.commonImageUrls,['label']);assert.deepEqual(saved.colorSwatches[0].imageUrls,['navy']);assert.deepEqual(saved.colorSwatches[0].images,[]);assert.notEqual(saved.colorSwatches[0].hoverImageUrl,'label');
+ assert.deepEqual(normalizeProductImages(JSON.parse(JSON.stringify(saved))),saved);
+ assert.deepEqual(removeProductImage(saved,'label').commonImageUrls,[]);
+ const only=normalizeProductImages({imageUrls:['label'],commonImageUrls:['label'],colorSwatches:[{name:'Navy'}]});assert.equal(only.colorSwatches[0].imageUrl,'');
+});
 test('deleted primary and hover images cannot return through swatches or legacy fields',async()=>{
  const {normalizeProductImages,removeProductImage}=await import('../../src/utils/productImages.js');
  const {resolveProductCardImages}=await import('../../src/utils/productPresentation.js');

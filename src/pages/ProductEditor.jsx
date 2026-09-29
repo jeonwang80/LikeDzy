@@ -221,7 +221,11 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
   };
 
   const handleRemoveExistingImage = (index) => {
-    setFormData(prev => removeProductImage(prev, prev.imageUrls[index]));
+    setFormData(prev => {
+      const removed = prev.imageUrls[index];
+      const cleaned = removeProductImage({ ...prev, imageUrls: [...prev.imageUrls, ...previewUrls] }, removed);
+      return { ...cleaned, imageUrls: prev.imageUrls.filter(url => url !== removed) };
+    });
   };
 
   const handleRemoveNewImage = (index) => {
@@ -292,15 +296,21 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
           const newGroup = currentGroup.filter(u => u !== imgUrl);
           const newPrimary = swatch.imageUrl === imgUrl ? '' : swatch.imageUrl;
           const newHover = swatch.hoverImageUrl === imgUrl ? '' : swatch.hoverImageUrl;
-          return { ...swatch, imageUrl: newPrimary, hoverImageUrl: newHover, imageUrls: newGroup };
+          return { ...swatch, imageUrl: newPrimary, hoverImageUrl: newHover, imageUrls: newGroup,
+            ...(Array.isArray(swatch.images) ? { images: swatch.images.filter(url => url !== imgUrl) } : {}) };
         }
       });
-      return { ...prev, colorSwatches: updatedSwatches };
+      return { ...prev, colorSwatches: updatedSwatches,
+        commonImageUrls: targetColorName === '__ALL__'
+          ? [...new Set([...(prev.commonImageUrls || []), imgUrl])]
+          : (prev.commonImageUrls || []).filter(url => url !== imgUrl),
+      };
     });
   };
 
   // Set Photo Role for a Color: 'primary' (대표 1), 'hover' (대표 2), or 'none' (일반)
   const handleSetPhotoRole = (imgUrl, colorName, newRole) => {
+    if (colorName === '__ALL__') return;
     setFormData(prev => {
       let updatedSwatches = (prev.colorSwatches || []).map(swatch => {
         if (swatch.name === colorName) {
@@ -487,6 +497,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
 
       const finalData = { 
         ...formData, 
+        commonImageUrls: (formData.commonImageUrls || []).map(resolveUploadedImageUrl).filter(url => finalImageUrls.includes(url)),
         name,
         category,
         description,
@@ -713,13 +724,14 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                 
                 {/* Existing Photos */}
                 {formData.imageUrls && formData.imageUrls.map((imgUrl, idx) => {
+                  const isCommon = (formData.commonImageUrls || []).includes(imgUrl);
                   const primarySwatch = (formData.colorSwatches || []).find(s => s.imageUrl === imgUrl);
                   const hoverSwatch = (formData.colorSwatches || []).find(s => s.hoverImageUrl === imgUrl);
                   const groupSwatch = (formData.colorSwatches || []).find(s => s.imageUrls && s.imageUrls.includes(imgUrl));
                   
-                  const activeSwatchName = primarySwatch?.name || hoverSwatch?.name || groupSwatch?.name || (formData.colorSwatches?.[0]?.name || '');
-                  const isPrimary = !!primarySwatch;
-                  const isHover = !!hoverSwatch;
+                  const activeSwatchName = isCommon ? '__ALL__' : primarySwatch?.name || hoverSwatch?.name || groupSwatch?.name || (formData.colorSwatches?.[0]?.name || '');
+                  const isPrimary = !isCommon && !!primarySwatch;
+                  const isHover = !isCommon && !!hoverSwatch;
                   const currentRoleValue = isPrimary ? 'primary' : isHover ? 'hover' : 'none';
 
                   return (
@@ -796,7 +808,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                               onChange={e => handleSetPhotoColor(imgUrl, e.target.value)}
                               style={{ flex: 1, padding: '4px 8px', fontSize: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#ffffff', fontWeight: 'bold' }}
                             >
-                              {formData.colorSwatches.map((sw, sIdx) => (
+                              <option value="__ALL__">ALL · 전체 색상 공통</option>{formData.colorSwatches.map((sw, sIdx) => (
                                 <option key={sIdx} value={sw.name}>
                                   {sw.name || `컬러 #${sIdx+1}`}
                                 </option>
@@ -809,7 +821,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#1e293b', minWidth: '70px' }}>대표 설정:</span>
                           <select 
-                            value={currentRoleValue} 
+                            disabled={isCommon} title={isCommon ? 'ALL 이미지는 전체 색상 공통 일반 이미지입니다.' : ''} value={currentRoleValue}
                             onChange={e => handleSetPhotoRole(imgUrl, activeSwatchName, e.target.value)}
                             style={{ flex: 1, padding: '5px 8px', fontSize: '0.825rem', border: isPrimary ? '2px solid #10b981' : isHover ? '2px solid #2563eb' : '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#ffffff', fontWeight: 800, color: isPrimary ? '#059669' : isHover ? '#2563eb' : '#334155' }}
                           >
@@ -828,13 +840,14 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                 {/* Newly Picked Photos */}
                 {previewUrls.map((url, idx) => {
                   const totalIdx = (formData.imageUrls?.length || 0) + idx;
+                  const isCommon = (formData.commonImageUrls || []).includes(url);
                   const primarySwatch = (formData.colorSwatches || []).find(s => s.imageUrl === url);
                   const hoverSwatch = (formData.colorSwatches || []).find(s => s.hoverImageUrl === url);
                   const groupSwatch = (formData.colorSwatches || []).find(s => s.imageUrls && s.imageUrls.includes(url));
                   
-                  const activeSwatchName = primarySwatch?.name || hoverSwatch?.name || groupSwatch?.name || (formData.colorSwatches?.[0]?.name || '');
-                  const isPrimary = !!primarySwatch;
-                  const isHover = !!hoverSwatch;
+                  const activeSwatchName = isCommon ? '__ALL__' : primarySwatch?.name || hoverSwatch?.name || groupSwatch?.name || (formData.colorSwatches?.[0]?.name || '');
+                  const isPrimary = !isCommon && !!primarySwatch;
+                  const isHover = !isCommon && !!hoverSwatch;
                   const currentRoleValue = isPrimary ? 'primary' : isHover ? 'hover' : 'none';
 
                   return (
@@ -871,7 +884,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                               onChange={e => handleSetPhotoColor(url, e.target.value)}
                               style={{ flex: 1, padding: '4px 8px', fontSize: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#ffffff', fontWeight: 'bold' }}
                             >
-                              {formData.colorSwatches.map((sw, sIdx) => (
+                              <option value="__ALL__">ALL · 전체 색상 공통</option>{formData.colorSwatches.map((sw, sIdx) => (
                                 <option key={sIdx} value={sw.name}>{sw.name || `컬러 #${sIdx+1}`}</option>
                               ))}
                             </select>
@@ -881,7 +894,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#1e293b', minWidth: '70px' }}>대표 설정:</span>
                           <select 
-                            value={currentRoleValue} 
+                            disabled={isCommon} title={isCommon ? 'ALL 이미지는 전체 색상 공통 일반 이미지입니다.' : ''} value={currentRoleValue}
                             onChange={e => handleSetPhotoRole(url, activeSwatchName, e.target.value)}
                             style={{ flex: 1, padding: '5px 8px', fontSize: '0.825rem', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#ffffff', fontWeight: 800 }}
                           >

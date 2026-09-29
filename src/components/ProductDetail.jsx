@@ -121,6 +121,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
   // Show every photo assigned to the selected color without mixing other color groups.
   const displayImages = useMemo(() => {
     if (!activeColor) return images;
+    const commonImages = images.filter(url => (product.commonImageUrls || []).includes(url));
 
     const activeColorImages = normalizeImageList([
       activeColor.imageUrl,
@@ -131,7 +132,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
 
     if (activeColorImages.length === 0) {
       const fallbackLead = images[selectedColorIdx] || images[0];
-      return fallbackLead ? [fallbackLead] : images;
+      return [...new Set([...(fallbackLead ? [fallbackLead] : []), ...commonImages])];
     }
 
     // With one color, unassigned product-level images also belong to that color.
@@ -141,8 +142,8 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
     }
 
     // With multiple colors, use only images explicitly mapped to the active color.
-    return activeColorImages;
-  }, [activeColor, colorSwatches.length, selectedColorIdx, images]);
+    return [...new Set([...activeColorImages, ...commonImages])];
+  }, [activeColor, colorSwatches.length, selectedColorIdx, images, product.commonImageUrls]);
 
   if (!product) return null;
 
