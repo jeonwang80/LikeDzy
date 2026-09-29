@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { sortSizeOptions } from '../utils/sizeOrder';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useCart } from '../context/CartContext';
@@ -105,7 +106,7 @@ export default function ProductDetail({ product, onBack }) {
   }, [product]);
 
   // Options & Swatches
-  const productSizes = product?.sizeOptions || product?.options || [];
+  const productSizes = sortSizeOptions(product?.sizeOptions || product?.options || []);
   const hasOptions = productSizes.length > 0;
   const colorSwatches = (product?.colorSwatches && product.colorSwatches.length > 0)
     ? product.colorSwatches

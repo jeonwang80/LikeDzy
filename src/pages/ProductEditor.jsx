@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
+import { sortSizeOptions } from '../utils/sizeOrder';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import ReactQuill from 'react-quill-new';
@@ -491,7 +492,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
       delete finalData.id;
       delete finalData.skuStock;
       delete finalData.skuSales;
-      finalData.sizeOptions = (formData.options || []).map((option) => ({ name: option.name }));
+      finalData.sizeOptions = sortSizeOptions(formData.options || []).map((option) => ({ name: option.name }));
       // Existing legacy stock/history is preserved, never written by the editor.
       if (savedProductId) delete finalData.options;
       else finalData.options = finalData.sizeOptions;
@@ -1240,7 +1241,7 @@ export default function ProductEditor({ product, onClose, onSaved }) {
                 <div className="alo-detail-option-group admin-preview-option-block">
                   <div className="alo-option-label"><strong>Size:</strong></div>
                   <div className="alo-size-pill-grid">
-                    {(formData.options || []).map((option, index) => (
+                    {sortSizeOptions(formData.options || []).map((option, index) => (
                       <span key={`${option.name}-${index}`} className={`alo-size-pill-btn ${index === 0 ? 'selected' : ''}`}>
                         {option.name}
                       </span>
