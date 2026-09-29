@@ -1,3 +1,4 @@
+import { normalizeProductImages } from './productImages.js';
 import { currencyForLanguage, formatMoney, productPrice } from './market.js';
 export const FALLBACK_PRODUCT_IMAGE = '/images/product-placeholder.svg';
 
@@ -98,14 +99,15 @@ export function getSafeImageUrl(url, fallback = FALLBACK_PRODUCT_IMAGE) {
   return fallback;
 }
 
-export function resolveProductCardImages(product, colorIndex = 0) {
+export function resolveProductCardImages(originalProduct, colorIndex = 0) {
+  const product = normalizeProductImages(originalProduct);
   const activeColor = product?.colorSwatches?.[colorIndex] || product?.colorSwatches?.[0];
   const thumbnailByImageUrl = new Map((product?.imageVariants || [])
     .filter((variant) => variant?.imageUrl && variant?.thumbnailUrl)
     .map((variant) => [variant.imageUrl, variant.thumbnailUrl]));
   const candidates = [
     ...(activeColor?.imageUrls || []),
-    ...(product?.images || []),
+    ...(product?.imageUrls || product?.images || []),
     product?.imageUrl,
   ].filter((url) =>
     typeof url === 'string'

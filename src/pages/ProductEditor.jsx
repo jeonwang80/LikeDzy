@@ -1,3 +1,4 @@
+import { normalizeProductImages, removeProductImage } from '../utils/productImages';
 import React, { useState, useRef, useMemo } from 'react';
 import { sortSizeOptions } from '../utils/sizeOrder';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
@@ -15,7 +16,8 @@ import '../components/CollectionList.css';
 
 const LEGACY_CATEGORY_OPTIONS = ['TOPS', 'BOTTOMS', 'OUTERWEAR', 'ACC'];
 
-export default function ProductEditor({ product, onClose, onSaved }) {
+export default function ProductEditor({ product: originalProduct, onClose, onSaved }) {
+  const product = useMemo(() => normalizeProductImages(originalProduct), [originalProduct]);
   const { categories: categoryMasters, loading: categoryMastersLoading } = useCategoryMasters({ activeOnly: true });
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState('idle');
@@ -216,13 +218,15 @@ export default function ProductEditor({ product, onClose, onSaved }) {
   };
 
   const handleRemoveExistingImage = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      imageUrls: prev.imageUrls.filter((_, i) => i !== index)
-    }));
+    setFormData(prev => removeProductImage(prev, prev.imageUrls[index]));
   };
 
   const handleRemoveNewImage = (index) => {
+    const removedUrl = previewUrls[index];
+    setFormData(prev => {
+      const cleaned = removeProductImage({ ...prev, imageUrls: [...prev.imageUrls, ...previewUrls] }, removedUrl);
+      return { ...cleaned, imageUrls: prev.imageUrls };
+    });
     setImageFiles(prev => prev.filter((_, i) => i !== index));
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
@@ -447,8 +451,10 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         let groupImgs = (swatch.imageUrls || [])
           .map(resolveUploadedImageUrl)
           .filter(url => finalImageUrls.includes(url));
-        const mappedPrimaryImage = resolveUploadedImageUrl(swatch.imageUrl);
-        const mappedHoverImage = resolveUploadedImageUrl(swatch.hoverImageUrl);
+        const resolvedPrimary = resolveUploadedImageUrl(swatch.imageUrl);
+        const mappedPrimaryImage = finalImageUrls.includes(resolvedPrimary) ? resolvedPrimary : '';
+        const resolvedHover = resolveUploadedImageUrl(swatch.hoverImageUrl);
+        const mappedHoverImage = finalImageUrls.includes(resolvedHover) ? resolvedHover : '';
         
         if (mappedPrimaryImage && !groupImgs.includes(mappedPrimaryImage)) {
           groupImgs.unshift(mappedPrimaryImage);
@@ -488,7 +494,8 @@ export default function ProductEditor({ product, onClose, onSaved }) {
         videoUrl: finalVideoUrl, 
         updatedAt: new Date() 
       };
-      delete finalData.imageUrl;
+      Object.assign(finalData, normalizeProductImages(finalData));
+      if (formData.imageUrl !== undefined) finalData.imageUrl = finalImageUrls[0] || '';
       delete finalData.id;
       delete finalData.skuStock;
       delete finalData.skuSales;

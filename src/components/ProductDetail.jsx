@@ -1,3 +1,4 @@
+import { normalizeProductImages } from '../utils/productImages';
 import React, { useEffect, useState, useMemo } from 'react';
 import { sortSizeOptions } from '../utils/sizeOrder';
 import { createPortal } from 'react-dom';
@@ -47,7 +48,8 @@ const getYouTubeEmbedUrl = (value) => {
   }
 };
 
-export default function ProductDetail({ product, onBack }) {
+export default function ProductDetail({ product: originalProduct, onBack }) {
+  const product = useMemo(() => normalizeProductImages(originalProduct), [originalProduct]);
   const { language } = useLanguage();
   const { addToCart, setIsCartOpen } = useCart();
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
