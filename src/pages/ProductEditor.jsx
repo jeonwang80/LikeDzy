@@ -203,13 +203,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
 
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      const currentCount = (formData.imageUrls?.length || 0) + imageFiles.length;
-      const available = 8 - currentCount;
-      if (available <= 0) {
-        alert("이미지는 최대 8장까지 등록할 수 있습니다.");
-        return;
-      }
-      const files = Array.from(e.target.files).slice(0, available);
+      const files = Array.from(e.target.files);
       if (files.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024)) {
         alert('상품 사진은 JPG·PNG·WebP 형식, 파일당 10MB 이하만 가능합니다.');
         e.target.value = '';
@@ -910,11 +904,11 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                 })}
 
                 {/* Add Photo Dropzone Card */}
-                {allPhotos.length < 8 && (
+                {(
                   <label className="visual-add-photo-card" style={{ minHeight: '380px' }}>
                     <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>+ 상품 사진 추가</span>
                     <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
-                      ({allPhotos.length} / 8장)
+                      (현재 {allPhotos.length}장 · 장수 제한 없음)
                     </span>
                     <input 
                       type="file" 
@@ -1502,10 +1496,10 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                         </div>
                       );
                     })}
-                    {allPhotos.length < 8 && (
+                    {(
                       <label className="admin-quick-image-upload">
                         <input type="file" accept="image/*" multiple onChange={handleImageChange} />
-                        <strong>+</strong><span>이미지 추가</span><small>{allPhotos.length}/8</small>
+                        <strong>+</strong><span>이미지 추가</span><small>현재 {allPhotos.length}장 · 장수 제한 없음</small>
                       </label>
                     )}
                   </div>
