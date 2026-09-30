@@ -22,3 +22,47 @@ test('color groups, pending images and legacy-only products remain supported',as
  const p={imageUrls:['red','blue','blob:pending'],colorSwatches:[{name:'Red',imageUrls:['red'],imageUrl:'red'},{name:'Blue',imageUrls:['blue','blob:pending'],imageUrl:'blob:pending'}]};
  const clean=removeProductImage(p,'blob:pending');assert.deepEqual(clean.colorSwatches.map(x=>x.imageUrls),[['red'],['blue']]);assert.equal(clean.colorSwatches[1].imageUrl,'blue');
 });
+
+test('a representative photo does not remain as a secondary photo of another color',async()=>{
+ const {normalizeProductImages}=await import('../../src/utils/productImages.js');
+ const p={imageUrls:['white-front','white-back','green-front','label'],commonImageUrls:['label'],colorSwatches:[
+  {name:'Green',imageUrl:'green-front',imageUrls:['green-front']},
+  {name:'White',imageUrl:'white-front',hoverImageUrl:'white-back',imageUrls:['white-front','white-back','green-front'],images:['green-front']}
+ ]};
+ const clean=normalizeProductImages(p);
+ assert.deepEqual(clean.colorSwatches[1].imageUrls,['white-front','white-back']);
+ assert.deepEqual(clean.colorSwatches[1].images,[]);
+ assert.deepEqual(clean.commonImageUrls,['label']);
+ assert.deepEqual(clean.imageUrls,p.imageUrls);
+ assert.deepEqual(normalizeProductImages(clean),clean);
+});
+
+test('moving a photo or changing its role removes legacy links before save and reload',async()=>{
+ const {assignProductImage,normalizeProductImages}=await import('../../src/utils/productImages.js');
+ const p={imageUrls:['green','white'],commonImageUrls:['green'],colorSwatches:[
+  {name:'Green',imageUrl:'green',hoverImageUrl:'green',imageUrls:['green'],images:['green']},
+  {name:'White',imageUrl:'white',imageUrls:['white']}
+ ],colors:[{name:'Green',imageUrl:'green',images:['green']} ]};
+ for(const role of [undefined,'primary','hover','none']){
+  const moved=normalizeProductImages(JSON.parse(JSON.stringify(assignProductImage(p,'green','White',role))));
+  assert.deepEqual(moved.colorSwatches[0].imageUrls,[]);
+  assert.deepEqual(moved.colorSwatches[0].images,[]);
+  assert.equal(moved.colorSwatches[0].imageUrl,'');
+  assert.equal(JSON.stringify(moved.colors).includes('"green"'),false);
+  assert.deepEqual(moved.commonImageUrls,[]);
+  assert.ok(moved.colorSwatches[1].imageUrls.includes('green'));
+ }
+ const common=normalizeProductImages(assignProductImage(p,'green','__ALL__'));
+ assert.deepEqual(common.commonImageUrls,['green']);
+ assert.deepEqual(common.colorSwatches[0].imageUrls,[]);
+});
+
+test('an explicitly empty color and image inventory stay empty after reload and presentation',async()=>{
+ const {normalizeProductImages,removeProductImage}=await import('../../src/utils/productImages.js');
+ const {presentProduct}=await import('../../src/utils/productPresentation.js');
+ const p={imageUrls:['green'],colorSwatches:[{name:'White',imageUrls:[]},{name:'Green',imageUrl:'green',imageUrls:['green']}]};
+ assert.deepEqual(normalizeProductImages(p).colorSwatches[0].imageUrls,[]);
+ const empty=removeProductImage({...p,imageUrl:'green',images:['green']},'green');
+ assert.deepEqual(presentProduct(empty).images,[]);
+ assert.deepEqual(normalizeProductImages(empty).colorSwatches.map(s=>s.imageUrls),[[],[]]);
+});

@@ -1,4 +1,4 @@
-import { normalizeProductImages, removeProductImage } from '../utils/productImages';
+import { assignProductImage, normalizeProductImages, removeProductImage } from '../utils/productImages';
 import SizeGuideDrawer from '../components/SizeGuideDrawer';
 import { validateGuide } from '../utils/measurementGuide';
 import React, { useState, useRef, useMemo } from 'react';
@@ -279,67 +279,13 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
 
   // Set Photo Color Swatch Mapping
   const handleSetPhotoColor = (imgUrl, targetColorName) => {
-    setFormData(prev => {
-      const updatedSwatches = (prev.colorSwatches || []).map(swatch => {
-        const currentGroup = swatch.imageUrls || [];
-        if (swatch.name === targetColorName) {
-          const newGroup = currentGroup.includes(imgUrl) ? currentGroup : [...currentGroup, imgUrl];
-          const newPrimary = swatch.imageUrl || imgUrl;
-          return { ...swatch, imageUrl: newPrimary, imageUrls: newGroup };
-        } else {
-          const newGroup = currentGroup.filter(u => u !== imgUrl);
-          const newPrimary = swatch.imageUrl === imgUrl ? '' : swatch.imageUrl;
-          const newHover = swatch.hoverImageUrl === imgUrl ? '' : swatch.hoverImageUrl;
-          return { ...swatch, imageUrl: newPrimary, hoverImageUrl: newHover, imageUrls: newGroup,
-            ...(Array.isArray(swatch.images) ? { images: swatch.images.filter(url => url !== imgUrl) } : {}) };
-        }
-      });
-      return { ...prev, colorSwatches: updatedSwatches,
-        commonImageUrls: targetColorName === '__ALL__'
-          ? [...new Set([...(prev.commonImageUrls || []), imgUrl])]
-          : (prev.commonImageUrls || []).filter(url => url !== imgUrl),
-      };
-    });
+    setFormData(prev => assignProductImage(prev, imgUrl, targetColorName));
   };
 
-  // Set Photo Role for a Color: 'primary' (대표 1), 'hover' (대표 2), or 'none' (일반)
+  // Roles also move every current and legacy link to the selected color.
   const handleSetPhotoRole = (imgUrl, colorName, newRole) => {
     if (colorName === '__ALL__') return;
-    setFormData(prev => {
-      let updatedSwatches = (prev.colorSwatches || []).map(swatch => {
-        if (swatch.name === colorName) {
-          const groupImages = swatch.imageUrls || [];
-          const newGroup = groupImages.includes(imgUrl) ? groupImages : [...groupImages, imgUrl];
-          
-          let newPrimary = swatch.imageUrl;
-          let newHover = swatch.hoverImageUrl;
-
-          if (newRole === 'primary') {
-            if (newHover === imgUrl) newHover = '';
-            newPrimary = imgUrl;
-          } else if (newRole === 'hover') {
-            if (newPrimary === imgUrl) newPrimary = '';
-            newHover = imgUrl;
-          } else {
-            if (newPrimary === imgUrl) newPrimary = '';
-            if (newHover === imgUrl) newHover = '';
-          }
-
-          return { ...swatch, imageUrl: newPrimary, hoverImageUrl: newHover, imageUrls: newGroup };
-        } else {
-          // Remove imgUrl from other color swatches if assigned elsewhere
-          const newGroup = (swatch.imageUrls || []).filter(u => u !== imgUrl);
-          const newPrimary = swatch.imageUrl === imgUrl ? '' : swatch.imageUrl;
-          const newHover = swatch.hoverImageUrl === imgUrl ? '' : swatch.hoverImageUrl;
-          return { ...swatch, imageUrl: newPrimary, hoverImageUrl: newHover, imageUrls: newGroup };
-        }
-      });
-
-      return {
-        ...prev,
-        colorSwatches: updatedSwatches
-      };
-    });
+    setFormData(prev => assignProductImage(prev, imgUrl, colorName, newRole));
   };
 
   const handleAddOption = () => {
@@ -456,7 +402,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
       const perk2 = formData.ko?.perk2 || defaultPerk2;
 
       const resolveUploadedImageUrl = (url) => pendingImageUrlMap.get(url) || url;
-      const processedSwatches = (formData.colorSwatches || []).map((swatch, sIdx) => {
+      const processedSwatches = (formData.colorSwatches || []).map((swatch) => {
         let groupImgs = (swatch.imageUrls || [])
           .map(resolveUploadedImageUrl)
           .filter(url => finalImageUrls.includes(url));
@@ -470,12 +416,6 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
         }
         if (mappedHoverImage && !groupImgs.includes(mappedHoverImage)) {
           groupImgs.push(mappedHoverImage);
-        }
-
-        // If a color swatch still has no images assigned, default to fallback photo by index
-        if (groupImgs.length === 0 && finalImageUrls.length > 0) {
-          const fallbackUrl = finalImageUrls[sIdx % finalImageUrls.length];
-          groupImgs = [fallbackUrl];
         }
 
         const primaryImg = mappedPrimaryImage || groupImgs[0] || '';

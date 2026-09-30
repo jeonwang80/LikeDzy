@@ -50,9 +50,10 @@ export function getProductBadge(product) {
   return '';
 }
 
-export function presentProduct(product, language = 'ko') {
+export function presentProduct(originalProduct, language = 'ko') {
+  const product = normalizeProductImages(originalProduct);
   const localized = product?.[language] || product?.ko || {};
-  const images = product?.imageUrls?.length
+  const images = Array.isArray(product?.imageUrls)
     ? product.imageUrls
     : product?.images?.length
       ? product.images

@@ -131,8 +131,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
     ]).filter((imageUrl) => images.includes(imageUrl));
 
     if (activeColorImages.length === 0) {
-      const fallbackLead = images[selectedColorIdx] || images[0];
-      return [...new Set([...(fallbackLead ? [fallbackLead] : []), ...commonImages])];
+      return commonImages.length ? commonImages : [FALLBACK_PRODUCT_IMAGE];
     }
 
     // With one color, unassigned product-level images also belong to that color.
@@ -143,7 +142,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
 
     // With multiple colors, use only images explicitly mapped to the active color.
     return [...new Set([...activeColorImages, ...commonImages])];
-  }, [activeColor, colorSwatches.length, selectedColorIdx, images, product.commonImageUrls]);
+  }, [activeColor, colorSwatches.length, images, product.commonImageUrls]);
 
   if (!product) return null;
 
