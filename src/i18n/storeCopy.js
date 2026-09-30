@@ -188,7 +188,18 @@ const english = {
   "사업자등록번호": "Business number",
   "· 통신판매업": "· Ecommerce registration",
   "고객센터": "Support",
-  "사업자정보 확인 ↗": "Business registration ↗"
+  "사업자정보 확인 ↗": "Business registration ↗",
+  "기본 배송지를 불러왔습니다.": "Your default delivery address is ready.",
+  "기본 배송지가 현재 주문 국가와 달라 주소는 입력하지 않았습니다.": "Your saved address is in another country.",
+  "기본 배송지를 적용했습니다. 주문 금액과 재고를 다시 확인해 주세요.": "Saved address applied. Check the updated total and stock.",
+  "기본 배송지 사용": "Use saved address",
+  "쿠폰 사용은 로그인이 필요합니다.": "Sign in to use a coupon.",
+  "상품금액을 확인해 주세요.": "Check the item subtotal.",
+  "쿠폰 할인이 적용되었습니다.": "Coupon applied.",
+  "쿠폰을 사용할 수 없습니다.": "This coupon cannot be used.",
+  "쿠폰 할인": "Coupon discount",
+  "쿠폰 코드": "Coupon code",
+  "적용": "Apply",
 };
 
 export function useStoreCopy() {

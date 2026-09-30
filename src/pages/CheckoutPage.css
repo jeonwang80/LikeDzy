@@ -35,6 +35,8 @@
 .checkout-title h1,
 .checkout-success-card h1 { margin: 0; font-family: var(--font-display); font-size: clamp(2.4rem, 5vw, 4.4rem); font-weight: 500; letter-spacing: -0.035em; line-height: 0.98; }
 .checkout-title > p:last-child { margin: 16px 0 0; color: #656965; font-size: 1rem; }
+.checkout-saved-profile { margin: -18px 0 24px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #cddacd; border-radius: 9px; background: #edf3ed; color: #29412f; font-size: .82rem; }
+.checkout-saved-profile button { flex: 0 0 auto; min-height: 38px; padding: 0 12px; border: 0; border-radius: 7px; background: #243428; color: #fff; font-weight: 800; cursor: pointer; }
 
 .checkout-disabled-notice,
 .checkout-error { margin-bottom: 20px; padding: 14px 16px; border: 1px solid #d8bdb7; border-radius: 9px; background: #fff6f3; color: #9b3829; font-size: 0.88rem; line-height: 1.5; }
@@ -91,6 +93,13 @@
 .checkout-amounts dd { margin: 0; }
 .checkout-grand-total { margin-top: 11px; padding-top: 17px !important; border-top: 1px solid rgba(255, 255, 255, 0.13); color: #fff !important; align-items: flex-end; }
 .checkout-grand-total dd { font-size: 1.45rem; font-weight: 900; }
+.checkout-coupon { margin: 18px 0; display: grid; gap: 8px; }
+.checkout-coupon label { color: #d2ded1; font-size: .8rem; font-weight: 800; }
+.checkout-coupon > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.checkout-coupon input { min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid #a5b6a5; border-radius: 7px; background: #fff; color: #172019; text-transform: uppercase; }
+.checkout-coupon button { min-height: 44px; padding: 0 14px; border: 1px solid #dfe4dc; border-radius: 7px; background: #e7ebe4; color: #172019; font-weight: 800; cursor: pointer; }
+.checkout-coupon button:disabled { opacity: .5; cursor: default; }
+.checkout-coupon p { margin: 0; color: #c6dfc9; font-size: .76rem; }
 .checkout-remote-note { margin: 15px 0; color: #9da69c; font-size: 0.73rem; line-height: 1.5; }
 .checkout-summary .checkout-error { margin: 14px 0; background: rgba(211, 73, 55, 0.13); border-color: rgba(255, 145, 129, 0.36); color: #ffd2cb; }
 .checkout-primary-button { width: 100%; min-height: 54px; border: 1px solid #dfe4dc; border-radius: 8px; background: #e7ebe4; color: #172019; font-size: 0.9rem; font-weight: 900; cursor: pointer; }
@@ -142,6 +151,7 @@ body.storefront-theme .checkout-country-note strong { color: #f0eee6; }
 }
 
 @media (max-width: 600px) {
+  .checkout-saved-profile { align-items: stretch; flex-direction: column; }
   .checkout-header { min-height: 66px; grid-template-columns: 1fr auto; }
   .checkout-header > span { display: none; }
   .checkout-logo { font-size: 1.6rem; }

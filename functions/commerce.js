@@ -21,6 +21,24 @@ const secret = (value, name) => {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]{43,128}$/.test(value)) fail("invalid-argument", `${name} 정보를 새로 생성해 주세요.`);
   return value;
 };
+const couponCode = (value) => {
+  const code = text(value, 32).toUpperCase();
+  if (code && !/^[A-Z0-9-]{4,32}$/.test(code)) fail('invalid-argument', '쿠폰 코드를 확인해 주세요.');
+  return code;
+};
+function calculateCoupon(coupon, { code, currency, subtotal, currentTime }) {
+  if (!coupon || coupon.active !== true || coupon.currency !== currency || coupon.code !== code) fail('failed-precondition', '사용할 수 없는 쿠폰입니다.');
+  const percent = integer(coupon.percent, '할인율', 1, 90);
+  const minSubtotal = integer(coupon.minSubtotal, '최소 주문액', 0, 1000000000);
+  const maxDiscount = integer(coupon.maxDiscount, '최대 할인액', 1, 1000000000);
+  const usageLimit = integer(coupon.usageLimit, '총 사용 횟수', 1, 1000000);
+  const usedCount = integer(coupon.usedCount || 0, '사용 횟수', 0, 1000000);
+  const starts = Date.parse(coupon.startsAt);
+  const ends = Date.parse(coupon.endsAt);
+  if (!Number.isFinite(starts) || !Number.isFinite(ends) || usedCount >= usageLimit || currentTime < starts || currentTime > ends) fail('failed-precondition', '기간이 지났거나 소진된 쿠폰입니다.');
+  if (subtotal < minSubtotal) fail('failed-precondition', '쿠폰 최소 주문 금액에 도달하지 않았습니다.');
+  return Math.min(Math.floor(subtotal * percent / 100), maxDiscount);
+}
 const sameSecret = (storedHash, value) => {
   if (typeof storedHash !== "string" || !/^[a-f0-9]{64}$/.test(storedHash) || typeof value !== "string") return false;
   return crypto.timingSafeEqual(Buffer.from(storedHash, "hex"), Buffer.from(hash(value), "hex"));
@@ -198,8 +216,22 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     return {
       id: orderId, orderNumber: order.orderNumber, totalAmountNumber: order.totalAmountNumber,
       currency: order.currency || 'KRW',
-      shippingFee: order.shippingFee, isTestOrder: order.isTestOrder, deadline: iso(order.depositDeadlineAt), bank: order.bankSnapshot,
+      shippingFee: order.shippingFee, discountAmount: order.discountAmount || 0, couponCode: order.couponCode || '', isTestOrder: order.isTestOrder, deadline: iso(order.depositDeadlineAt), bank: order.bankSnapshot,
     };
+  }
+
+  async function quoteCoupon(data, context = {}) {
+    if (!context.auth?.uid) fail('unauthenticated', '쿠폰 사용은 회원 로그인이 필요합니다.');
+    if (!isEmulator && !context.app?.appId) fail('failed-precondition', '안전한 주문 연결을 확인할 수 없습니다.');
+    await consumeAttempt('coupon', context, 120);
+    const code = couponCode(data?.couponCode);
+    if (!code) fail('invalid-argument', '쿠폰 코드를 입력해 주세요.');
+    const currency = data?.currency;
+    if (!['KRW', 'VND'].includes(currency)) fail('invalid-argument', '주문 통화를 확인해 주세요.');
+    const subtotal = integer(data?.subtotal, '상품금액', 1, 1000000000);
+    const [coupon, used] = await Promise.all([ref('coupons', code).get(), ref('couponUses', hash(`${code}:${context.auth.uid}`)).get()]);
+    if (used.exists && used.data().released !== true) fail('failed-precondition', '이미 사용한 쿠폰입니다.');
+    return { code, discountAmount: calculateCoupon(coupon.exists ? coupon.data() : null, { code, currency, subtotal, currentTime: now() }) };
   }
 
   async function createBankTransferOrder(data, context = {}) {
@@ -213,9 +245,11 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     const accessToken = secret(data.guestAccessToken, "주문 조회");
     const cart = normalizeCart(data.cart);
     const customer = normalizeCustomer(data.customer, currency);
+    const code = couponCode(data.couponCode);
+    if (code && !context.auth?.uid) fail('unauthenticated', '쿠폰 사용은 회원 로그인이 필요합니다.');
     const expectedTotal = integer(data.expectedTotal, "주문 금액", 1, 1000000000);
     const actorUid = context.auth?.uid || null;
-    const fingerprint = hash(JSON.stringify({ cart, customer, expectedTotal, actorUid, tokenHash: hash(accessToken), ...(currency === 'VND' ? { currency } : {}) }));
+    const fingerprint = hash(JSON.stringify({ cart, customer, expectedTotal, actorUid, tokenHash: hash(accessToken), ...(currency === 'VND' ? { currency } : {}), ...(code ? { couponCode: code } : {}) }));
     const requestId = hash(idempotencyKey);
     const requestRef = ref("orderRequests", requestId);
     const orderRef = ref("orders", requestId);
@@ -230,6 +264,11 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         return creationResult(orderRef.id, saved.data());
       }
       const settingsSnapshot = await transaction.get(ref("settings", "commerce"));
+      const couponRef = code ? ref('coupons', code) : null;
+      const useRef = code ? ref('couponUses', hash(`${code}:${actorUid}`)) : null;
+      const couponSnapshot = couponRef ? await transaction.get(couponRef) : null;
+      const useSnapshot = useRef ? await transaction.get(useRef) : null;
+      if (useSnapshot?.exists && useSnapshot.data().released !== true) fail('failed-precondition', '이미 사용한 쿠폰입니다.');
       const baseSettings = settingsSnapshot.exists ? settingsSnapshot.data() : {};
       const vietnam = baseSettings.vietnam || {};
       const savedSettings = currency === 'KRW' ? baseSettings : {
@@ -268,12 +307,13 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       const fee = integer(Number(settings.shippingFee ?? 3000), "배송비");
       const threshold = integer(Number(settings.freeShippingThreshold ?? 50000), "무료배송 기준", 0, 1000000000);
       const shippingFee = threshold > 0 && subtotal >= threshold ? 0 : fee;
-      const totalAmountNumber = subtotal + shippingFee;
+      const discountAmount = code ? calculateCoupon(couponSnapshot?.data(), { code, currency, subtotal, currentTime }) : 0;
+      const totalAmountNumber = subtotal + shippingFee - discountAmount;
       if (expectedTotal !== totalAmountNumber) fail("aborted", "상품 가격 또는 배송비가 변경되었습니다. 장바구니를 갱신한 뒤 다시 주문해 주세요.");
       const hours = integer(Number(settings.depositDeadlineHours ?? 48), "입금 기한", 1, 720);
       const orderNumber = `LD${new Date(currentTime).toISOString().slice(0, 10).replace(/-/g, "")}-${orderRef.id.slice(0, 12).toUpperCase()}`;
       const order = {
-        schemaVersion: 2, currency, orderNumber, userId: actorUid, items: orderItems, subtotal, shippingFee, totalAmountNumber,
+        schemaVersion: 2, currency, orderNumber, userId: actorUid, items: orderItems, subtotal, shippingFee, discountAmount, couponCode: code, totalAmountNumber,
         totalAmount: currency === 'VND' ? `${totalAmountNumber.toLocaleString('en-US')} ₫` : `₩${totalAmountNumber.toLocaleString("ko-KR")}`, paymentMethod: "bank_transfer", isTestOrder,
         status: STATUS.WAITING, inventoryState: "reserved", name: customer.buyerName, phone: customer.buyerPhone,
         depositName: customer.depositorName, recipientName: customer.recipientName, recipientPhone: customer.recipientPhone,
@@ -296,6 +336,10 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         });
       }
       transaction.create(orderRef, order);
+      if (couponRef) {
+        transaction.update(couponRef, { usedCount: (couponSnapshot.data().usedCount || 0) + 1, updatedAt: serverTimestamp() });
+        transaction.set(useRef, { code, userId: actorUid, orderId: orderRef.id, released: false, createdAt: serverTimestamp() });
+      }
       transaction.create(ref("orderAccess", orderRef.id), { tokenHash: hash(accessToken), createdAt: serverTimestamp() });
       transaction.create(requestRef, { orderId: orderRef.id, fingerprint, createdAt: serverTimestamp() });
       transaction.create(db.collection("orderEvents").doc(), { orderId: orderRef.id, userId: actorUid, type: "created", toStatus: STATUS.WAITING, createdAt: serverTimestamp() });
@@ -402,6 +446,13 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       } else fail("invalid-argument", "처리 항목을 확인해 주세요.");
 
       const inventories = [];
+      let couponRelease = null;
+      if (updates.status === STATUS.CANCELLED && order.couponCode && order.userId) {
+        const couponRef = ref('coupons', order.couponCode);
+        const useRef = ref('couponUses', hash(`${order.couponCode}:${order.userId}`));
+        const [coupon, use] = await Promise.all([transaction.get(couponRef), transaction.get(useRef)]);
+        if (coupon.exists && use.exists && use.data().orderId === orderId && use.data().released !== true) couponRelease = { couponRef, useRef, usedCount: coupon.data().usedCount || 0 };
+      }
       if (movement) {
         for (const item of order.items) {
           const inventoryRef = ref("inventory", item.variantId); const current = await transaction.get(inventoryRef);
@@ -418,6 +469,10 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         publishStock(transaction, item.ref, {
           ...item.value, stock: item.value.stock + stockDelta, reserved: item.value.reserved + reservedDelta, sold: item.value.sold + soldDelta,
         }, { type: expiry ? "expired" : movement, orderId, orderNumber: order.orderNumber, actorUid, stockDelta, reservedDelta, soldDelta });
+      }
+      if (couponRelease) {
+        transaction.update(couponRelease.couponRef, { usedCount: Math.max(0, couponRelease.usedCount - 1), updatedAt: serverTimestamp() });
+        transaction.update(couponRelease.useRef, { released: true, releasedAt: serverTimestamp() });
       }
       transaction.update(orderRef, updates);
       transaction.create(db.collection("orderEvents").doc(), {
@@ -447,7 +502,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     }
     return { examined: results.length, expired: results.filter((result) => !result.skipped && !result.failed).length, failed: results.filter((result) => result.failed).map((result) => result.id) };
   }
-  return { setVariantStock, createBankTransferOrder, getOrder, updateOrder, expireOrder, expireBankTransferOrders, isAdmin };
+  return { setVariantStock, createBankTransferOrder, quoteCoupon, getOrder, updateOrder, expireOrder, expireBankTransferOrders, isAdmin };
 }
 
 module.exports = { CommerceError, createCommerceService, variantIdFor, STATUS };

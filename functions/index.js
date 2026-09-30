@@ -29,6 +29,7 @@ function callable(method) {
 }
 
 exports.createBankTransferOrder = callable(commerce.createBankTransferOrder);
+exports.quoteCoupon = callable(commerce.quoteCoupon);
 exports.getOrder = callable(commerce.getOrder);
 exports.setVariantStock = callable(commerce.setVariantStock);
 exports.updateOrder = callable(commerce.updateOrder);

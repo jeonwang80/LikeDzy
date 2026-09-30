@@ -1,0 +1,50 @@
+.account-page { min-height: 100vh; padding: 50px 20px 110px; background: #f7f8f6; color: #18211a; }
+.account-shell { width: min(820px, 100%); margin: 0 auto; }
+.account-heading, .account-section-heading, .account-order-top, .account-order-total { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.account-heading { margin-bottom: 28px; }
+.account-heading span { color: #66756a; font-size: .72rem; font-weight: 800; letter-spacing: .15em; }
+.account-heading h1 { margin: 7px 0 0; font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; }
+.account-heading button, .account-section-heading button, .account-pagination button { min-height: 42px; padding: 0 17px; border: 1px solid #cbd1ca; border-radius: 999px; background: #fff; color: #203126; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.account-panel, .account-order-card { border: 1px solid #e1e5df; border-radius: 18px; background: #fff; }
+.account-panel { padding: clamp(20px, 4vw, 32px); }
+.account-section-heading { margin-bottom: 18px; }
+.account-section-heading > div { display: flex; align-items: center; gap: 12px; }
+.account-section-heading > div > span { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: #243428; color: #fff; font-size: .7rem; font-weight: 800; }
+.account-section-heading h2 { margin: 0; font-size: 1.4rem; }
+.account-email, .account-profile-summary p { margin: 0; display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; font-size: .92rem; line-height: 1.5; }
+.account-email strong, .account-profile-summary strong { color: #68716a; }
+.account-email span, .account-profile-summary span { overflow-wrap: anywhere; white-space: pre-line; }
+.account-profile-summary { margin-top: 20px; padding-top: 20px; display: grid; gap: 14px; border-top: 1px solid #e6e9e4; }
+.account-profile-form { margin-top: 22px; padding-top: 22px; display: grid; gap: 15px; border-top: 1px solid #e6e9e4; }
+.account-profile-form h3 { margin: 12px 0 0; font-size: 1.05rem; }
+.account-profile-form label { display: grid; gap: 7px; font-size: .82rem; font-weight: 750; }
+.account-profile-form label small { font-weight: 400; }
+.account-profile-form input, .account-profile-form select { width: 100%; min-width: 0; min-height: 48px; padding: 0 13px; border: 1px solid #cdd4cc; border-radius: 9px; background: #fff; color: inherit; font: inherit; }
+.account-profile-form input:focus, .account-profile-form select:focus { outline: 2px solid #42684c; outline-offset: 1px; }
+.account-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.account-save { min-height: 50px; margin-top: 6px; border: 0; border-radius: 9px; background: #243428; color: #fff; font-weight: 850; cursor: pointer; }
+.account-save:disabled { opacity: .55; }
+.account-message { margin: 16px 0 0; color: #315a38; font-size: .84rem; }
+.account-orders { margin-top: 38px; }
+.account-guest-link { margin: 0 0 17px; padding: 0; border: 0; background: none; color: #315943; font-weight: 800; cursor: pointer; }
+.account-order-list { display: grid; gap: 12px; }
+.account-order-card { padding: 22px; }
+.account-order-top { color: #68716a; font-size: .8rem; }
+.account-order-top strong { padding: 7px 11px; border-radius: 999px; background: #e9eee9; color: #243428; font-size: .75rem; }
+.account-order-card h3 { margin: 14px 0; font-size: 1.05rem; line-height: 1.45; }
+.account-order-card > p { margin: 0 0 18px; color: #747a74; font-size: .75rem; overflow-wrap: anywhere; }
+.account-order-total { padding-top: 16px; border-top: 1px solid #e3e7e1; font-size: .9rem; }
+.account-order-total strong { font-size: 1.1rem; white-space: nowrap; }
+.account-order-card > a { margin-top: 14px; display: inline-block; color: #245b38; font-size: .85rem; font-weight: 800; }
+.account-empty { padding: 40px 20px; border: 1px solid #e1e5df; border-radius: 18px; background: #fff; text-align: center; }
+.account-pagination { margin-top: 18px; display: flex; align-items: center; justify-content: center; gap: 14px; }
+.account-pagination button:disabled { opacity: .4; cursor: default; }
+@media (max-width: 600px) {
+  .account-page { padding: 28px 16px 105px; }
+  .account-heading { align-items: flex-end; }
+  .account-heading h1 { font-size: 2rem; }
+  .account-heading button { min-height: 38px; padding: 0 13px; font-size: .78rem; }
+  .account-form-grid { grid-template-columns: 1fr; }
+  .account-email, .account-profile-summary p { grid-template-columns: 1fr; gap: 2px; }
+  .account-order-card { padding: 18px; }
+}

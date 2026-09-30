@@ -52,6 +52,25 @@ test('Firestore rules: privacy, ownership, admin verification and server-only wr
       await denied(read(guest, `orders/${prefix}`)); await denied(read(stranger, `orders/${prefix}`));
       await denied(read(unverified, `orders/${prefix}`));
     });
+    await t.test('member profile is editable only by its owner and coupon use is server-only', async () => {
+      const userId = `${prefix}-buyer`;
+      const profile = { schemaVersion: 1, buyerName: 'TEST ONLY', buyerPhone: '01000000000', country: 'VN', recipientName: 'TEST ONLY', recipientPhone: '01000000000', postcode: '', province: 'TEST', ward: 'TEST', address1: 'TEST ONLY', address2: '', updatedAt: serverTimestamp() };
+      await setDoc(doc(buyer, 'users', userId), profile);
+      await read(buyer, `users/${userId}`);
+      await denied(read(stranger, `users/${userId}`));
+      await denied(read(admin, `users/${userId}`));
+      await denied(setDoc(doc(stranger, 'users', userId), profile));
+      await denied(setDoc(doc(buyer, 'users', userId), { ...profile, admin: true }));
+      await denied(setDoc(doc(buyer, 'couponUses', prefix), { code: 'TEST' }));
+      await denied(read(buyer, `couponUses/${prefix}`));
+    });
+    await t.test('coupon definitions are administrator-only', async () => {
+      await setDoc(doc(admin, 'coupons', prefix), { code: prefix, active: false });
+      await denied(read(guest, `coupons/${prefix}`));
+      await denied(read(buyer, `coupons/${prefix}`));
+      await read(admin, `coupons/${prefix}`);
+      await denied(setDoc(doc(buyer, 'coupons', `${prefix}-buyer`), { active: true }));
+    });
     await t.test('even administrators cannot directly write inventory, orders or recovery secrets', async () => {
       for (const group of ['orders', 'inventory', 'stockAvailability', 'orderAccess', 'orderRequests', 'inventoryMovements', 'inventoryRequests', 'orderRateLimits']) {
         await denied(setDoc(doc(admin, group, `${prefix}-write`), { synthetic: true }));

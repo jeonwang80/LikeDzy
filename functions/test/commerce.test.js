@@ -309,6 +309,38 @@ test('VND checkout uses VND prices and free delivery, recovers currency, and ref
   assert.equal(f.inventory().stock, 3);
 });
 
+test('30% coupon is priced by the server, limited per member, and restored after cancellation', async () => {
+  const f = await fixture();
+  f.db.data.set('coupons/WELCOME30', { code: 'WELCOME30', active: true, currency: 'KRW', percent: 30, minSubtotal: 10000, maxDiscount: 20000, usageLimit: 2, usedCount: 0, startsAt: '2026-09-01T00:00:00Z', endsAt: '2026-10-01T00:00:00Z' });
+  const owner = { ...guest, auth: { uid: 'coupon-buyer', token: { email: 'buyer@example.test' } } };
+  assert.equal((await f.service.quoteCoupon({ couponCode: 'welcome30', currency: 'KRW', subtotal: 39000 }, owner)).discountAmount, 11700);
+  const request = f.order({ expectedTotal: 30300, couponCode: 'WELCOME30' });
+  await rejectsCode(f.service.createBankTransferOrder(request, guest), 'unauthenticated');
+  await rejectsCode(f.service.createBankTransferOrder({ ...request, expectedTotal: 42000 }, owner), 'aborted');
+  const first = await f.service.createBankTransferOrder(request, owner);
+  assert.equal(first.discountAmount, 11700);
+  assert.equal(f.db.read(`orders/${first.id}`).totalAmountNumber, 30300);
+  assert.equal(f.db.read('coupons/WELCOME30').usedCount, 1);
+  await rejectsCode(f.service.createBankTransferOrder(f.order({ expectedTotal: 30300, couponCode: 'WELCOME30' }), owner), 'failed-precondition');
+  await f.action(first.id, STATUS.WAITING, STATUS.CANCELLED);
+  assert.equal(f.db.read('coupons/WELCOME30').usedCount, 0);
+  assert.equal(f.db.count('orders'), 1);
+  const second = await f.service.createBankTransferOrder(f.order({ expectedTotal: 30300, couponCode: 'WELCOME30' }), owner);
+  assert.equal(second.discountAmount, 11700);
+});
+
+test('coupon rejects wrong currency, expired window, and exhausted campaign', async () => {
+  const f = await fixture();
+  const owner = { ...guest, auth: { uid: 'coupon-buyer', token: {} } };
+  const coupon = { code: 'WELCOME30', active: true, currency: 'KRW', percent: 30, minSubtotal: 10000, maxDiscount: 20000, usageLimit: 1, usedCount: 0, startsAt: '2026-09-01T00:00:00Z', endsAt: '2026-10-01T00:00:00Z' };
+  f.db.data.set('coupons/WELCOME30', coupon);
+  await rejectsCode(f.service.quoteCoupon({ couponCode: 'WELCOME30', currency: 'VND', subtotal: 39000 }, owner), 'failed-precondition');
+  f.db.data.set('coupons/WELCOME30', { ...coupon, usedCount: 1 });
+  await rejectsCode(f.service.quoteCoupon({ couponCode: 'WELCOME30', currency: 'KRW', subtotal: 39000 }, owner), 'failed-precondition');
+  f.db.data.set('coupons/WELCOME30', { ...coupon, endsAt: '2026-09-04T00:00:00Z' });
+  await rejectsCode(f.service.quoteCoupon({ couponCode: 'WELCOME30', currency: 'KRW', subtotal: 39000 }, owner), 'failed-precondition');
+});
+
 test('Vietnam delivery stores local address fields and rejects a mismatched country', async () => {
   const f = await vietnamFixture();
   const vietnamCustomer = {

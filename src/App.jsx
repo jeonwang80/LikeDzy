@@ -20,6 +20,7 @@ const AdminInventory = lazy(() => import('./pages/AdminInventory'));
 const AdminBoard = lazy(() => import('./pages/AdminBoard'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const AdminMasterData = lazy(() => import('./pages/AdminMasterData'));
+const AdminCoupons = lazy(() => import('./pages/AdminCoupons'));
 
 function App() {
   const [showSplash, setShowSplash] = React.useState(true);
@@ -48,6 +49,7 @@ function App() {
           <Route path="inventory" element={<AdminInventory />} />
           <Route path="board" element={<AdminBoard />} />
           <Route path="master-data" element={<AdminMasterData />} />
+          <Route path="coupons" element={<AdminCoupons />} />
         </Route>
         
         <Route path="*" element={<Navigate to="/" replace />} />

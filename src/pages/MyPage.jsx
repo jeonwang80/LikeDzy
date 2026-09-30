@@ -1,16 +1,25 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAfter, where } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../i18n/LanguageContext';
 import { useStoreCopy } from '../i18n/storeCopy';
 import { formatMoney } from '../utils/market';
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { collection, query, where, orderBy, getDocs, limit, startAfter } from 'firebase/firestore';
-import { db } from '../firebase';
 import { getTrackingUrl } from '../utils/commerce';
+import { cleanProfile, EMPTY_PROFILE, validateProfile } from '../utils/customerProfile';
+import './MyPage.css';
 
 export default function MyPage() {
   const copy = useStoreCopy();
+  const { language } = useLanguage();
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
+  const [profile, setProfile] = useState(EMPTY_PROFILE);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -20,107 +29,76 @@ export default function MyPage() {
   const cursor = cursors[cursors.length - 1];
 
   useEffect(() => {
+    if (!currentUser) { navigate('/login'); return undefined; }
     let active = true;
-    if (!currentUser) {
-      navigate('/login');
-      return;
-    }
+    getDoc(doc(db, 'users', currentUser.uid)).then((snapshot) => {
+      if (active && snapshot.exists()) setProfile(cleanProfile(snapshot.data()));
+    }).catch(() => { if (active) setProfileMessage(language === 'ko' ? '내 정보를 불러오지 못했습니다.' : 'Could not load your details.'); })
+      .finally(() => { if (active) setProfileLoading(false); });
+    return () => { active = false; };
+  }, [currentUser, navigate, language]);
 
+  useEffect(() => {
+    if (!currentUser) return undefined;
+    let active = true;
     async function fetchOrders() {
       setLoading(true); setError('');
       try {
-        const q = query(
-          collection(db, 'orders'),
-          where('userId', '==', currentUser.uid),
-          orderBy('createdAt', 'desc'),
-          ...(cursor ? [startAfter(cursor)] : []),
-          limit(20)
-        );
-        const querySnapshot = await getDocs(q);
+        const q = query(collection(db, 'orders'), where('userId', '==', currentUser.uid), orderBy('createdAt', 'desc'), ...(cursor ? [startAfter(cursor)] : []), limit(20));
+        const snapshot = await getDocs(q);
         if (!active) return;
-        const userOrders = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate()
-        }));
-        setOrders(userOrders);
-        setLastDoc(querySnapshot.docs.at(-1) || null);
+        setOrders(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data(), createdAt: entry.data().createdAt?.toDate() })));
+        setLastDoc(snapshot.docs.at(-1) || null);
       } catch {
-        if (!active) return;
-        setError(copy("주문 내역을 불러오지 못했습니다. 연결을 확인하고 다시 시도해 주세요. 문제가 계속되면 고객센터에 문의해 주세요."));
-      } finally {
-        if (active) setLoading(false);
-      }
+        if (active) setError(copy('주문 내역을 불러오지 못했습니다. 연결을 확인하고 다시 시도해 주세요. 문제가 계속되면 고객센터에 문의해 주세요.'));
+      } finally { if (active) setLoading(false); }
     }
-
     fetchOrders();
     return () => { active = false; };
-  }, [currentUser, navigate, cursor, refresh, copy]);
-
-  async function handleLogout() {
-    try {
-      await logout();
-      navigate('/');
-    } catch (error) {
-      console.error("Failed to log out", error);
-    }
-  }
+  }, [currentUser, cursor, refresh, copy]);
 
   if (!currentUser) return null;
+  const ko = language === 'ko';
+  const label = (korean, english) => ko ? korean : english;
+  const update = (field, value) => setProfile((current) => ({ ...current, [field]: value }));
+  const saveProfile = async (event) => {
+    event.preventDefault();
+    const cleaned = cleanProfile(profile);
+    const issue = validateProfile(cleaned);
+    if (issue) { setProfileMessage(ko ? issue : 'Check your name, phone and delivery address.'); return; }
+    setSaving(true); setProfileMessage('');
+    try {
+      await setDoc(doc(db, 'users', currentUser.uid), { ...cleaned, schemaVersion: 1, updatedAt: serverTimestamp() });
+      setProfile(cleaned); setEditing(false);
+      setProfileMessage(label('기본 배송지를 저장했습니다.', 'Default delivery address saved.'));
+    } catch { setProfileMessage(label('저장하지 못했습니다. 다시 시도해 주세요.', 'Could not save. Please try again.')); }
+    finally { setSaving(false); }
+  };
+  const signOut = async () => { await logout(); navigate('/'); };
 
-  return (
-    <div style={{ padding: '4rem 5%', minHeight: '80vh' }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '2rem' }}>
-          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0 }}>
-            <span>&larr;</span>{copy("쇼핑몰 홈으로")}</button>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '2rem', margin: 0 }}>{copy("마이페이지")}</h2>
-          <button onClick={handleLogout} className="btn-secondary">{copy("로그아웃")}</button>
-        </div>
-
-        <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', marginBottom: '3rem' }}>
-          <h3 style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text-color)' }}>{copy("내 정보")}</h3>
-          <p style={{ color: 'var(--text-muted)' }}><strong>{copy("이메일:")}</strong> {currentUser.email}</p>
-        </div>
-
-        <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>{copy("나의 주문 내역")}</h3>
-        {error && <p role="alert">{error} <button onClick={() => setRefresh((value) => value + 1)}>{copy("다시 시도")}</button></p>}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}><button disabled={loading || cursors.length === 1} onClick={() => setCursors((value) => value.slice(0, -1))}>{copy("이전")}</button><span>{cursors.length}{copy("페이지")}</span><button disabled={loading || orders.length < 20 || !lastDoc} onClick={() => setCursors((value) => [...value, lastDoc])}>{copy("다음")}</button><button onClick={() => navigate('/orders/lookup')}>{copy("비회원 주문 조회")}</button></div>
-        
-        {loading ? (
-          <p>{copy("주문 내역을 불러오는 중...")}</p>
-        ) : error ? null : orders.length === 0 ? (
-          <div style={{ background: 'var(--card-bg)', padding: '3rem', textAlign: 'center', borderRadius: '12px', color: 'var(--text-muted)' }}>{copy("아직 주문하신 내역이 없습니다.")}</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {orders.map(order => (
-              <div key={order.id} style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', borderLeft: '4px solid #3b82f6' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                  <div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>{copy("주문일자:")}{order.createdAt?.toLocaleDateString()}</div>
-                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{order.items?.map(i => i.productName).join(', ')}</div>
-                  </div>
-                  <div style={{ padding: '0.3rem 0.8rem', background: 'rgba(36,52,40,0.1)', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', color: order.status === '발송 완료' ? '#007d48' : 'var(--text-color)' }}>
-                    {copy(order.status)}
-                  </div>
-                </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>{copy("주문번호:")}{order.orderNumber || order.id}</div>
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>{copy("결제 금액")}</span>
-                  <span style={{ fontWeight: 'bold', color: 'var(--text-color)' }}>{order.totalAmount || formatMoney(order.totalAmountNumber, order.currency || 'KRW')}</span>
-                </div>
-                {order.trackingNumber && (
-                  <a href={getTrackingUrl(order.courier, order.trackingNumber)} target="_blank" rel="noreferrer" style={{ marginTop: '1rem', minHeight: '42px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', borderRadius: '8px', background: '#243428', color: '#fff', fontWeight: 'bold', textDecoration: 'none' }}>
-                    {order.courier}{copy("배송조회 ·")}{order.trackingNumber}
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <main className="account-page"><div className="account-shell">
+    <header className="account-heading"><div><span>{label('내 계정', 'ACCOUNT')}</span><h1>{label('마이페이지', 'My account')}</h1></div><button type="button" onClick={signOut}>{label('로그아웃', 'Sign out')}</button></header>
+    <section className="account-panel" aria-labelledby="account-details-title">
+      <div className="account-section-heading"><div><span>01</span><h2 id="account-details-title">{label('내 정보', 'My details')}</h2></div><button type="button" onClick={() => { setEditing((value) => !value); setProfileMessage(''); }}>{editing ? label('닫기', 'Close') : label('수정', 'Edit')}</button></div>
+      <p className="account-email"><strong>{label('이메일', 'Email')}</strong><span>{currentUser.email}</span></p>
+      {profileLoading ? <p role="status">{label('정보를 불러오는 중…', 'Loading details…')}</p> : editing ? <form className="account-profile-form" onSubmit={saveProfile}>
+        <div className="account-form-grid"><label>{label('이름', 'Name')}<input required maxLength="80" autoComplete="name" value={profile.buyerName} onChange={(event) => update('buyerName', event.target.value)} /></label><label>{label('연락처', 'Phone')}<input required type="tel" maxLength="30" autoComplete="tel" value={profile.buyerPhone} onChange={(event) => update('buyerPhone', event.target.value)} /></label></div>
+        <h3>{label('기본 배송지', 'Default delivery address')}</h3>
+        <label>{label('국가', 'Country')}<select value={profile.country} onChange={(event) => setProfile((current) => ({ ...current, country: event.target.value, postcode: '', province: '', ward: '', address1: '', address2: '' }))}><option value="VN">Vietnam</option><option value="KR">대한민국</option></select></label>
+        <div className="account-form-grid"><label>{label('받는 분', 'Recipient')}<input required maxLength="80" value={profile.recipientName} onChange={(event) => update('recipientName', event.target.value)} /></label><label>{label('받는 분 연락처', 'Recipient phone')}<input required type="tel" maxLength="30" value={profile.recipientPhone} onChange={(event) => update('recipientPhone', event.target.value)} /></label></div>
+        {profile.country === 'VN' && <div className="account-form-grid"><label>{label('시·성', 'Province / City')}<input required maxLength="100" value={profile.province} onChange={(event) => update('province', event.target.value)} /></label><label>{label('동·면', 'Ward / Commune')}<input required maxLength="100" value={profile.ward} onChange={(event) => update('ward', event.target.value)} /></label></div>}
+        <label>{label('우편번호', 'Postal code')} {profile.country === 'VN' && <small>{label('(선택)', '(optional)')}</small>}<input required={profile.country === 'KR'} inputMode="numeric" maxLength="10" value={profile.postcode} onChange={(event) => update('postcode', event.target.value)} /></label>
+        <label>{label('주소', 'Street address')}<input required maxLength="200" autoComplete="address-line1" value={profile.address1} onChange={(event) => update('address1', event.target.value)} /></label>
+        <label>{label('상세주소', 'Address line 2')}<input maxLength="200" autoComplete="address-line2" value={profile.address2} onChange={(event) => update('address2', event.target.value)} /></label>
+        <button className="account-save" type="submit" disabled={saving}>{saving ? label('저장 중…', 'Saving…') : label('기본 배송지 저장', 'Save address')}</button>
+      </form> : <div className="account-profile-summary"><p><strong>{label('이름·연락처', 'Name & phone')}</strong><span>{profile.buyerName || label('등록되지 않음', 'Not added')}{profile.buyerPhone && ` · ${profile.buyerPhone}`}</span></p><p><strong>{label('기본 배송지', 'Default address')}</strong><span>{profile.address1 ? `${profile.recipientName} · ${profile.recipientPhone}\n${[profile.address1, profile.address2, profile.ward, profile.province, profile.postcode, profile.country].filter(Boolean).join(', ')}` : label('아직 등록되지 않았습니다.', 'No address saved yet.')}</span></p></div>}
+      {profileMessage && <p role="status" className="account-message">{profileMessage}</p>}
+    </section>
+    <section className="account-orders" aria-labelledby="account-orders-title"><div className="account-section-heading"><div><span>02</span><h2 id="account-orders-title">{label('주문 내역', 'My orders')}</h2></div></div>
+      <button className="account-guest-link" type="button" onClick={() => navigate('/orders/lookup')}>{label('비회원 주문 조회', 'Guest order tracking')} →</button>
+      {error && <p role="alert">{error} <button onClick={() => setRefresh((value) => value + 1)}>{copy('다시 시도')}</button></p>}
+      {loading ? <p role="status">{label('주문 내역을 불러오는 중…', 'Loading orders…')}</p> : error ? null : orders.length === 0 ? <div className="account-empty">{label('아직 주문 내역이 없습니다.', 'No orders yet.')}</div> : <div className="account-order-list">{orders.map((order) => <article className="account-order-card" key={order.id}><div className="account-order-top"><span>{order.createdAt?.toLocaleDateString(ko ? 'ko-KR' : 'en-US') || '—'}</span><strong>{copy(order.status)}</strong></div><h3>{order.items?.map((item) => item.productName).join(', ')}</h3><p>{label('주문번호', 'Order no.')} {order.orderNumber || order.id}</p><div className="account-order-total"><span>{label('결제 금액', 'Order total')}</span><strong>{formatMoney(order.totalAmountNumber, order.currency || 'KRW')}</strong></div>{order.trackingNumber && <a href={getTrackingUrl(order.courier, order.trackingNumber)} target="_blank" rel="noreferrer">{label('배송 조회', 'Track shipment')} →</a>}</article>)}</div>}
+      {(cursors.length > 1 || (!loading && orders.length === 20 && lastDoc)) && <nav className="account-pagination" aria-label={label('주문 페이지', 'Order pages')}><button disabled={loading || cursors.length === 1} onClick={() => setCursors((value) => value.slice(0, -1))}>{label('이전', 'Previous')}</button><span>{cursors.length}</span><button disabled={loading || orders.length < 20 || !lastDoc} onClick={() => setCursors((value) => [...value, lastDoc])}>{label('다음', 'Next')}</button></nav>}
+    </section>
+  </div></main>;
 }
