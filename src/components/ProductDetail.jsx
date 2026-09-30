@@ -165,6 +165,8 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
   // Prices formatting
   const displayPrice = product.displayPrice || formatProductPrice(product, language);
   const youtubeEmbedUrl = getYouTubeEmbedUrl(product.youtubeUrl);
+  const addToBagDisabled = stockLoading || !!stockError || !sizes[selectedSizeIdx]?.variantId
+    || sizes[selectedSizeIdx]?.stock <= 0 || product.isActive === false;
 
   const toggleWishlist = () => {
     try {
@@ -330,7 +332,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
               <p role="status">{stockError || (stockLoading ? '재고 확인 중…' : !sizes.some((item) => item.stock > 0) ? '현재 선택 색상은 품절 또는 판매 준비 중입니다.' : '')}</p>
               <button 
                 className="alo-add-to-bag-btn"
-                disabled={stockLoading || !!stockError || !sizes[selectedSizeIdx]?.variantId || sizes[selectedSizeIdx]?.stock <= 0 || product.isActive === false}
+                disabled={addToBagDisabled}
                 onClick={() => {
                   const success = handleAddToCart();
                   if (success) setIsCartOpen(true);
@@ -403,13 +405,14 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
         </div>
       </div>
 
-      <div className="product-mobile-buybar">
+      {createPortal(<div className="product-mobile-buybar">
         <div>
           <span>{name}</span>
           <strong>{displayPrice}</strong>
         </div>
         <button
           type="button"
+          disabled={addToBagDisabled}
           onClick={() => {
             const success = handleAddToCart();
             if (success) setIsCartOpen(true);
@@ -417,7 +420,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
         >
           ADD TO BAG
         </button>
-      </div>
+      </div>, document.body)}
 
       {/* Lightbox Image Modal */}
       {zoomImage && createPortal(

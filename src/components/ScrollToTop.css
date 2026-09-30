@@ -1,0 +1,26 @@
+.scroll-to-top {
+  position: fixed;
+  right: 20px;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  z-index: 950;
+  display: flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #1b2e23;
+  color: #ffffff;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+}
+
+.scroll-to-top svg { flex: 0 0 auto; }
+.scroll-to-top:focus-visible { outline: 3px solid #1b2e23; outline-offset: 3px; }
+
+@media (max-width: 767px) {
+  .scroll-to-top--product {
+    bottom: calc(164px + env(safe-area-inset-bottom, 0px));
+  }
+}

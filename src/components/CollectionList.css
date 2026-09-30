@@ -859,9 +859,9 @@
 
   .product-mobile-buybar {
     position: fixed;
-    z-index: 90;
+    z-index: 900;
     right: 0;
-    bottom: 68px;
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px));
     left: 0;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -871,6 +871,7 @@
     background: rgba(255, 255, 255, 0.96);
     padding: 12px 14px;
     backdrop-filter: blur(14px);
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.08);
   }
 
   .product-mobile-buybar div {
@@ -899,5 +900,10 @@
     color: #ffffff;
     font-size: 0.75rem;
     font-weight: 700;
+  }
+
+  .product-mobile-buybar button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 }
