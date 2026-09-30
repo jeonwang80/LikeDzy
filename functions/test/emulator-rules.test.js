@@ -63,6 +63,13 @@ test('Firestore rules: privacy, ownership, admin verification and server-only wr
       await denied(setDoc(doc(buyer, 'users', userId), { ...profile, admin: true }));
       await denied(setDoc(doc(buyer, 'couponUses', prefix), { code: 'TEST' }));
       await denied(read(buyer, `couponUses/${prefix}`));
+      await denied(setDoc(doc(buyer, 'userCoupons', prefix), { userId, code: 'TEST' }));
+      const entitlement = seed.doc(`userCoupons/${prefix}`);
+      await entitlement.set({ userId, code: 'TEST', redeemedAt: null });
+      await read(buyer, `userCoupons/${prefix}`);
+      await denied(read(stranger, `userCoupons/${prefix}`));
+      await denied(read(admin, `userCoupons/${prefix}`));
+      assert.equal((await getDocs(query(collection(buyer, 'userCoupons'), where('userId', '==', userId)))).size, 1);
     });
     await t.test('coupon definitions are administrator-only', async () => {
       await setDoc(doc(admin, 'coupons', prefix), { code: prefix, active: false });

@@ -30,6 +30,10 @@ function callable(method) {
 
 exports.createBankTransferOrder = callable(commerce.createBankTransferOrder);
 exports.quoteCoupon = callable(commerce.quoteCoupon);
+exports.issueWelcomeCoupons = functions.auth.user().onCreate(async (user) => {
+  const result = await commerce.issueWelcomeCoupons(user);
+  functions.logger.info('New member coupon issuance', { uid: user.uid, issued: result.issued });
+});
 exports.getOrder = callable(commerce.getOrder);
 exports.setVariantStock = callable(commerce.setVariantStock);
 exports.updateOrder = callable(commerce.updateOrder);

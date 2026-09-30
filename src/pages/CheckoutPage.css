@@ -99,6 +99,7 @@
 .checkout-coupon input { min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid #a5b6a5; border-radius: 7px; background: #fff; color: #172019; text-transform: uppercase; }
 .checkout-coupon button { min-height: 44px; padding: 0 14px; border: 1px solid #dfe4dc; border-radius: 7px; background: #e7ebe4; color: #172019; font-weight: 800; cursor: pointer; }
 .checkout-coupon button:disabled { opacity: .5; cursor: default; }
+.checkout-coupon .checkout-member-coupon { width: 100%; min-height: 40px; border-color: #9ab69e; background: #e8f2e7; text-align: left; }
 .checkout-coupon p { margin: 0; color: #c6dfc9; font-size: .76rem; }
 .checkout-remote-note { margin: 15px 0; color: #9da69c; font-size: 0.73rem; line-height: 1.5; }
 .checkout-summary .checkout-error { margin: 14px 0; background: rgba(211, 73, 55, 0.13); border-color: rgba(255, 145, 129, 0.36); color: #ffd2cb; }

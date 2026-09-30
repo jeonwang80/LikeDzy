@@ -86,6 +86,15 @@ export default function CheckoutPage() {
   const [couponQuote, setCouponQuote] = useState(null);
   const [couponMessage, setCouponMessage] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
+  const [viewTime] = useState(() => Date.now());
+  const [memberCoupons, setMemberCoupons] = useState([]);
+
+  useEffect(() => {
+    if (!currentUser) return undefined;
+    return onSnapshot(query(collection(db, 'userCoupons'), where('userId', '==', currentUser.uid)), (snapshot) => {
+      setMemberCoupons(snapshot.docs.map((entry) => entry.data()));
+    }, () => setMemberCoupons([]));
+  }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser) return undefined;
@@ -193,12 +202,12 @@ export default function CheckoutPage() {
     setError('');
   };
 
-  const applyCoupon = async () => {
+  const applyCoupon = async (selectedCode = couponInput) => {
     if (!currentUser) { setCouponMessage(copy('쿠폰 사용은 로그인이 필요합니다.')); return; }
     if (!subtotal) { setCouponMessage(copy('상품금액을 확인해 주세요.')); return; }
     setCouponLoading(true); setCouponMessage(''); setCouponQuote(null);
     try {
-      const quote = await quoteCoupon(couponInput.trim().toUpperCase(), currency, subtotal);
+      const quote = await quoteCoupon(selectedCode.trim().toUpperCase(), currency, subtotal);
       setCouponQuote({ ...quote, currency, subtotal });
       setCouponMessage(copy('쿠폰 할인이 적용되었습니다.'));
       setForm((current) => ({ ...current, agreeOrder: false }));
@@ -531,7 +540,7 @@ export default function CheckoutPage() {
               {discountAmount > 0 && <div><dt>{copy('쿠폰 할인')} ({couponQuote.code})</dt><dd>−{money(discountAmount)}</dd></div>}
               <div className="checkout-grand-total"><dt>{copy("최종 입금액")}</dt><dd>{money(total)}</dd></div>
             </dl>
-            <div className="checkout-coupon"><label htmlFor="checkout-coupon-code">{copy('쿠폰 코드')}</label><div><input id="checkout-coupon-code" value={couponInput} maxLength="32" onChange={(event) => { setCouponInput(event.target.value.toUpperCase()); setCouponQuote(null); setCouponMessage(''); setForm((current) => ({ ...current, agreeOrder: false })); }} placeholder="CODE" /><button type="button" onClick={applyCoupon} disabled={couponLoading || !couponInput.trim()}>{couponLoading ? copy('확인 중…') : copy('적용')}</button></div>{couponMessage && <p role="status">{couponMessage}</p>}</div>
+            <div className="checkout-coupon"><label htmlFor="checkout-coupon-code">{copy('쿠폰 코드')}</label><div><input id="checkout-coupon-code" value={couponInput} maxLength="32" onChange={(event) => { setCouponInput(event.target.value.toUpperCase()); setCouponQuote(null); setCouponMessage(''); setForm((current) => ({ ...current, agreeOrder: false })); }} placeholder="CODE" /><button type="button" onClick={() => applyCoupon()} disabled={couponLoading || !couponInput.trim()}>{couponLoading ? copy('확인 중…') : copy('적용')}</button></div>{memberCoupons.filter((coupon) => coupon.currency === currency && !coupon.redeemedAt && Date.parse(coupon.endsAt) >= viewTime).map((coupon) => <button className="checkout-member-coupon" type="button" key={coupon.code} onClick={() => { setCouponInput(coupon.code); applyCoupon(coupon.code); }} disabled={couponLoading}>{coupon.percent}% {copy('가입 쿠폰 사용')} · {coupon.code}</button>)}{couponMessage && <p role="status">{couponMessage}</p>}</div>
             {activeSettings.remoteAreaNotice && <p className="checkout-remote-note">{activeSettings.remoteAreaNotice}</p>}
             <button type="button" className="checkout-primary-button" disabled={refreshing || submitting} onClick={refreshCart}>{refreshing ? copy("확인 중…") : copy("최신 상품·재고 확인")}</button>
             {cartNotice && <p role="status">{cartNotice}</p>}

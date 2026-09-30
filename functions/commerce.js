@@ -220,6 +220,34 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     };
   }
 
+  async function issueWelcomeCoupons(user) {
+    const uid = text(user?.uid, 128);
+    const joinedAt = Date.parse(user?.metadata?.creationTime);
+    if (!uid || !Number.isFinite(joinedAt)) return { issued: 0 };
+    const campaigns = await db.collection('coupons').where('autoIssue', '==', true).get();
+    let issued = 0;
+    for (const entry of campaigns.docs) {
+      const coupon = entry.data();
+      const code = couponCode(coupon.code);
+      const starts = Date.parse(coupon.startsAt);
+      const ends = Date.parse(coupon.endsAt);
+      if (!code || code !== entry.id || coupon.active !== true || !['KRW', 'VND'].includes(coupon.currency) || !Number.isFinite(starts) || !Number.isFinite(ends) || joinedAt < starts || joinedAt > ends) continue;
+      const entitlementRef = ref('userCoupons', hash(`${code}:${uid}`));
+      const created = await db.runTransaction(async (transaction) => {
+        const existing = await transaction.get(entitlementRef);
+        if (existing.exists) return false;
+        transaction.create(entitlementRef, {
+          userId: uid, code, title: text(coupon.title, 120) || code, currency: coupon.currency,
+          percent: coupon.percent, minSubtotal: coupon.minSubtotal, maxDiscount: coupon.maxDiscount, endsAt: coupon.endsAt,
+          orderId: '', redeemedAt: null, createdAt: serverTimestamp(),
+        });
+        return true;
+      });
+      if (created) issued += 1;
+    }
+    return { issued };
+  }
+
   async function quoteCoupon(data, context = {}) {
     if (!context.auth?.uid) fail('unauthenticated', '쿠폰 사용은 회원 로그인이 필요합니다.');
     if (!isEmulator && !context.app?.appId) fail('failed-precondition', '안전한 주문 연결을 확인할 수 없습니다.');
@@ -229,8 +257,9 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     const currency = data?.currency;
     if (!['KRW', 'VND'].includes(currency)) fail('invalid-argument', '주문 통화를 확인해 주세요.');
     const subtotal = integer(data?.subtotal, '상품금액', 1, 1000000000);
-    const [coupon, used] = await Promise.all([ref('coupons', code).get(), ref('couponUses', hash(`${code}:${context.auth.uid}`)).get()]);
+    const [coupon, used, entitlement] = await Promise.all([ref('coupons', code).get(), ref('couponUses', hash(`${code}:${context.auth.uid}`)).get(), ref('userCoupons', hash(`${code}:${context.auth.uid}`)).get()]);
     if (used.exists && used.data().released !== true) fail('failed-precondition', '이미 사용한 쿠폰입니다.');
+    if (coupon.exists && coupon.data().autoIssue === true && (!entitlement.exists || entitlement.data().userId !== context.auth.uid)) fail('permission-denied', '발급받은 쿠폰만 사용할 수 있습니다.');
     return { code, discountAmount: calculateCoupon(coupon.exists ? coupon.data() : null, { code, currency, subtotal, currentTime: now() }) };
   }
 
@@ -268,7 +297,10 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       const useRef = code ? ref('couponUses', hash(`${code}:${actorUid}`)) : null;
       const couponSnapshot = couponRef ? await transaction.get(couponRef) : null;
       const useSnapshot = useRef ? await transaction.get(useRef) : null;
+      const entitlementRef = code ? ref('userCoupons', hash(`${code}:${actorUid}`)) : null;
+      const entitlementSnapshot = entitlementRef ? await transaction.get(entitlementRef) : null;
       if (useSnapshot?.exists && useSnapshot.data().released !== true) fail('failed-precondition', '이미 사용한 쿠폰입니다.');
+      if (couponSnapshot?.exists && couponSnapshot.data().autoIssue === true && (!entitlementSnapshot.exists || entitlementSnapshot.data().userId !== actorUid || entitlementSnapshot.data().redeemedAt)) fail('permission-denied', '발급받은 쿠폰만 사용할 수 있습니다.');
       const baseSettings = settingsSnapshot.exists ? settingsSnapshot.data() : {};
       const vietnam = baseSettings.vietnam || {};
       const savedSettings = currency === 'KRW' ? baseSettings : {
@@ -339,6 +371,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       if (couponRef) {
         transaction.update(couponRef, { usedCount: (couponSnapshot.data().usedCount || 0) + 1, updatedAt: serverTimestamp() });
         transaction.set(useRef, { code, userId: actorUid, orderId: orderRef.id, released: false, createdAt: serverTimestamp() });
+        if (couponSnapshot.data().autoIssue === true) transaction.update(entitlementRef, { orderId: orderRef.id, redeemedAt: serverTimestamp() });
       }
       transaction.create(ref("orderAccess", orderRef.id), { tokenHash: hash(accessToken), createdAt: serverTimestamp() });
       transaction.create(requestRef, { orderId: orderRef.id, fingerprint, createdAt: serverTimestamp() });
@@ -451,7 +484,11 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         const couponRef = ref('coupons', order.couponCode);
         const useRef = ref('couponUses', hash(`${order.couponCode}:${order.userId}`));
         const [coupon, use] = await Promise.all([transaction.get(couponRef), transaction.get(useRef)]);
-        if (coupon.exists && use.exists && use.data().orderId === orderId && use.data().released !== true) couponRelease = { couponRef, useRef, usedCount: coupon.data().usedCount || 0 };
+        if (coupon.exists && use.exists && use.data().orderId === orderId && use.data().released !== true) {
+          const entitlementRef = coupon.data().autoIssue === true ? ref('userCoupons', hash(`${order.couponCode}:${order.userId}`)) : null;
+          const entitlement = entitlementRef ? await transaction.get(entitlementRef) : null;
+          couponRelease = { couponRef, useRef, usedCount: coupon.data().usedCount || 0, entitlementRef: entitlement?.exists && entitlement.data().orderId === orderId ? entitlementRef : null };
+        }
       }
       if (movement) {
         for (const item of order.items) {
@@ -473,6 +510,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       if (couponRelease) {
         transaction.update(couponRelease.couponRef, { usedCount: Math.max(0, couponRelease.usedCount - 1), updatedAt: serverTimestamp() });
         transaction.update(couponRelease.useRef, { released: true, releasedAt: serverTimestamp() });
+        if (couponRelease.entitlementRef) transaction.update(couponRelease.entitlementRef, { orderId: '', redeemedAt: null });
       }
       transaction.update(orderRef, updates);
       transaction.create(db.collection("orderEvents").doc(), {
@@ -502,7 +540,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     }
     return { examined: results.length, expired: results.filter((result) => !result.skipped && !result.failed).length, failed: results.filter((result) => result.failed).map((result) => result.id) };
   }
-  return { setVariantStock, createBankTransferOrder, quoteCoupon, getOrder, updateOrder, expireOrder, expireBankTransferOrders, isAdmin };
+  return { setVariantStock, createBankTransferOrder, quoteCoupon, issueWelcomeCoupons, getOrder, updateOrder, expireOrder, expireBankTransferOrders, isAdmin };
 }
 
 module.exports = { CommerceError, createCommerceService, variantIdFor, STATUS };

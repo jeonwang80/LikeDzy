@@ -25,7 +25,14 @@
 .account-save { min-height: 50px; margin-top: 6px; border: 0; border-radius: 9px; background: #243428; color: #fff; font-weight: 850; cursor: pointer; }
 .account-save:disabled { opacity: .55; }
 .account-message { margin: 16px 0 0; color: #315a38; font-size: .84rem; }
-.account-orders { margin-top: 38px; }
+.account-orders, .account-coupons { margin-top: 38px; }
+.account-coupon-list { display: grid; gap: 12px; }
+.account-coupon-card { padding: 22px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border: 1px solid #d2dfcf; border-radius: 16px; background: #f1f6ef; }
+.account-coupon-card > div > span { display: block; color: #607362; font-size: .68rem; font-weight: 850; letter-spacing: .12em; }
+.account-coupon-card strong { display: block; margin: 4px 0; font-size: 1.8rem; line-height: 1; }
+.account-coupon-card p { margin: 8px 0 4px; font-weight: 750; }
+.account-coupon-card small { display: block; color: #637267; overflow-wrap: anywhere; }
+.account-coupon-card b { flex: 0 0 auto; padding: 7px 10px; border-radius: 99px; background: #d9e8d7; color: #24452c; font-size: .75rem; }
 .account-guest-link { margin: 0 0 17px; padding: 0; border: 0; background: none; color: #315943; font-weight: 800; cursor: pointer; }
 .account-order-list { display: grid; gap: 12px; }
 .account-order-card { padding: 22px; }

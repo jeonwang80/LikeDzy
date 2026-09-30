@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAfter, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, startAfter, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -20,6 +20,9 @@ export default function MyPage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
+  const [viewTime] = useState(() => Date.now());
+  const [coupons, setCoupons] = useState([]);
+  const [couponsLoading, setCouponsLoading] = useState(true);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -37,6 +40,14 @@ export default function MyPage() {
       .finally(() => { if (active) setProfileLoading(false); });
     return () => { active = false; };
   }, [currentUser, navigate, language]);
+
+  useEffect(() => {
+    if (!currentUser) return undefined;
+    return onSnapshot(query(collection(db, 'userCoupons'), where('userId', '==', currentUser.uid)), (snapshot) => {
+      setCoupons(snapshot.docs.map((entry) => entry.data()).sort((a, b) => a.endsAt.localeCompare(b.endsAt)));
+      setCouponsLoading(false);
+    }, () => { setCoupons([]); setCouponsLoading(false); });
+  }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser) return undefined;
@@ -94,7 +105,10 @@ export default function MyPage() {
       </form> : <div className="account-profile-summary"><p><strong>{label('이름·연락처', 'Name & phone')}</strong><span>{profile.buyerName || label('등록되지 않음', 'Not added')}{profile.buyerPhone && ` · ${profile.buyerPhone}`}</span></p><p><strong>{label('기본 배송지', 'Default address')}</strong><span>{profile.address1 ? `${profile.recipientName} · ${profile.recipientPhone}\n${[profile.address1, profile.address2, profile.ward, profile.province, profile.postcode, profile.country].filter(Boolean).join(', ')}` : label('아직 등록되지 않았습니다.', 'No address saved yet.')}</span></p></div>}
       {profileMessage && <p role="status" className="account-message">{profileMessage}</p>}
     </section>
-    <section className="account-orders" aria-labelledby="account-orders-title"><div className="account-section-heading"><div><span>02</span><h2 id="account-orders-title">{label('주문 내역', 'My orders')}</h2></div></div>
+    <section className="account-coupons" aria-labelledby="account-coupons-title"><div className="account-section-heading"><div><span>02</span><h2 id="account-coupons-title">{label('내 쿠폰', 'My coupons')}</h2></div></div>
+      {couponsLoading ? <p role="status">{label('쿠폰을 불러오는 중…', 'Loading coupons…')}</p> : coupons.length === 0 ? <div className="account-empty">{label('보유한 쿠폰이 없습니다.', 'No coupons yet.')}</div> : <div className="account-coupon-list">{coupons.map((coupon) => <article className="account-coupon-card" key={coupon.code}><div><span>{coupon.currency}</span><strong>{coupon.percent}% OFF</strong><p>{coupon.title}</p><small>{label('최대 할인', 'Up to')} {formatMoney(coupon.maxDiscount, coupon.currency)} · {label('쿠폰 코드', 'Code')} {coupon.code}</small><small>{label('만료', 'Expires')} {new Date(coupon.endsAt).toLocaleDateString(ko ? 'ko-KR' : 'en-US')}</small></div><b>{coupon.redeemedAt ? label('사용 완료', 'Used') : new Date(coupon.endsAt).getTime() < viewTime ? label('기간 만료', 'Expired') : label('발급됨', 'Issued')}</b></article>)}</div>}
+    </section>
+    <section className="account-orders" aria-labelledby="account-orders-title"><div className="account-section-heading"><div><span>03</span><h2 id="account-orders-title">{label('주문 내역', 'My orders')}</h2></div></div>
       <button className="account-guest-link" type="button" onClick={() => navigate('/orders/lookup')}>{label('비회원 주문 조회', 'Guest order tracking')} →</button>
       {error && <p role="alert">{error} <button onClick={() => setRefresh((value) => value + 1)}>{copy('다시 시도')}</button></p>}
       {loading ? <p role="status">{label('주문 내역을 불러오는 중…', 'Loading orders…')}</p> : error ? null : orders.length === 0 ? <div className="account-empty">{label('아직 주문 내역이 없습니다.', 'No orders yet.')}</div> : <div className="account-order-list">{orders.map((order) => <article className="account-order-card" key={order.id}><div className="account-order-top"><span>{order.createdAt?.toLocaleDateString(ko ? 'ko-KR' : 'en-US') || '—'}</span><strong>{copy(order.status)}</strong></div><h3>{order.items?.map((item) => item.productName).join(', ')}</h3><p>{label('주문번호', 'Order no.')} {order.orderNumber || order.id}</p><div className="account-order-total"><span>{label('결제 금액', 'Order total')}</span><strong>{formatMoney(order.totalAmountNumber, order.currency || 'KRW')}</strong></div>{order.trackingNumber && <a href={getTrackingUrl(order.courier, order.trackingNumber)} target="_blank" rel="noreferrer">{label('배송 조회', 'Track shipment')} →</a>}</article>)}</div>}

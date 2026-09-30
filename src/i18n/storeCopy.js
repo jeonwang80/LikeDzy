@@ -200,6 +200,7 @@ const english = {
   "쿠폰 할인": "Coupon discount",
   "쿠폰 코드": "Coupon code",
   "적용": "Apply",
+  "가입 쿠폰 사용": "Use welcome coupon",
 };
 
 export function useStoreCopy() {

@@ -46,6 +46,7 @@ service cloud.firestore {
     match /orders/{orderId} { allow read: if isAdmin() || owner(resource.data); allow write: if false; }
     match /coupons/{code} { allow read, write: if isAdmin(); }
     match /couponUses/{useId} { allow read, write: if false; }
+    match /userCoupons/{entitlementId} { allow read: if owner(resource.data); allow write: if false; }
     match /users/{userId} {
       allow read, delete: if signedIn() && request.auth.uid == userId;
       allow create, update: if signedIn() && request.auth.uid == userId

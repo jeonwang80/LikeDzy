@@ -341,6 +341,27 @@ test('coupon rejects wrong currency, expired window, and exhausted campaign', as
   await rejectsCode(f.service.quoteCoupon({ couponCode: 'WELCOME30', currency: 'KRW', subtotal: 39000 }, owner), 'failed-precondition');
 });
 
+test('welcome coupon is issued once only to members joining during the campaign', async () => {
+  const f = await fixture();
+  f.db.data.set('coupons/HELLO30', { code: 'HELLO30', title: 'Welcome', active: true, autoIssue: true, currency: 'KRW', percent: 30, minSubtotal: 0, maxDiscount: 20000, usageLimit: 100, usedCount: 0, startsAt: '2026-09-01T00:00:00Z', endsAt: '2026-10-01T00:00:00Z' });
+  const oldUser = { uid: 'older-member', metadata: { creationTime: '2026-08-01T00:00:00Z' } };
+  const newUser = { uid: 'new-member', metadata: { creationTime: '2026-09-05T00:00:00Z' } };
+  assert.equal((await f.service.issueWelcomeCoupons(oldUser)).issued, 0);
+  assert.equal((await f.service.issueWelcomeCoupons(newUser)).issued, 1);
+  assert.equal((await f.service.issueWelcomeCoupons(newUser)).issued, 0);
+  assert.equal(f.db.count('userCoupons'), 1);
+  const newcomer = { ...guest, auth: { uid: newUser.uid, token: {} } };
+  const older = { ...guest, auth: { uid: oldUser.uid, token: {} } };
+  await rejectsCode(f.service.quoteCoupon({ couponCode: 'HELLO30', currency: 'KRW', subtotal: 39000 }, older), 'permission-denied');
+  assert.equal((await f.service.quoteCoupon({ couponCode: 'HELLO30', currency: 'KRW', subtotal: 39000 }, newcomer)).discountAmount, 11700);
+  const created = await f.service.createBankTransferOrder(f.order({ couponCode: 'HELLO30', expectedTotal: 30300 }), newcomer);
+  const entitlement = [...f.db.data.values()].find((value) => value?.userId === newUser.uid && value?.code === 'HELLO30' && 'redeemedAt' in value);
+  assert.equal(entitlement.orderId, created.id);
+  await f.action(created.id, STATUS.WAITING, STATUS.CANCELLED);
+  const released = [...f.db.data.values()].find((value) => value?.userId === newUser.uid && value?.code === 'HELLO30' && 'redeemedAt' in value);
+  assert.equal(released.redeemedAt, null);
+});
+
 test('Vietnam delivery stores local address fields and rejects a mismatched country', async () => {
   const f = await vietnamFixture();
   const vietnamCustomer = {
