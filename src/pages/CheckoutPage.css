@@ -56,6 +56,10 @@
 .checkout-cash-receipt input { width: 18px; height: 18px; flex: 0 0 18px; accent-color: #243428; }
 .checkout-address-row { margin-top: 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
 .checkout-address-row button { min-height: 50px; padding: 0 18px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid #243428; border-radius: 8px; background: #243428; color: #fff; font-size: 0.85rem; font-weight: 800; cursor: pointer; }
+.checkout-country-note { margin: 8px 0 20px; color: #657067; font-size: 0.78rem; line-height: 1.45; }
+.checkout-country-note strong { display: block; margin-top: 4px; color: #243428; font-size: 0.83rem; }
+.checkout-vietnam-region { margin-top: 16px; }
+.checkout-vietnam-extra { margin-top: 16px; }
 
 .checkout-bank-card { padding: 20px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border: 1px solid #b9c7bb; border-radius: 10px; background: #edf3ee; }
 .checkout-bank-card > div { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
@@ -128,6 +132,8 @@ body.storefront-theme .checkout-section input:not([type='checkbox']):not([type='
 body.storefront-theme .checkout-section select { border-color: #434b43; background: #272d27; color: #f0eee6; }
 body.storefront-theme .checkout-bank-card { border-color: #455348; background: #232d25; color: #f0eee6; }
 body.storefront-theme .checkout-test-notice { border-color: #8a742c; background: #302b18; color: #f3dc81; }
+body.storefront-theme .checkout-country-note { color: #aab0a8; }
+body.storefront-theme .checkout-country-note strong { color: #f0eee6; }
 
 @media (max-width: 900px) {
   .checkout-shell { width: min(92%, 720px); padding-top: 42px; grid-template-columns: 1fr; }
@@ -145,8 +151,10 @@ body.storefront-theme .checkout-test-notice { border-color: #8a742c; background:
   .checkout-section,
   .checkout-summary-sticky { padding: 20px 17px; }
   .checkout-field-grid { grid-template-columns: 1fr; }
-  .checkout-address-row { grid-template-columns: 1fr; }
-  .checkout-address-row button { justify-content: center; }
+  .checkout-address-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .checkout-address-row button { justify-content: center; padding: 0 13px; }
+  .checkout-section legend { margin-bottom: 16px; padding-bottom: 12px; }
+  .checkout-section > label + label { margin-top: 12px; }
   .checkout-success-order { grid-template-columns: 1fr; }
   .checkout-bank-card { align-items: stretch; flex-direction: column; }
   .checkout-bank-card button { justify-content: center; }

@@ -12,7 +12,7 @@ test('customer languages use independent KRW and VND prices and sort by the visi
   assert.equal(formatProductPrice(a,'en'), '90,000 ₫');
   assert.equal(productPrice({ prices: { KRW: 2000, USD: 2 } },'VND'), null);
   assert.equal(formatProductPrice({ prices: { KRW: 2000 } }, 'en'), 'Price unavailable');
-  assert.equal(marketSettings({ shippingFee: 3000, orderEnabled: true }, 'VND').shippingFee, null);
+  assert.equal(marketSettings({ shippingFee: 3000, orderEnabled: true }, 'VND').shippingFee, 0);
   assert.equal(marketSettings({ orderEnabled: true },'VND').orderEnabled, false);
   assert.equal(formatMoney(42000, 'KRW'), '₩42,000');
 });

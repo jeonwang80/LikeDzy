@@ -47,14 +47,24 @@ const TRANSITIONS = {
 function normalizeCustomer(customer = {}, currency = 'KRW') {
   if (customer.agreements?.orderConfirmed !== true || customer.agreements?.privacyAgreed !== true) fail("failed-precondition", "필수 주문 확인이 완료되지 않았습니다.");
   const result = {};
+  const explicitCountry = text(customer.country, 8);
+  result.country = explicitCountry || (currency === 'VND' ? 'VN' : 'KR');
+  if (!['KR', 'VN'].includes(result.country) || (result.country === 'VN' ? 'VND' : 'KRW') !== currency) {
+    fail('invalid-argument', '배송 국가와 주문 통화를 확인해 주세요.');
+  }
   for (const field of ["buyerName", "buyerPhone", "recipientName", "recipientPhone", "postcode", "address1"]) {
     result[field] = text(customer[field], field.includes("Phone") ? 30 : 200);
-    if (!result[field] && !(currency === 'VND' && field === 'postcode')) fail("invalid-argument", "주문자와 배송지 필수 정보를 입력해 주세요.");
+    if (!result[field] && !(result.country === 'VN' && field === 'postcode')) fail("invalid-argument", "주문자와 배송지 필수 정보를 입력해 주세요.");
   }
   for (const field of ["buyerPhone", "recipientPhone"]) {
     if (!/^\+?[\d ()-]{8,30}$/.test(result[field]) || result[field].replace(/\D/g, "").length < 8) fail("invalid-argument", "연락처를 확인해 주세요.");
   }
-  if ((currency === 'KRW' || result.postcode) && !/^\d{5}$/.test(result.postcode)) fail("invalid-argument", "우편번호 5자리를 확인해 주세요.");
+  if ((result.country === 'KR' || result.postcode) && !/^\d{5}$/.test(result.postcode)) fail("invalid-argument", "우편번호 5자리를 확인해 주세요.");
+  result.province = text(customer.province);
+  result.ward = text(customer.ward);
+  if (result.country === 'VN' && explicitCountry && (!result.province || !result.ward)) {
+    fail('invalid-argument', '베트남 시·성과 동·면을 입력해 주세요.');
+  }
   result.address2 = text(customer.address2);
   result.depositorName = text(customer.depositorName, 80) || result.buyerName;
   result.notes = text(customer.notes, 300);
@@ -226,12 +236,8 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         ...baseSettings, ...vietnam, orderEnabled: vietnam.orderEnabled === true, policyConfirmed: vietnam.policyConfirmed === true,
         bankName: vietnam.bankName || '', accountNumber: vietnam.accountNumber || '', accountHolder: vietnam.accountHolder || '',
         termsText: vietnam.termsText || '', privacyText: vietnam.privacyText || '', returnsText: vietnam.returnsText || '',
-        shippingFee: vietnam.shippingFee, freeShippingThreshold: vietnam.freeShippingThreshold, defaultCarrier: vietnam.defaultCarrier || '',
+        shippingFee: 0, freeShippingThreshold: 0, defaultCarrier: vietnam.defaultCarrier || '',
       };
-      if (currency === 'VND' && (!Number.isSafeInteger(vietnam.shippingFee) || vietnam.shippingFee < 0
-        || !Number.isSafeInteger(vietnam.freeShippingThreshold) || vietnam.freeShippingThreshold < 0)) {
-        fail('failed-precondition', 'Vietnam shipping settings are not ready.');
-      }
       const ready = liveReady(savedSettings);
       const isTestOrder = currency === 'KRW' && !ready && adminUser;
       if (!ready && !isTestOrder) fail("failed-precondition", "현재 주문 접수를 준비 중입니다.");
@@ -271,8 +277,12 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         totalAmount: currency === 'VND' ? `${totalAmountNumber.toLocaleString('en-US')} ₫` : `₩${totalAmountNumber.toLocaleString("ko-KR")}`, paymentMethod: "bank_transfer", isTestOrder,
         status: STATUS.WAITING, inventoryState: "reserved", name: customer.buyerName, phone: customer.buyerPhone,
         depositName: customer.depositorName, recipientName: customer.recipientName, recipientPhone: customer.recipientPhone,
+        country: customer.country, province: customer.province, ward: customer.ward,
         postcode: customer.postcode, address1: customer.address1, address2: customer.address2,
-        address: `[${customer.postcode}] ${customer.address1} ${customer.address2}`.trim(), notes: customer.notes,
+        address: customer.country === 'VN'
+          ? [customer.address1, customer.address2, customer.ward, customer.province, customer.postcode, 'Vietnam'].filter(Boolean).join(', ')
+          : `[${customer.postcode}] ${customer.address1} ${customer.address2}`.trim(),
+        notes: customer.notes,
         cashReceipt: customer.cashReceipt, cashReceiptStatus: customer.cashReceipt.type === "none" ? "미신청" : "발급 대기",
         agreements: { orderConfirmed: true, privacyAgreed: true, agreedAt: serverTimestamp() },
         bankSnapshot: { bankName: text(settings.bankName, 60), accountNumber: text(settings.accountNumber, 80), accountHolder: text(settings.accountHolder, 80) },

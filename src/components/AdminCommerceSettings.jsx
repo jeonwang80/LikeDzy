@@ -25,7 +25,7 @@ export default function AdminCommerceSettings() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (settings.vietnam?.orderEnabled && !isCommerceReady(marketSettings(settings, 'VND'))) {
-      setMessage('베트남 주문을 켜려면 VND 배송비·무료배송 기준, 현지 입금 계좌, 영어 정책 및 공통 사업자 확인을 완료해 주세요.');
+      setMessage('베트남 주문을 켜려면 현지 입금 계좌, 영어 정책 및 공통 사업자 확인을 완료해 주세요. 베트남 배송은 현재 무료입니다.');
       return;
     }
     const requiredBusinessFields = ['businessName', 'representativeName', 'businessNumber', 'customerServicePhone', 'customerServiceEmail', 'businessAddress'];
@@ -107,11 +107,10 @@ export default function AdminCommerceSettings() {
         </div>
       <section style={{ width: '100%' }}>
         <h3>영어 스토어 · 베트남동 (VND)</h3>
-        <p>위 한국어·원화 설정과 별도입니다. 원화 금액을 환산하지 않으며, 상품별 VND 판매가를 사용합니다.</p>
+        <p>배송 국가가 베트남인 주문에 적용됩니다. 현재 베트남 배송은 무료이며, 상품별 VND 판매가를 사용합니다.</p>
         <label className="commerce-safety-check"><input type="checkbox" checked={settings.vietnam?.orderEnabled === true} onChange={(event) => updateVietnam('orderEnabled', event.target.checked)} />베트남 주문 접수</label>
         <div className="commerce-settings-grid">
-          {[['shippingFee', '베트남 배송비 (VND)'], ['freeShippingThreshold', '무료배송 기준 (VND, 0이면 미적용)']].map(([key, label]) => <label className="admin-form-field" key={key}><span>{label}</span><input className="admin-input" type="number" min="0" step="1" value={settings.vietnam?.[key] ?? ''} onChange={(event) => updateVietnam(key, event.target.value === '' ? null : Number(event.target.value))} /></label>)}
-          {[['bankName', '베트남 입금 은행'], ['accountNumber', 'VND 입금 계좌'], ['accountHolder', '예금주'], ['defaultCarrier', '베트남 택배사'], ['remoteAreaNotice', '영어 배송 안내']].map(([key, label]) => <label className="admin-form-field" key={key}><span>{label}</span><input className="admin-input" value={settings.vietnam?.[key] || ''} onChange={(event) => updateVietnam(key, event.target.value)} /></label>)}
+          {[['bankName', '베트남 입금 은행'], ['accountNumber', 'VND 입금 계좌'], ['accountHolder', '예금주'], ['defaultCarrier', '베트남 택배사']].map(([key, label]) => <label className="admin-form-field" key={key}><span>{label}</span><input className="admin-input" value={settings.vietnam?.[key] || ''} onChange={(event) => updateVietnam(key, event.target.value)} /></label>)}
           {[['termsText', 'English terms'], ['privacyText', 'English privacy policy'], ['returnsText', 'English delivery and returns']].map(([key, label]) => <label className="admin-form-field commerce-span-2" key={key}><span>{label}</span><textarea className="admin-input" rows="5" value={settings.vietnam?.[key] || ''} onChange={(event) => { updateVietnam(key, event.target.value); updateVietnam('policyConfirmed', false); }} /></label>)}
         </div>
         <label className="commerce-safety-check"><input type="checkbox" checked={settings.vietnam?.policyConfirmed === true} onChange={(event) => updateVietnam('policyConfirmed', event.target.checked)} />베트남 판매용 영어 정책을 확인했습니다.</label>

@@ -288,13 +288,14 @@ async function vietnamFixture() {
   f.db.data.set('products/shirt', { ...f.db.read('products/shirt'), prices: { KRW: 39000, USD: 30, VND: 700000 }, en: { name: 'English shirt' } });
   return f;
 }
-test('VND checkout uses VND prices and shipping, recovers currency, and refunds in that currency', async () => {
+test('VND checkout uses VND prices and free delivery, recovers currency, and refunds in that currency', async () => {
   const f = await vietnamFixture();
-  const request = f.order({ currency: 'VND', expectedTotal: 730000, customer: { ...customer, postcode: '' } });
+  const request = f.order({ currency: 'VND', expectedTotal: 700000, customer: { ...customer, postcode: '' } });
   const created = await f.service.createBankTransferOrder(request, guest);
   assert.equal(created.currency, 'VND');
   const saved = f.db.read(`orders/${created.id}`);
-  assert.equal(saved.totalAmountNumber, 730000);
+  assert.equal(saved.totalAmountNumber, 700000);
+  assert.equal(saved.shippingFee, 0);
   assert.equal(saved.items[0].unitPrice, 700000);
   assert.equal(saved.items[0].productName, 'English shirt');
   assert.equal(created.bank.accountNumber, 'TEST VND ONLY');
@@ -303,9 +304,31 @@ test('VND checkout uses VND prices and shipping, recovers currency, and refunds 
   await rejectsCode(f.service.createBankTransferOrder({ ...request, currency: 'KRW', customer, expectedTotal: 42000 }, guest), 'already-exists');
   await f.action(created.id, STATUS.WAITING, STATUS.PAID);
   await f.action(created.id, STATUS.PAID, STATUS.REFUND_REQUESTED);
-  await f.service.updateOrder({ orderId: created.id, expectedStatus: STATUS.REFUND_REQUESTED, action: 'refund', payload: { amount: 730000, reference: 'TEST VND REFUND' } }, admin);
+  await f.service.updateOrder({ orderId: created.id, expectedStatus: STATUS.REFUND_REQUESTED, action: 'refund', payload: { amount: 700000, reference: 'TEST VND REFUND' } }, admin);
   assert.equal(f.db.read(`orders/${created.id}`).currency, 'VND');
   assert.equal(f.inventory().stock, 3);
+});
+
+test('Vietnam delivery stores local address fields and rejects a mismatched country', async () => {
+  const f = await vietnamFixture();
+  const vietnamCustomer = {
+    ...customer, country: 'VN', province: 'Hồ Chí Minh', ward: 'Phường Sài Gòn',
+    address1: '123 Nguyễn Huệ', address2: '', postcode: '',
+  };
+  const request = f.order({ currency: 'VND', expectedTotal: 700000, customer: vietnamCustomer });
+  const created = await f.service.createBankTransferOrder(request, guest);
+  const saved = f.db.read(`orders/${created.id}`);
+  assert.equal(saved.country, 'VN');
+  assert.equal(saved.address, '123 Nguyễn Huệ, Phường Sài Gòn, Hồ Chí Minh, Vietnam');
+
+  const other = await vietnamFixture();
+  await rejectsCode(other.service.createBankTransferOrder(other.order({
+    currency: 'VND', expectedTotal: 700000, customer: { ...vietnamCustomer, country: 'KR' },
+  }), guest), 'invalid-argument');
+  await rejectsCode(other.service.createBankTransferOrder(other.order({
+    currency: 'VND', expectedTotal: 700000, customer: { ...vietnamCustomer, ward: '' },
+  }), guest), 'invalid-argument');
+  assert.equal(other.db.count('orders'), 0);
 });
 test('VND cannot silently use Korean settings, foreign prices or a tampered total', async () => {
   const f = await fixture();
@@ -313,7 +336,7 @@ test('VND cannot silently use Korean settings, foreign prices or a tampered tota
   const v = await vietnamFixture();
   await assert.rejects(v.service.createBankTransferOrder(v.order({ currency: 'VND', expectedTotal: 42000 }), guest));
   v.db.data.set('products/shirt', { ...v.db.read('products/shirt'), prices: { KRW: 39000, USD: 30 } });
-  await rejectsCode(v.service.createBankTransferOrder(v.order({ currency: 'VND', expectedTotal: 730000 }), guest), 'invalid-argument');
+  await rejectsCode(v.service.createBankTransferOrder(v.order({ currency: 'VND', expectedTotal: 700000 }), guest), 'invalid-argument');
   await rejectsCode(v.service.createBankTransferOrder(v.order({ currency: 'USD' }), guest), 'invalid-argument');
   assert.equal(v.db.count('orders'), 0);
   assert.equal(v.inventory().stock, 3);

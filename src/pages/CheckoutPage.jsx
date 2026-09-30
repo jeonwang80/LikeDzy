@@ -20,12 +20,15 @@ import { formatMoney, marketSettings, productPrice } from '../utils/market';
 import './CheckoutPage.css';
 
 const EMPTY_FORM = {
+  country: 'KR',
   buyerName: '',
   buyerPhone: '',
   sameRecipient: true,
   recipientName: '',
   recipientPhone: '',
   postcode: '',
+  province: '',
+  ward: '',
   address1: '',
   address2: '',
   depositorName: '',
@@ -59,13 +62,14 @@ function loadPostcodeScript() {
 export default function CheckoutPage() {
   const copy = useStoreCopy();
   const navigate = useNavigate();
-  const { language, currency } = useLanguage();
+  const { language } = useLanguage();
+  const [form, setForm] = useState(() => ({ ...EMPTY_FORM, country: language === 'ko' ? 'KR' : 'VN' }));
+  const currency = form.country === 'VN' ? 'VND' : 'KRW';
   const money = (value) => formatMoney(value, currency);
   const { isAdmin } = useAuth();
   const { cart, clearCart, replaceCart } = useCart();
   const [settings, setSettings] = useState(() => normalizeCommerceSettings());
   const [settingsLoading, setSettingsLoading] = useState(true);
-  const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [orderResult, setOrderResult] = useState(null);
@@ -156,6 +160,15 @@ export default function CheckoutPage() {
   };
 
   const updateForm = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const changeCountry = (country) => {
+    setForm((current) => ({
+      ...current, country, postcode: '', province: '', ward: '', address1: '', address2: '',
+      agreeOrder: false,
+    }));
+    setCatalogChecked(false);
+    setCartNotice('');
+    setError('');
+  };
 
   const handleAddressSearch = async () => {
     try {
@@ -197,11 +210,14 @@ export default function CheckoutPage() {
         cart,
         expectedTotal: total, currency,
         customer: {
+          country: form.country,
           buyerName: form.buyerName.trim(),
           buyerPhone: form.buyerPhone.trim(),
           recipientName: recipientName.trim(),
           recipientPhone: recipientPhone.trim(),
           postcode: form.postcode.trim(),
+          province: form.province.trim(),
+          ward: form.ward.trim(),
           address1: form.address1.trim(),
           address2: form.address2.trim(),
           depositorName: form.depositorName.trim(),
@@ -331,6 +347,18 @@ export default function CheckoutPage() {
 
             <fieldset className="checkout-section">
               <legend><span>02</span>{copy("배송지 정보")}</legend>
+              <label className="checkout-country-field">
+                <span>{copy("배송 국가 *")}</span>
+                <select value={form.country} onChange={(event) => changeCountry(event.target.value)}>
+                  <option value="KR">{copy("대한민국")}</option>
+                  <option value="VN">{copy("베트남")}</option>
+                </select>
+              </label>
+              <p className="checkout-country-note">{form.country === 'VN'
+                ? copy("베트남 배송은 무료이며 최종 입금액은 베트남동(₫)으로 표시됩니다.")
+                : copy("한국 배송비와 최종 입금액은 원화(₩)로 표시됩니다.")}
+                <strong>{copy("배송비")}: {shippingFee === null ? '—' : shippingFee === 0 ? copy("무료") : money(shippingFee)}</strong>
+              </p>
               <label className="checkout-check-row">
                 <input type="checkbox" checked={form.sameRecipient} onChange={(event) => updateForm('sameRecipient', event.target.checked)} />{copy("주문자 정보와 동일")}</label>
               {!form.sameRecipient && (
@@ -345,21 +373,48 @@ export default function CheckoutPage() {
                   </label>
                 </div>
               )}
+              {form.country === 'KR' ? <>
               <div className="checkout-address-row">
                 <label>
                   <span>{copy("우편번호 *")}</span>
-                  <input required={currency === 'KRW'} inputMode="numeric" value={form.postcode} onChange={(event) => updateForm('postcode', event.target.value)} placeholder={copy("우편번호")} />
+                  <input required inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" value={form.postcode} onChange={(event) => updateForm('postcode', event.target.value)} placeholder={copy("우편번호")} />
                 </label>
-                {currency === 'KRW' && <button type="button" onClick={handleAddressSearch}><MapPin size={16} />{copy("주소 검색")}</button>}
+                <button type="button" onClick={handleAddressSearch}><MapPin size={16} />{copy("주소 검색")}</button>
               </div>
               <label>
                 <span>{copy("기본주소 *")}</span>
-                <input required value={form.address1} onChange={(event) => updateForm('address1', event.target.value)} placeholder={copy("도로명 또는 지번 주소")} />
+                <input required autoComplete="address-line1" value={form.address1} onChange={(event) => updateForm('address1', event.target.value)} placeholder={copy("도로명 또는 지번 주소")} />
               </label>
               <label>
-                <span>{copy("상세주소 *")}</span>
-                <input id="checkout-address-detail" required value={form.address2} onChange={(event) => updateForm('address2', event.target.value)} placeholder={copy("동·호수 등 상세주소")} />
+                <span>{copy("상세주소 (선택)")}</span>
+                <input id="checkout-address-detail" autoComplete="address-line2" value={form.address2} onChange={(event) => updateForm('address2', event.target.value)} placeholder={copy("동·호수 등 상세주소")} />
               </label>
+              </> : <>
+              <div className="checkout-field-grid checkout-vietnam-region">
+                <label>
+                  <span>{copy("시·성 (Province / City) *")}</span>
+                  <input required autoComplete="address-level1" value={form.province} onChange={(event) => updateForm('province', event.target.value)} placeholder={copy("예: Hồ Chí Minh")}/>
+                </label>
+                <label>
+                  <span>{copy("동·면 (Ward / Commune) *")}</span>
+                  <input required autoComplete="address-level3" value={form.ward} onChange={(event) => updateForm('ward', event.target.value)} placeholder={copy("예: Phường Sài Gòn")}/>
+                </label>
+              </div>
+              <label>
+                <span>{copy("집 번호·도로명 *")}</span>
+                <input required autoComplete="address-line1" value={form.address1} onChange={(event) => updateForm('address1', event.target.value)} placeholder={copy("예: 123 Nguyễn Huệ")}/>
+              </label>
+              <div className="checkout-field-grid checkout-vietnam-extra">
+                <label>
+                  <span>{copy("건물·아파트·호수 (선택)")}</span>
+                  <input autoComplete="address-line2" value={form.address2} onChange={(event) => updateForm('address2', event.target.value)} placeholder={copy("건물명·호수")}/>
+                </label>
+                <label>
+                  <span>{copy("우편번호 (선택)")}</span>
+                  <input inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" value={form.postcode} onChange={(event) => updateForm('postcode', event.target.value)} placeholder="5 digits"/>
+                </label>
+              </div>
+              </>}
               <label>
                 <span>{copy("배송 요청사항")}</span>
                 <select value={form.notes} onChange={(event) => updateForm('notes', event.target.value)}>

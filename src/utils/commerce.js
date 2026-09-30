@@ -67,8 +67,6 @@ export const normalizeCommerceSettings = (value = {}) => ({
 
 export const isCommerceReady = (settings) => Boolean(
   settings?.orderEnabled
-  && (settings.currency !== 'VND' || (Number.isSafeInteger(settings.shippingFee) && settings.shippingFee >= 0
-    && Number.isSafeInteger(settings.freeShippingThreshold) && settings.freeShippingThreshold >= 0))
   && settings?.purchaseSafetyConfirmed
   && settings?.businessInfoConfirmed
   && settings?.policyConfirmed
@@ -87,7 +85,7 @@ export const isCommerceReady = (settings) => Boolean(
 );
 
 export const calculateShippingFee = (subtotal, settings) => {
-  if (settings?.currency === 'VND' && (!Number.isSafeInteger(settings.shippingFee) || !Number.isSafeInteger(settings.freeShippingThreshold))) return null;
+  if (settings?.currency === 'VND') return 0;
   const normalized = normalizeCommerceSettings(settings);
   if (normalized.freeShippingThreshold > 0 && subtotal >= normalized.freeShippingThreshold) return 0;
   return normalized.shippingFee;
