@@ -14,16 +14,6 @@ import { presentProduct } from '../utils/productPresentation';
 import { buildProductUrl, readProductRoute } from '../utils/productRoutes';
 import '../storefront-theme.css';
 
-const STOREFRONT_THEME_KEY = 'likedzy-storefront-theme';
-
-const getInitialThemeMode = () => {
-  try {
-    return window.localStorage.getItem(STOREFRONT_THEME_KEY) === 'dark' ? 'dark' : 'light';
-  } catch {
-    return 'light';
-  }
-};
-
 export default function Storefront() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -38,28 +28,19 @@ export default function Storefront() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productState, setProductState] = useState({ id: '', loading: false, error: '' });
   const [productRetry, setProductRetry] = useState(0);
-  const [themeMode, setThemeMode] = useState(getInitialThemeMode);
 
   useLayoutEffect(() => {
-    const isDarkMode = themeMode === 'dark';
-
-    document.body.classList.toggle('storefront-theme', isDarkMode);
-    document.body.classList.toggle('storefront-light', !isDarkMode);
-    document.documentElement.dataset.storefrontTheme = themeMode;
-    document.documentElement.style.colorScheme = isDarkMode ? 'dark' : 'light';
-
-    try {
-      window.localStorage.setItem(STOREFRONT_THEME_KEY, themeMode);
-    } catch {
-      // The selected theme still works for the current visit when storage is unavailable.
-    }
+    document.body.classList.remove('storefront-theme');
+    document.body.classList.add('storefront-light');
+    document.documentElement.dataset.storefrontTheme = 'light';
+    document.documentElement.style.colorScheme = 'light';
 
     return () => {
       document.body.classList.remove('storefront-theme', 'storefront-light');
       delete document.documentElement.dataset.storefrontTheme;
       document.documentElement.style.removeProperty('color-scheme');
     };
-  }, [themeMode]);
+  }, []);
 
   useEffect(() => {
     if (viewMode !== 'product' || !productId) return undefined;
@@ -97,11 +78,7 @@ export default function Storefront() {
 
   return (
     <>
-      <Header
-        onNavigateHome={navigateToHome}
-        themeMode={themeMode}
-        onThemeModeChange={setThemeMode}
-      />
+      <Header onNavigateHome={navigateToHome} />
       <main style={{ paddingTop: viewMode === 'product' ? '80px' : '0' }}>
         {viewMode === 'product' && (!productId || (productState.id === productId && productState.error)) && (
           <section role="alert" style={{ padding: '5rem 5%', textAlign: 'center' }}>

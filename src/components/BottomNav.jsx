@@ -2,12 +2,14 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../i18n/LanguageContext';
 import './BottomNav.css';
 
 export default function BottomNav() {
   const location = useLocation();
   const { cart, setIsCartOpen } = useCart();
   const { currentUser } = useAuth();
+  const { language, t } = useLanguage();
   
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const searchParams = new URLSearchParams(location.search);
@@ -28,7 +30,7 @@ export default function BottomNav() {
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
           </svg>
-          <span>홈</span>
+          <span>{language === 'ko' ? '홈' : 'Home'}</span>
         </Link>
         
         <Link to="/?view=collection" className={`bottom-nav-item ${viewMode === 'collection' ? 'active' : ''}`}>
@@ -38,7 +40,7 @@ export default function BottomNav() {
             <rect x="14" y="14" width="7" height="7"></rect>
             <rect x="3" y="14" width="7" height="7"></rect>
           </svg>
-          <span>컬렉션</span>
+          <span>{t('nav.collection')}</span>
         </Link>
         
         <button className="bottom-nav-item" onClick={() => setIsCartOpen(true)}>
@@ -52,7 +54,7 @@ export default function BottomNav() {
               <span className="bottom-nav-badge">{cartItemCount}</span>
             )}
           </div>
-          <span>장바구니</span>
+          <span>{language === 'ko' ? '장바구니' : 'Bag'}</span>
         </button>
         
         <Link to={currentUser ? "/mypage" : "/login"} className={`bottom-nav-item ${isActive('/mypage') || isActive('/login') ? 'active' : ''}`}>
@@ -60,7 +62,7 @@ export default function BottomNav() {
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
             <circle cx="12" cy="7" r="4"></circle>
           </svg>
-          <span>내정보</span>
+          <span>{language === 'ko' ? '내정보' : 'Account'}</span>
         </Link>
       </nav>
     </div>

@@ -81,16 +81,10 @@ export default function CheckoutPage() {
   const [cartNotice, setCartNotice] = useState('');
 
   useEffect(() => {
-    let mode = 'light';
-    try {
-      mode = window.localStorage.getItem('likedzy-storefront-theme') === 'dark' ? 'dark' : 'light';
-    } catch {
-      mode = 'light';
-    }
-    document.body.classList.toggle('storefront-theme', mode === 'dark');
-    document.body.classList.toggle('storefront-light', mode === 'light');
-    document.documentElement.dataset.storefrontTheme = mode;
-    document.documentElement.style.colorScheme = mode;
+    document.body.classList.remove('storefront-theme');
+    document.body.classList.add('storefront-light');
+    document.documentElement.dataset.storefrontTheme = 'light';
+    document.documentElement.style.colorScheme = 'light';
     return () => {
       document.body.classList.remove('storefront-theme', 'storefront-light');
       delete document.documentElement.dataset.storefrontTheme;

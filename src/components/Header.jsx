@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Moon, Sun } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -42,7 +41,7 @@ const buildCategoryTree = (categories, language) => {
   }));
 };
 
-export default function Header({ onNavigateHome, themeMode = 'dark', onThemeModeChange }) {
+export default function Header({ onNavigateHome }) {
   const { t, language, setLanguage } = useLanguage();
   const { cart, setIsCartOpen } = useCart();
   const { currentUser, isAdmin } = useAuth();
@@ -141,34 +140,14 @@ export default function Header({ onNavigateHome, themeMode = 'dark', onThemeMode
         </nav>
 
         <div className="header-actions" onMouseEnter={() => setActiveMegaCode('')}>
-          <div className="theme-mode-switch" role="group" aria-label="화면 테마 선택">
-            <button
-              type="button"
-              className={themeMode === 'light' ? 'active' : ''}
-              onClick={() => onThemeModeChange?.('light')}
-              aria-label="라이트 모드"
-              aria-pressed={themeMode === 'light'}
-              title="라이트 모드"
-            >
-              <Sun size={14} strokeWidth={1.8} aria-hidden="true" />
-              <span>LIGHT</span>
+          <div className="header-language-switch" role="group" aria-label={language === 'ko' ? '언어 선택' : 'Choose language'}>
+            <button type="button" className={language === 'ko' ? 'active' : ''} onClick={() => setLanguage('ko')} aria-label="한국어" aria-pressed={language === 'ko'} title="한국어">
+              <span aria-hidden="true">🇰🇷</span><span className="header-language-code">KO</span>
             </button>
-            <button
-              type="button"
-              className={themeMode === 'dark' ? 'active' : ''}
-              onClick={() => onThemeModeChange?.('dark')}
-              aria-label="다크 모드"
-              aria-pressed={themeMode === 'dark'}
-              title="다크 모드"
-            >
-              <Moon size={14} strokeWidth={1.8} aria-hidden="true" />
-              <span>DARK</span>
+            <button type="button" className={language === 'en' ? 'active' : ''} onClick={() => setLanguage('en')} aria-label="English" aria-pressed={language === 'en'} title="English">
+              <span aria-hidden="true">🇬🇧</span><span className="header-language-code">EN</span>
             </button>
           </div>
-          <select className="lang-select" value={language} onChange={(event) => setLanguage(event.target.value)} aria-label="언어 선택">
-            <option value="ko">KR · KRW</option>
-            <option value="en">EN · VND</option>
-          </select>
 
           {currentUser ? (
             <div className="header-account-links">
@@ -215,7 +194,7 @@ export default function Header({ onNavigateHome, themeMode = 'dark', onThemeMode
           >
             <div className="category-mega-heading">
               <div><span>EXPLORE</span><strong>{activeMegaCategory.name}</strong></div>
-              <Link to={getCategoryUrl(activeMegaCategory.code)} onClick={handleCategoryLinkClick}>전체 상품 보기 <span>→</span></Link>
+              <Link to={getCategoryUrl(activeMegaCategory.code)} onClick={handleCategoryLinkClick}>{language === 'ko' ? '전체 상품 보기' : 'View all products'} <span>→</span></Link>
             </div>
             <div className="category-mega-grid">
               {activeMegaCategory.groups.map((group) => (
@@ -246,7 +225,7 @@ export default function Header({ onNavigateHome, themeMode = 'dark', onThemeMode
                     </button>
                     {expanded && (
                       <div className="mobile-category-groups">
-                        <Link to={getCategoryUrl(category.code)} className="mobile-view-all" onClick={handleCategoryLinkClick}>전체 상품</Link>
+                        <Link to={getCategoryUrl(category.code)} className="mobile-view-all" onClick={handleCategoryLinkClick}>{language === 'ko' ? '전체 상품' : 'All products'}</Link>
                         {category.groups.map((group) => (
                           <div key={group.code}>
                             <Link to={getCategoryUrl(group.code)} className="mobile-group-title" onClick={handleCategoryLinkClick}>{group.name}</Link>

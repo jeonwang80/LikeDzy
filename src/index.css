@@ -323,19 +323,6 @@ button {
   gap: 1.25rem;
 }
 
-.lang-select {
-  background: var(--colors-soft-cloud);
-  color: var(--colors-ink);
-  border: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: var(--rounded-md);
-  font-family: var(--font-body);
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
 .mobile-menu-btn {
   display: none;
   background: transparent;
