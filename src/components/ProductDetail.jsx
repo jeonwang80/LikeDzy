@@ -209,9 +209,19 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
           </button>
         </div>
 
-        {/* Alo Yoga 2-Column Main Layout: Left Multiple Photos Grid + Right Sticky Panel */}
+        {/* Product summary, gallery, and purchase options */}
         <div className="alo-detail-layout">
-          
+          <div className="alo-detail-header-meta">
+            {product.isBestSeller && (
+              <span className="alo-badge-pill" style={{ marginBottom: '8px' }}>BEST SELLER</span>
+            )}
+            <h1 className="alo-detail-title">{name}</h1>
+            <div className="alo-detail-price-rating-row">
+              <span className="alo-detail-price-text">{displayPrice}</span>
+              <span className="alo-detail-rating">TECHNICAL OUTDOOR</span>
+            </div>
+          </div>
+
           {/* ========================================================
               LEFT COLUMN: Multiple Product Photos Grid (Alo Yoga Style)
              ======================================================== */}
@@ -267,18 +277,6 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
               RIGHT COLUMN: Sticky Specs & Purchase Panel (Alo Yoga Style)
              ======================================================== */}
           <div className="alo-detail-buy-panel">
-            {/* 1. Badge & Title */}
-            <div className="alo-detail-header-meta">
-              {product.isBestSeller && (
-                <span className="alo-badge-pill" style={{ marginBottom: '8px' }}>BEST SELLER</span>
-              )}
-              <h1 className="alo-detail-title">{name}</h1>
-              <div className="alo-detail-price-rating-row">
-                <span className="alo-detail-price-text">{displayPrice}</span>
-                <span className="alo-detail-rating">TECHNICAL OUTDOOR</span>
-              </div>
-            </div>
-
             <div className="alo-detail-divider" />
 
             {/* 2. Color Swatches Section */}

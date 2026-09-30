@@ -454,7 +454,7 @@
   opacity: 0.7;
 }
 
-/* 2-Column Main Layout: Left Gallery 58%, Right Buy Panel 38% */
+/* Product summary and gallery lead into purchase options on narrow screens. */
 .alo-detail-layout {
   display: flex;
   flex-direction: column;
@@ -465,8 +465,25 @@
   .alo-detail-layout {
     display: grid;
     grid-template-columns: 58% 38%;
-    gap: 4%;
+    grid-template-rows: min-content 1fr;
+    column-gap: 4%;
+    row-gap: 20px;
     align-items: start;
+  }
+
+  .alo-detail-header-meta {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .alo-detail-gallery {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .alo-detail-buy-panel {
+    grid-column: 2;
+    grid-row: 2;
   }
 }
 
@@ -555,6 +572,10 @@
 .alo-detail-header-meta {
   display: flex;
   flex-direction: column;
+}
+
+.alo-detail-header-meta .alo-badge-pill {
+  align-self: flex-start;
 }
 
 .alo-detail-title {
@@ -805,20 +826,31 @@
   .alo-detail-layout {
     display: flex;
     flex-direction: column;
+    gap: 20px;
   }
 
   .alo-detail-gallery {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .alo-detail-gallery::-webkit-scrollbar {
+    display: none;
   }
 
   .alo-detail-img-frame {
+    flex: 0 0 90%;
     min-height: 0;
     aspect-ratio: 3 / 4;
+    scroll-snap-align: start;
   }
 
   .alo-detail-buy-panel {
-    order: -1;
+    order: initial;
   }
 
   .alo-detail-buy-panel .alo-cta-group {
