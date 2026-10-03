@@ -43,6 +43,7 @@
   background: var(--colors-soft-cloud);
 }
 .header-language-switch button:focus-visible { outline: 2px solid var(--colors-success); outline-offset: 2px; }
+.header-language-flag { display: block; width: 24px; height: 16px; flex-shrink: 0; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12); }
 .header-language-code { font-size: 0.62rem; font-weight: 800; }
 .header-account-links { display: flex; align-items: center; gap: 10px; }
 .header-account-link { color: var(--colors-ink); font-size: 0.78rem; font-weight: 700; white-space: nowrap; }

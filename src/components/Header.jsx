@@ -142,10 +142,10 @@ export default function Header({ onNavigateHome }) {
         <div className="header-actions" onMouseEnter={() => setActiveMegaCode('')}>
           <div className="header-language-switch" role="group" aria-label={language === 'ko' ? '언어 선택' : 'Choose language'}>
             <button type="button" className={language === 'ko' ? 'active' : ''} onClick={() => setLanguage('ko')} aria-label="한국어" aria-pressed={language === 'ko'} title="한국어">
-              <span aria-hidden="true">🇰🇷</span><span className="header-language-code">KO</span>
+              <img className="header-language-flag" src="/flags/kr.svg" alt="" aria-hidden="true" width="24" height="16" /><span className="header-language-code">KO</span>
             </button>
             <button type="button" className={language === 'en' ? 'active' : ''} onClick={() => setLanguage('en')} aria-label="English" aria-pressed={language === 'en'} title="English">
-              <span aria-hidden="true">🇬🇧</span><span className="header-language-code">EN</span>
+              <img className="header-language-flag" src="/flags/gb.svg" alt="" aria-hidden="true" width="24" height="16" /><span className="header-language-code">EN</span>
             </button>
           </div>
 
