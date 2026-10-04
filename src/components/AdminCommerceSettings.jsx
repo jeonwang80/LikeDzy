@@ -25,21 +25,7 @@ export default function AdminCommerceSettings() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (settings.vietnam?.orderEnabled && !isCommerceReady(marketSettings(settings, 'VND'))) {
-      setMessage('베트남 주문을 켜려면 현지 입금 계좌, 영어 정책 및 공통 사업자 확인을 완료해 주세요. 베트남 배송은 현재 무료입니다.');
-      return;
-    }
-    const requiredBusinessFields = ['businessName', 'representativeName', 'businessNumber', 'customerServicePhone', 'customerServiceEmail', 'businessAddress'];
-    if (settings.orderEnabled && (
-      !settings.bankName.trim()
-      || !settings.accountNumber.trim()
-      || !settings.accountHolder.trim()
-      || !settings.purchaseSafetyConfirmed
-      || !settings.businessInfoConfirmed
-      || !settings.policyConfirmed
-      || ['termsText', 'privacyText', 'returnsText'].some((field) => !String(settings[field] || '').trim())
-      || requiredBusinessFields.some((field) => !String(settings[field] || '').trim())
-    )) {
-      setMessage('주문 접수를 켜려면 계좌·사업자 정보와 운영 확인 항목을 모두 완료해 주세요.');
+      setMessage(settings.vietnam?.manualBankTransfer ? '수기 입금 주문에는 은행명·계좌번호·예금주가 필요합니다.' : '정식 판매 설정에서는 베트남 계좌·영어 정책 및 공통 사업자 확인을 완료해 주세요.');
       return;
     }
 
@@ -48,10 +34,10 @@ export default function AdminCommerceSettings() {
     try {
       const normalized = normalizeCommerceSettings(settings);
       await setDoc(doc(db, 'settings', 'commerce'), {
-        ...normalized,
+        ...normalized, orderEnabled: false,
         updatedAt: serverTimestamp(),
       }, { merge: true });
-      setSettings(normalized);
+      setSettings({ ...normalized, orderEnabled: false });
       setMessage('판매·배송 기준정보를 저장했습니다.');
     } catch (error) {
       console.error('Commerce settings save error:', error);
@@ -70,8 +56,8 @@ export default function AdminCommerceSettings() {
           <p>입금 계좌, 배송 정책과 사업자 정보를 관리합니다.</p>
         </div>
         <label className="commerce-enabled-switch">
-          <span><strong>주문 접수</strong><small>{settings.orderEnabled ? '고객 주문 가능' : '주문 일시 중지'}</small></span>
-          <input type="checkbox" checked={settings.orderEnabled} onChange={(event) => updateSetting('orderEnabled', event.target.checked)} disabled={loading} />
+          <span><strong>한국 주문 중지</strong><small>현재 베트남만 판매합니다.</small></span>
+          <input type="checkbox" checked={false} disabled aria-label="한국 주문 접수 중지" />
         </label>
       </div>
 
@@ -108,12 +94,16 @@ export default function AdminCommerceSettings() {
       <section style={{ width: '100%' }}>
         <h3>영어 스토어 · 베트남동 (VND)</h3>
         <p>배송 국가가 베트남인 주문에 적용됩니다. 현재 베트남 배송은 무료이며, 상품별 VND 판매가를 사용합니다.</p>
+        <label className="commerce-safety-check"><input type="checkbox" checked={settings.vietnam?.manualBankTransfer === true} onChange={(event) => updateVietnam('manualBankTransfer', event.target.checked)} /><span><strong>초기 운영 · 수기 입금 확인</strong><small>고객 주문은 입금 대기로 접수됩니다. 관리자가 실제 입금을 확인한 뒤 주문 관리에서 입금 확인·배송 상태를 처리합니다. 사업자·정책 입력과 관계없이 계좌 정보로 주문을 접수합니다.</small></span></label>
         <label className="commerce-safety-check"><input type="checkbox" checked={settings.vietnam?.orderEnabled === true} onChange={(event) => updateVietnam('orderEnabled', event.target.checked)} />베트남 주문 접수</label>
         <div className="commerce-settings-grid">
           {[['bankName', '베트남 입금 은행'], ['accountNumber', 'VND 입금 계좌'], ['accountHolder', '예금주'], ['defaultCarrier', '베트남 택배사']].map(([key, label]) => <label className="admin-form-field" key={key}><span>{label}</span><input className="admin-input" value={settings.vietnam?.[key] || ''} onChange={(event) => updateVietnam(key, event.target.value)} /></label>)}
-          {[['termsText', 'English terms'], ['privacyText', 'English privacy policy'], ['returnsText', 'English delivery and returns']].map(([key, label]) => <label className="admin-form-field commerce-span-2" key={key}><span>{label}</span><textarea className="admin-input" rows="5" value={settings.vietnam?.[key] || ''} onChange={(event) => { updateVietnam(key, event.target.value); updateVietnam('policyConfirmed', false); }} /></label>)}
         </div>
-        <label className="commerce-safety-check"><input type="checkbox" checked={settings.vietnam?.policyConfirmed === true} onChange={(event) => updateVietnam('policyConfirmed', event.target.checked)} />베트남 판매용 영어 정책을 확인했습니다.</label>
+        <details open={settings.vietnam?.manualBankTransfer !== true}>
+          <summary>영어 약관·배송·반품 정책 {settings.vietnam?.manualBankTransfer ? '(수기 주문 접수의 필수 항목 아님)' : ''}</summary>
+          <div className="commerce-settings-grid">{[['termsText', 'English terms'], ['privacyText', 'English privacy policy'], ['returnsText', 'English delivery and returns']].map(([key, label]) => <label className="admin-form-field commerce-span-2" key={key}><span>{label}</span><textarea className="admin-input" rows="5" value={settings.vietnam?.[key] || ''} onChange={(event) => { updateVietnam(key, event.target.value); updateVietnam('policyConfirmed', false); }} /></label>)}</div>
+          <label className="commerce-safety-check"><input type="checkbox" checked={settings.vietnam?.policyConfirmed === true} onChange={(event) => updateVietnam('policyConfirmed', event.target.checked)} />베트남 판매용 영어 정책을 확인했습니다.</label>
+        </details>
       </section>
       <div className="commerce-settings-footer">
         <span role="status" className={message.includes('저장했습니다') ? 'success' : ''}>{loading ? '설정을 불러오는 중입니다.' : message}</span>

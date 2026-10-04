@@ -12,7 +12,7 @@ test("Firestore emulator: concurrent stock, lost response, expiry and recovery f
   // ssl:false uses the SDK's emulator owner header, without credential discovery.
   const db = new Firestore({ projectId: "demo-likedzy-commerce", host: emulatorHost, ssl: false });
   let current = Date.now();
-  const service = createCommerceService({ db, now: () => current, timestamp: (date) => Timestamp.fromDate(date), serverTimestamp: () => FieldValue.serverTimestamp(), isEmulator: true });
+  const service = createCommerceService({ db, sellingCurrencies: ['KRW', 'VND'], now: () => current, timestamp: (date) => Timestamp.fromDate(date), serverTimestamp: () => FieldValue.serverTimestamp(), isEmulator: true });
   const admin = { auth: { uid: `test-only-admin-${randomBytes(8).toString('hex')}`, token: { email_verified: true, admin: true, email: "admin@example.test" } } };
   const secret = () => randomBytes(32).toString("base64url");
   const productId = `test-only-${randomBytes(8).toString("hex")}`;

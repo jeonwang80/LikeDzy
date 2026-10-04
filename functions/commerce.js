@@ -1,4 +1,5 @@
 const crypto = require("node:crypto");
+const startupVietnam = require('./manual-vietnam-settings.json');
 
 class CommerceError extends Error {
   constructor(code, message) { super(message); this.code = code; }
@@ -123,11 +124,14 @@ function assertVariant(product, item) {
 }
 
 function liveReady(settings) {
+  if (settings.currency === 'VND' && settings.manualBankTransfer === true) {
+    return settings.orderEnabled === true && ['bankName', 'accountNumber', 'accountHolder'].every((field) => Boolean(text(settings[field])));
+  }
   return settings.orderEnabled === true && settings.purchaseSafetyConfirmed === true && settings.businessInfoConfirmed === true && settings.policyConfirmed === true
     && ["businessName", "representativeName", "businessNumber", "customerServicePhone", "customerServiceEmail", "businessAddress", "bankName", "accountNumber", "accountHolder", "termsText", "privacyText", "returnsText"].every((field) => Boolean(text(settings[field])));
 }
 
-function createCommerceService({ db, now = () => Date.now(), timestamp = (date) => date, serverTimestamp = () => new Date() }) {
+function createCommerceService({ db, now = () => Date.now(), timestamp = (date) => date, serverTimestamp = () => new Date(), sellingCurrencies = ['VND'] }) {
   const ref = (collection, id) => db.collection(collection).doc(id);
   async function isAdmin(context) {
     const auth = context?.auth;
@@ -270,6 +274,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     await consumeAttempt("create", context, 10);
     const currency = data?.currency ?? 'KRW';
     if (!['KRW', 'VND'].includes(currency)) fail('invalid-argument', 'Unsupported order currency.');
+    if (!sellingCurrencies.includes(currency)) fail('failed-precondition', '현재 베트남 배송 주문만 접수합니다. 한국 주문은 아직 시작하지 않았습니다.');
     const idempotencyKey = secret(data?.idempotencyKey, "주문 요청");
     const accessToken = secret(data.guestAccessToken, "주문 조회");
     const cart = normalizeCart(data.cart);
@@ -302,9 +307,9 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       if (useSnapshot?.exists && useSnapshot.data().released !== true) fail('failed-precondition', '이미 사용한 쿠폰입니다.');
       if (couponSnapshot?.exists && couponSnapshot.data().autoIssue === true && (!entitlementSnapshot.exists || entitlementSnapshot.data().userId !== actorUid || entitlementSnapshot.data().redeemedAt)) fail('permission-denied', '발급받은 쿠폰만 사용할 수 있습니다.');
       const baseSettings = settingsSnapshot.exists ? settingsSnapshot.data() : {};
-      const vietnam = baseSettings.vietnam || {};
+      const vietnam = baseSettings.vietnam || (Object.keys(baseSettings).length === 0 ? startupVietnam : {});
       const savedSettings = currency === 'KRW' ? baseSettings : {
-        ...baseSettings, ...vietnam, orderEnabled: vietnam.orderEnabled === true, policyConfirmed: vietnam.policyConfirmed === true,
+        ...baseSettings, ...vietnam, currency: 'VND', manualBankTransfer: vietnam.manualBankTransfer === true, orderEnabled: vietnam.orderEnabled === true, policyConfirmed: vietnam.policyConfirmed === true,
         bankName: vietnam.bankName || '', accountNumber: vietnam.accountNumber || '', accountHolder: vietnam.accountHolder || '',
         termsText: vietnam.termsText || '', privacyText: vietnam.privacyText || '', returnsText: vietnam.returnsText || '',
         shippingFee: 0, freeShippingThreshold: 0, defaultCarrier: vietnam.defaultCarrier || '',
@@ -345,7 +350,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       const orderNumber = `LD${new Date(currentTime).toISOString().slice(0, 10).replace(/-/g, "")}-${orderRef.id.slice(0, 12).toUpperCase()}`;
       const order = {
         schemaVersion: 2, currency, orderNumber, userId: actorUid, items: orderItems, subtotal, shippingFee, discountAmount, couponCode: code, totalAmountNumber,
-        totalAmount: currency === 'VND' ? `${totalAmountNumber.toLocaleString('en-US')} ₫` : `₩${totalAmountNumber.toLocaleString("ko-KR")}`, paymentMethod: "bank_transfer", isTestOrder,
+        totalAmount: currency === 'VND' ? `${totalAmountNumber.toLocaleString('en-US')} ₫` : `₩${totalAmountNumber.toLocaleString("ko-KR")}`, paymentMethod: "bank_transfer", isTestOrder, manualBankTransfer: currency === 'VND' && settings.manualBankTransfer === true,
         status: STATUS.WAITING, inventoryState: "reserved", name: customer.buyerName, phone: customer.buyerPhone,
         depositName: customer.depositorName, recipientName: customer.recipientName, recipientPhone: customer.recipientPhone,
         country: customer.country, province: customer.province, ward: customer.ward,

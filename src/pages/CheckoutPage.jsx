@@ -23,7 +23,7 @@ import { useCheckoutCatalog } from '../hooks/useCheckoutCatalog';
 import VietnamPayment from '../components/VietnamPayment';
 
 const EMPTY_FORM = {
-  country: 'KR',
+  country: 'VN',
   buyerName: '',
   buyerPhone: '',
   sameRecipient: true,
@@ -66,7 +66,7 @@ export default function CheckoutPage() {
   const copy = useStoreCopy();
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const [form, setForm] = useState(() => ({ ...EMPTY_FORM, country: language === 'ko' ? 'KR' : 'VN' }));
+  const [form, setForm] = useState(() => ({ ...EMPTY_FORM }));
   const currency = form.country === 'VN' ? 'VND' : 'KRW';
   const money = (value) => formatMoney(value, currency);
   const { isAdmin, currentUser } = useAuth();
@@ -114,7 +114,7 @@ export default function CheckoutPage() {
         next.sameRecipient = saved.recipientName === saved.buyerName && saved.recipientPhone === saved.buyerPhone;
         return next;
       });
-      if (saved.address1) setProfileNotice(saved.country === (language === 'ko' ? 'KR' : 'VN') ? copy('기본 배송지를 불러왔습니다.') : copy('기본 배송지가 현재 주문 국가와 달라 주소는 입력하지 않았습니다.'));
+      if (saved.address1) setProfileNotice(saved.country === 'VN' ? copy('기본 배송지를 불러왔습니다.') : copy('기본 배송지가 현재 주문 국가와 달라 주소는 입력하지 않았습니다.'));
     }).catch(() => { /* Checkout remains available without a saved profile. */ });
     return () => { active = false; };
   }, [currentUser, language, copy]);
@@ -167,16 +167,6 @@ export default function CheckoutPage() {
   };
 
   const updateForm = (key, value) => setForm((current) => ({ ...current, [key]: value }));
-  const changeCountry = (country) => {
-    setForm((current) => ({
-      ...current, country, postcode: '', province: '', ward: '', address1: '', address2: '',
-      agreeOrder: false,
-    }));
-    couponRequest.current += 1;
-    setCouponQuote(null);
-    setCouponMessage('');
-    setError('');
-  };
 
   const applyCoupon = async (selectedCode = couponInput) => {
     if (!currentUser) { setCouponMessage(copy('쿠폰 사용은 로그인이 필요합니다.')); return; }
@@ -195,7 +185,7 @@ export default function CheckoutPage() {
   };
 
   const applySavedProfile = () => {
-    if (!savedProfile) return;
+    if (!savedProfile || savedProfile.country !== 'VN') return;
     couponRequest.current += 1;
     setCouponMessage('');
     setForm((current) => ({ ...current, ...savedProfile, sameRecipient: savedProfile.recipientName === savedProfile.buyerName && savedProfile.recipientPhone === savedProfile.buyerPhone, agreeOrder: false }));
@@ -357,7 +347,7 @@ export default function CheckoutPage() {
             <p>{copy("입금 확인 후 택배 발송이 시작됩니다.")}</p>
           </div>
 
-          {savedProfile?.address1 && <div className="checkout-saved-profile"><span>{profileNotice}</span><button type="button" onClick={applySavedProfile}>{copy('기본 배송지 사용')}</button></div>}
+          {savedProfile?.address1 && savedProfile.country === 'VN' && <div className="checkout-saved-profile"><span>{profileNotice}</span><button type="button" onClick={applySavedProfile}>{copy('기본 배송지 사용')}</button></div>}
 
           {!settingsLoading && !ready && (
             <div className="checkout-disabled-notice">{copy("현재 주문 접수를 준비 중입니다. 운영 설정이 완료되면 주문할 수 있습니다.")}</div>
@@ -386,11 +376,11 @@ export default function CheckoutPage() {
               <legend><span>02</span>{copy("배송지 정보")}</legend>
               <label className="checkout-country-field">
                 <span>{copy("배송 국가 *")}</span>
-                <select value={form.country} onChange={(event) => changeCountry(event.target.value)}>
-                  <option value="KR">{copy("대한민국")}</option>
+                <select value="VN" disabled aria-describedby="checkout-vietnam-only-note">
                   <option value="VN">{copy("베트남")}</option>
                 </select>
               </label>
+              <p id="checkout-vietnam-only-note" className="checkout-country-note">{language === 'ko' ? '현재 베트남 배송 주문만 접수합니다.' : 'We currently accept delivery orders within Vietnam only.'}</p>
               <p className="checkout-country-note">{form.country === 'VN'
                 ? copy("베트남 배송은 무료이며 최종 입금액은 베트남동(₫)으로 표시됩니다.")
                 : copy("한국 배송비와 최종 입금액은 원화(₩)로 표시됩니다.")}
@@ -533,7 +523,7 @@ export default function CheckoutPage() {
               {submitting ? copy("주문 접수 중…") : testMode ? copy("관리자 테스트 주문 접수") : copy("무통장 입금으로 주문 접수")}
             </button>
             <div className="checkout-trust-list">
-              <span><ShieldCheck size={16} /> {testMode ? copy("관리자 테스트 모드") : copy("구매안전서비스 확인")}</span>
+              <span><ShieldCheck size={16} /> {testMode ? copy("관리자 테스트 모드") : selectedSettings.manualBankTransfer ? (language === 'ko' ? '운영자가 입금 확인' : 'Payment confirmed by the store') : copy("구매안전서비스 확인")}</span>
               <span><Truck size={16} />{copy("입금 확인 후 택배 발송")}</span>
             </div>
           </div>

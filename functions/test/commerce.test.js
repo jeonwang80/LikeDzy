@@ -24,7 +24,7 @@ async function fixture(stock = 3, options = {}) {
     "settings/commerce": settings,
   });
   let current = Date.parse("2026-09-05T00:00:00Z");
-  const service = createCommerceService({ db, now: () => current, timestamp: (date) => date, serverTimestamp: () => new Date(current), isEmulator: options.isEmulator ?? true });
+  const service = createCommerceService({ db, sellingCurrencies: ['KRW', 'VND'], now: () => current, timestamp: (date) => date, serverTimestamp: () => new Date(current), isEmulator: options.isEmulator ?? true });
   const variant = await service.setVariantStock({ productId: "shirt", colorName: "Black", optionName: "M", stock, expectedVersion: 0, requestId: secret() }, admin);
   function order(overrides = {}) {
     return { idempotencyKey: secret(), guestAccessToken: secret(), cart: [{ productId: "shirt", colorName: "Black", optionName: "M", variantId: variant.variantId, quantity: 1 }], customer, expectedTotal: 42000, ...overrides };

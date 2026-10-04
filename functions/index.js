@@ -9,6 +9,7 @@ const { createCouponGrantService } = require('./couponGrants');
 initializeApp();
 const commerce = createCommerceService({
   db: getFirestore(),
+  sellingCurrencies: ['VND'],
   timestamp: (date) => Timestamp.fromDate(date),
   serverTimestamp: () => FieldValue.serverTimestamp(),
 });

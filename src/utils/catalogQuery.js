@@ -1,4 +1,5 @@
 import { normalizeCategoryCode } from './categoryMatching.js';
+import { currencyForLanguage } from './market.js';
 
 export const CATALOG_QUERY_VERSION = 1;
 export const CATALOG_PAGE_SIZE = 24;
@@ -40,7 +41,7 @@ export function getCatalogOrdering(sortBy = 'display', language = 'ko') {
   if (sortBy === 'newest') return [['createdAt', 'desc']];
   if (sortBy === 'name') return [[`sortName${language === 'en' ? 'En' : language === 'vi' ? 'Vi' : 'Ko'}`, 'asc']];
   if (sortBy === 'price-asc' || sortBy === 'price-desc') {
-    return [[`price${language === 'ko' ? 'KRW' : 'VND'}`, sortBy === 'price-desc' ? 'desc' : 'asc']];
+    return [[`price${currencyForLanguage(language)}`, sortBy === 'price-desc' ? 'desc' : 'asc']];
   }
   return [['orderIndex', 'asc'], ['createdAt', 'desc']];
 }

@@ -77,7 +77,7 @@ async function main() {
     // storefront exercises its compatibility defaults when the document is absent.
 
     const context = { auth: { uid: ACCOUNTS[0].uid, token: { email: ACCOUNTS[0].email, email_verified: true, admin: true } } };
-    const commerce = createCommerceService({ db, timestamp: (date) => Timestamp.fromDate(date), serverTimestamp: () => FieldValue.serverTimestamp(), isEmulator: true });
+    const commerce = createCommerceService({ db, sellingCurrencies: ['KRW', 'VND'], timestamp: (date) => Timestamp.fromDate(date), serverTimestamp: () => FieldValue.serverTimestamp(), isEmulator: true });
     const definitions = [
       { id: "demo-shirt-001", name: "TEST ONLY 모션 반팔", price: 39000 },
       { id: "demo-shirt-002", name: "TEST ONLY 브이넥 반팔", price: 29000 },

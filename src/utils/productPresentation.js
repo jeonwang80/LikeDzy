@@ -14,21 +14,9 @@ const isLegacyModelImage = (url) =>
   typeof url === 'string' && url.toLowerCase().includes('model_1.png');
 
 export function formatProductPrice(product, language = 'ko') {
-  if (language !== 'ko') {
-    const price = productPrice(product, 'VND');
-    return price === null ? 'Price unavailable' : formatMoney(price, 'VND');
-  }
-  const localizedPrice = product?.prices?.KRW;
-
-  if (typeof localizedPrice === 'number') {
-    return `₩${localizedPrice.toLocaleString()}`;
-  }
-
-  if (typeof product?.price === 'number') {
-    return `₩${product.price.toLocaleString()}`;
-  }
-
-  return product?.price || '';
+  const currency = currencyForLanguage(language);
+  const price = productPrice(product, currency);
+  return price === null ? (language === 'ko' ? '가격 준비중' : 'Price unavailable') : formatMoney(price, currency);
 }
 
 export function normalizeProductBadge(value) {

@@ -1,3 +1,5 @@
+import { vietnamSettings } from './market.js';
+
 export const DEFAULT_COMMERCE_SETTINGS = {
   orderEnabled: false,
   purchaseSafetyConfirmed: false,
@@ -51,6 +53,7 @@ const toNonNegativeNumber = (value, fallback) => {
 export const normalizeCommerceSettings = (value = {}) => ({
   ...DEFAULT_COMMERCE_SETTINGS,
   ...value,
+  vietnam: vietnamSettings(value),
   orderEnabled: value.orderEnabled === true,
   purchaseSafetyConfirmed: value.purchaseSafetyConfirmed === true,
   businessInfoConfirmed: value.businessInfoConfirmed === true,
@@ -65,7 +68,9 @@ export const normalizeCommerceSettings = (value = {}) => ({
   ),
 });
 
-export const isCommerceReady = (settings) => Boolean(
+export const isCommerceReady = (settings) => settings?.currency === 'VND' && settings?.manualBankTransfer === true
+  ? Boolean(settings.orderEnabled && ['bankName', 'accountNumber', 'accountHolder'].every((field) => typeof settings[field] === 'string' && settings[field].trim()))
+  : Boolean(
   settings?.orderEnabled
   && settings?.purchaseSafetyConfirmed
   && settings?.businessInfoConfirmed

@@ -1,0 +1,10 @@
+{
+  "manualBankTransfer": true,
+  "orderEnabled": true,
+  "bankName": "Shinhan Bank Vietnam",
+  "accountNumber": "700-010-577080",
+  "accountHolder": "JUN HONG",
+  "shippingFee": 0,
+  "freeShippingThreshold": 0,
+  "depositDeadlineHours": 48
+}
