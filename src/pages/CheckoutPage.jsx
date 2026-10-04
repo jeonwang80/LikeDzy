@@ -1,7 +1,7 @@
 import { useStoreCopy } from '../i18n/storeCopy';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Check, Copy, MapPin, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
-import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { ArrowLeft, Check, Copy, MapPin, PackageCheck } from 'lucide-react';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,8 @@ import { formatMoney, marketSettings, productPrice } from '../utils/market';
 import './CheckoutPage.css';
 import { useCheckoutCatalog } from '../hooks/useCheckoutCatalog';
 import VietnamPayment from '../components/VietnamPayment';
+import { useCouponWallet } from '../hooks/useCouponWallet';
+import { couponDate, couponStatusText } from '../utils/couponDisplay';
 
 const EMPTY_FORM = {
   country: 'VN',
@@ -84,21 +86,13 @@ export default function CheckoutPage() {
   const [couponQuote, setCouponQuote] = useState(null);
   const [couponMessage, setCouponMessage] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
-  const [viewTime] = useState(() => Date.now());
-  const [memberCoupons, setMemberCoupons] = useState([]);
+  const wallet = useCouponWallet(currentUser?.uid);
   const onPriceChange = useCallback(() => {
     couponRequest.current += 1;
-    setCouponQuote(null); setCouponMessage('');
+    setCouponQuote(null); setCouponMessage(''); setCouponLoading(false);
     setForm((current) => ({ ...current, agreeOrder: false }));
   }, []);
   const { checked: catalogChecked, loading: refreshing, error: cartNotice } = useCheckoutCatalog(cart, currency, language, replaceCart, onPriceChange);
-
-  useEffect(() => {
-    if (!currentUser) return undefined;
-    return onSnapshot(query(collection(db, 'userCoupons'), where('userId', '==', currentUser.uid)), (snapshot) => {
-      setMemberCoupons(snapshot.docs.map((entry) => entry.data()));
-    }, () => setMemberCoupons([]));
-  }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser) return undefined;
@@ -181,12 +175,13 @@ export default function CheckoutPage() {
       setCouponMessage(copy('쿠폰 할인이 적용되었습니다.'));
       setForm((current) => ({ ...current, agreeOrder: false }));
     } catch (couponError) { if (requestId === couponRequest.current) setCouponMessage((language === 'ko' ? couponError.message : '') || copy('쿠폰을 사용할 수 없습니다.')); }
-    finally { setCouponLoading(false); }
+    finally { if (requestId === couponRequest.current) setCouponLoading(false); }
   };
 
   const applySavedProfile = () => {
     if (!savedProfile || savedProfile.country !== 'VN') return;
     couponRequest.current += 1;
+    setCouponLoading(false);
     setCouponMessage('');
     setForm((current) => ({ ...current, ...savedProfile, sameRecipient: savedProfile.recipientName === savedProfile.buyerName && savedProfile.recipientPhone === savedProfile.buyerPhone, agreeOrder: false }));
     setCouponQuote(null);
@@ -230,6 +225,21 @@ export default function CheckoutPage() {
     const recipientPhone = form.sameRecipient ? form.buyerPhone : form.recipientPhone;
     setSubmitting(true);
     try {
+      if (discountAmount > 0) {
+        let latest;
+        try { latest = await quoteCoupon(couponQuote.code, currency, subtotal); }
+        catch (failure) {
+          setCouponQuote(null); setCouponMessage((language === 'ko' ? failure.message : '') || copy('쿠폰을 사용할 수 없습니다.'));
+          setForm(current => ({ ...current, agreeOrder: false }));
+          return;
+        }
+        if (latest.discountAmount !== discountAmount) {
+          setCouponQuote({ ...latest, userId: currentUser.uid, currency, subtotal });
+          setCouponMessage(language === 'ko' ? '쿠폰 조건이 변경되었습니다. 최종 금액을 다시 확인해 주세요.' : 'Coupon terms changed. Please review the updated total.');
+          setForm(current => ({ ...current, agreeOrder: false }));
+          return;
+        }
+      }
       const request = {
         cart,
         expectedTotal: total, currency, couponCode: discountAmount ? couponQuote.code : '',
@@ -336,13 +346,11 @@ export default function CheckoutPage() {
       <header className="checkout-header">
         <button type="button" onClick={() => navigate(-1)}><ArrowLeft size={18} />{copy("장바구니로")}</button>
         <button type="button" className="checkout-logo" onClick={() => navigate('/')}>LIKEDZY</button>
-        <span>SECURE ORDER</span>
       </header>
 
       <div className="checkout-shell">
         <section className="checkout-form-column">
           <div className="checkout-title">
-            <p className="checkout-eyebrow">BANK TRANSFER CHECKOUT</p>
             <h1>{copy("주문서 작성")}</h1>
             <p>{copy("입금 확인 후 택배 발송이 시작됩니다.")}</p>
           </div>
@@ -367,25 +375,14 @@ export default function CheckoutPage() {
                 </label>
                 <label>
                   <span>{copy("연락처 *")}</span>
-                  <input required type="tel" autoComplete="tel" value={form.buyerPhone} onChange={(event) => updateForm('buyerPhone', event.target.value)} placeholder="010-1234-5678" />
+                  <input required type="tel" autoComplete="tel" value={form.buyerPhone} onChange={(event) => updateForm('buyerPhone', event.target.value)} placeholder="090 123 4567" />
                 </label>
               </div>
             </fieldset>
 
             <fieldset className="checkout-section">
               <legend><span>02</span>{copy("배송지 정보")}</legend>
-              <label className="checkout-country-field">
-                <span>{copy("배송 국가 *")}</span>
-                <select value="VN" disabled aria-describedby="checkout-vietnam-only-note">
-                  <option value="VN">{copy("베트남")}</option>
-                </select>
-              </label>
-              <p id="checkout-vietnam-only-note" className="checkout-country-note">{language === 'ko' ? '현재 베트남 배송 주문만 접수합니다.' : 'We currently accept delivery orders within Vietnam only.'}</p>
-              <p className="checkout-country-note">{form.country === 'VN'
-                ? copy("베트남 배송은 무료이며 최종 입금액은 베트남동(₫)으로 표시됩니다.")
-                : copy("한국 배송비와 최종 입금액은 원화(₩)로 표시됩니다.")}
-                <strong>{copy("배송비")}: {shippingFee === null ? '—' : shippingFee === 0 ? copy("무료") : money(shippingFee)}</strong>
-              </p>
+              <p className="checkout-destination">{language === 'ko' ? '베트남 배송 · 무료배송' : 'Delivery in Vietnam · Free shipping'}</p>
               <label className="checkout-check-row">
                 <input type="checkbox" checked={form.sameRecipient} onChange={(event) => updateForm('sameRecipient', event.target.checked)} />{copy("주문자 정보와 동일")}</label>
               {!form.sameRecipient && (
@@ -438,7 +435,7 @@ export default function CheckoutPage() {
                 </label>
                 <label>
                   <span>{copy("우편번호 (선택)")}</span>
-                  <input inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" value={form.postcode} onChange={(event) => updateForm('postcode', event.target.value)} placeholder="5 digits"/>
+                  <input inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" value={form.postcode} onChange={(event) => updateForm('postcode', event.target.value)} placeholder={language === 'ko' ? '숫자 5자리' : '5 digits'}/>
                 </label>
               </div>
               </>}
@@ -507,13 +504,28 @@ export default function CheckoutPage() {
                 </article>
               ))}
             </div>
-            <dl className="checkout-amounts">
+            <dl className="checkout-amounts" aria-live="polite" aria-atomic="true">
               <div><dt>{copy("상품금액")}</dt><dd>{money(subtotal)}</dd></div>
               <div><dt>{copy("배송비")}</dt><dd>{shippingFee === 0 ? copy("무료") : money(shippingFee)}</dd></div>
               {discountAmount > 0 && <div><dt>{copy('쿠폰 할인')} ({couponQuote.code})</dt><dd>−{money(discountAmount)}</dd></div>}
               <div className="checkout-grand-total"><dt>{copy("최종 입금액")}</dt><dd>{money(total)}</dd></div>
             </dl>
-            <div className="checkout-coupon"><label htmlFor="checkout-coupon-code">{copy('쿠폰 코드')}</label><div><input id="checkout-coupon-code" value={couponInput} maxLength="32" onChange={(event) => { couponRequest.current += 1; setCouponInput(event.target.value.toUpperCase()); setCouponQuote(null); setCouponMessage(''); setForm((current) => ({ ...current, agreeOrder: false })); }} placeholder="CODE" /><button type="button" onClick={() => applyCoupon()} disabled={couponLoading || refreshing || !currentUser || !couponInput.trim()}>{couponLoading ? copy('확인 중…') : copy('적용')}</button></div>{memberCoupons.filter((coupon) => currentUser && coupon.userId === currentUser.uid && coupon.currency === currency && !coupon.redeemedAt && Date.parse(coupon.endsAt) >= viewTime).map((coupon) => <button className="checkout-member-coupon" type="button" key={coupon.code} onClick={() => { setCouponInput(coupon.code); applyCoupon(coupon.code); }} disabled={couponLoading || refreshing}>{coupon.percent}% {language === 'ko' ? '쿠폰 적용' : 'Apply coupon'} · {coupon.code}</button>)}{couponMessage && (!couponQuote || discountAmount > 0) && <p role="status">{couponMessage}</p>}{discountAmount > 0 && <button type="button" onClick={() => { couponRequest.current += 1; setCouponQuote(null); setCouponInput(''); setCouponMessage(''); setForm((current) => ({ ...current, agreeOrder: false })); }}>{language === 'ko' ? '쿠폰 적용 취소' : 'Remove coupon'}</button>}</div>
+            <div className="checkout-coupon">
+              <label htmlFor="checkout-coupon-code">{copy('쿠폰 코드')}</label>
+              <div className="checkout-coupon-entry"><input id="checkout-coupon-code" value={couponInput} maxLength="32" disabled={couponLoading} onChange={(event) => { couponRequest.current += 1; setCouponInput(event.target.value.toUpperCase()); setCouponQuote(null); setCouponMessage(''); setForm((current) => ({ ...current, agreeOrder: false })); }} placeholder={language === 'ko' ? '쿠폰 코드 입력' : 'Enter code'} /><button type="button" onClick={() => applyCoupon()} disabled={couponLoading || refreshing || !currentUser || !couponInput.trim()}>{couponLoading ? copy('확인 중…') : copy('적용')}</button></div>
+              {!currentUser ? <p>{language === 'ko' ? '로그인 후 쿠폰을 사용할 수 있습니다.' : 'Sign in to use coupons.'}</p> : <>
+                {!wallet.error && <p>{wallet.loading ? (language === 'ko' ? '보유 쿠폰 확인 중…' : 'Loading coupons…') : language === 'ko' ? `보유 ${wallet.heldCount}/3 · 주문당 1개 사용` : `${wallet.heldCount}/3 held · One per order`}</p>}
+                {wallet.error && <p role="alert">{language === 'ko' ? '보유 쿠폰을 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.' : 'Could not load your coupons. Please try again shortly.'}</p>}
+                {wallet.coupons.filter(coupon => coupon.currency === currency && !['used', 'expired', 'unavailable'].includes(coupon.status)).map(coupon => <div className="checkout-wallet-coupon" key={coupon.code}>
+                  <button className="checkout-member-coupon" type="button" onClick={() => { setCouponInput(coupon.code); applyCoupon(coupon.code); }} disabled={couponLoading || refreshing || coupon.status !== 'available' || coupon.minSubtotal > subtotal}>
+                    <strong>{coupon.percent}% · {coupon.code}</strong><span>{coupon.status === 'available' ? coupon.minSubtotal > subtotal ? (language === 'ko' ? '최소 주문금액 미달' : 'Minimum spend not met') : (discountAmount > 0 && couponQuote.code === coupon.code ? (language === 'ko' ? '적용됨' : 'Applied') : (language === 'ko' ? '선택' : 'Select')) : couponStatusText(coupon.status, language)}</span>
+                  </button>
+                  <small>{language === 'ko' ? '최대 할인' : 'Up to'} {money(coupon.maxDiscount)} · {language === 'ko' ? '최소 주문' : 'Min. spend'} {money(coupon.minSubtotal)}{coupon.status === 'scheduled' && <><br />{couponDate(coupon.startsAt, language)} {language === 'ko' ? '시작' : 'starts'}</>}</small>
+                </div>)}
+              </>}
+              {couponMessage && (!couponQuote || discountAmount > 0) && <p className={discountAmount > 0 ? 'coupon-success' : 'coupon-error'} role="status">{couponMessage}</p>}
+              {discountAmount > 0 && <button type="button" onClick={() => { couponRequest.current += 1; setCouponQuote(null); setCouponInput(''); setCouponMessage(''); setForm((current) => ({ ...current, agreeOrder: false })); }}>{language === 'ko' ? '쿠폰 적용 취소' : 'Remove coupon'}</button>}
+            </div>
             {activeSettings.remoteAreaNotice && <p className="checkout-remote-note">{activeSettings.remoteAreaNotice}</p>}
             {refreshing && <p role="status">{language === 'ko' ? '주문 상품을 확인하고 있습니다…' : 'Checking your items…'}</p>}
             {cartNotice && <p role="alert">{cartNotice}</p>}
@@ -522,10 +534,6 @@ export default function CheckoutPage() {
             <button className="checkout-primary-button" type="submit" form="checkout-page-form" disabled={submitting || couponLoading || settingsLoading || !ready || !catalogChecked || refreshing}>
               {submitting ? copy("주문 접수 중…") : testMode ? copy("관리자 테스트 주문 접수") : copy("무통장 입금으로 주문 접수")}
             </button>
-            <div className="checkout-trust-list">
-              <span><ShieldCheck size={16} /> {testMode ? copy("관리자 테스트 모드") : selectedSettings.manualBankTransfer ? (language === 'ko' ? '운영자가 입금 확인' : 'Payment confirmed by the store') : copy("구매안전서비스 확인")}</span>
-              <span><Truck size={16} />{copy("입금 확인 후 택배 발송")}</span>
-            </div>
           </div>
         </aside>
       </div>

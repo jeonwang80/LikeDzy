@@ -635,6 +635,11 @@ textarea {
 .admin-members-search label { flex: 1 1 240px; }
 .admin-members-summary { margin-top: 20px; font-weight: 700; }
 .admin-members-table { min-width: 850px; }
+.admin-member-wallet { min-width: 210px; }
+.admin-member-wallet summary { cursor: pointer; margin-top: 8px; font-weight: 700; }
+.admin-member-wallet article { padding: 12px 0; border-bottom: 1px solid var(--admin-border, #ddd); }
+.admin-member-wallet article b { display: block; margin-top: 4px; color: #37533e; }
+.admin-member-wallet article small { white-space: normal; }
 .admin-members-table td:nth-child(2) { max-width: 300px; overflow-wrap: anywhere; }
 .admin-members-table small { display: block; margin-top: 5px; color: var(--admin-muted); }
 .admin-members-pagination { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 20px; }

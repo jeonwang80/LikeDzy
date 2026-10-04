@@ -14,8 +14,9 @@ function fixture() {
     listUsers: async (...args) => { calls.push(args); return { users: [user], pageToken: 'next-page' }; },
     getUserByEmail: async (email) => { calls.push(email); if (email !== user.email) throw { code: 'auth/user-not-found' }; return user; },
   };
-  const commerce = createCommerceService({ db: new FakeFirestore() });
-  return { list: createMemberService({ auth, isAdmin: commerce.isAdmin }), calls };
+  const db = new FakeFirestore();
+  const commerce = createCommerceService({ db });
+  return { list: createMemberService({ auth, isAdmin: commerce.isAdmin, db }), calls, db };
 }
 test('member directory rejects guests, regular members and unverified admins before reading Auth', async () => {
   const f = fixture();

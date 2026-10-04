@@ -33,7 +33,8 @@ function callable(method) {
 
 exports.createBankTransferOrder = callable(commerce.createBankTransferOrder);
 exports.quoteCoupon = callable(commerce.quoteCoupon);
-exports.listMembers = callable(createMemberService({ auth: getAuth(), isAdmin: commerce.isAdmin }));
+exports.listMyCoupons = callable(commerce.listMyCoupons);
+exports.listMembers = callable(createMemberService({ auth: getAuth(), isAdmin: commerce.isAdmin, db: getFirestore() }));
 exports.grantMemberCoupon = callable(createCouponGrantService({ db: getFirestore(), auth: getAuth(), isAdmin: commerce.isAdmin, serverTimestamp: () => FieldValue.serverTimestamp() }));
 exports.issueWelcomeCoupons = functions.auth.user().onCreate(async (user) => {
   const result = await commerce.issueWelcomeCoupons(user);

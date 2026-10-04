@@ -36,7 +36,7 @@ class FakeFirestore {
       const result = await operation({
         get: async (reference) => {
           if (writes.length) throw new Error("Firestore transactions require reads before writes");
-          return this.snapshot(reference.path);
+          return reference.path ? this.snapshot(reference.path) : reference.get();
         },
         set: (reference, value) => writes.push({ mode: "set", path: reference.path, value: clone(value) }),
         create: (reference, value) => writes.push({ mode: "create", path: reference.path, value: clone(value) }),

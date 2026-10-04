@@ -1,4 +1,5 @@
 const { CommerceError } = require('./commerce');
+const { readCouponWallet } = require('./couponWallet');
 
 const publicMember = (user) => ({
   uid: user.uid,
@@ -12,7 +13,8 @@ const publicMember = (user) => ({
   providers: [...new Set((user.providerData || []).map((provider) => provider.providerId))],
 });
 
-function createMemberService({ auth, isAdmin }) {
+function createMemberService({ auth, isAdmin, db, now = () => Date.now() }) {
+  const memberWithCoupons = async (user) => ({ ...publicMember(user), couponWallet: await readCouponWallet(db, user.uid, now()) });
   return async function listMembers(data = {}, context = {}) {
     if (!context.auth?.uid) throw new CommerceError('unauthenticated', '관리자 로그인이 필요합니다.');
     if (!await isAdmin(context)) throw new CommerceError('permission-denied', '가입자 조회는 인증된 관리자만 가능합니다.');
@@ -26,7 +28,7 @@ function createMemberService({ auth, isAdmin }) {
     }
     if (email) {
       if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new CommerceError('invalid-argument', '검색할 이메일 주소를 정확히 입력해 주세요.');
-      try { return { members: [publicMember(await auth.getUserByEmail(email))], nextPageToken: '' }; }
+      try { return { members: [await memberWithCoupons(await auth.getUserByEmail(email))], nextPageToken: '' }; }
       catch (error) {
         if (error.code === 'auth/user-not-found') return { members: [], nextPageToken: '' };
         throw error;
@@ -34,7 +36,7 @@ function createMemberService({ auth, isAdmin }) {
     }
     try {
       const result = await auth.listUsers(pageSize, pageToken || undefined);
-      return { members: result.users.map(publicMember), nextPageToken: result.pageToken || '' };
+      return { members: await Promise.all(result.users.map(memberWithCoupons)), nextPageToken: result.pageToken || '' };
     } catch (error) {
       if (error.code === 'auth/invalid-page-token') throw new CommerceError('invalid-argument', '조회 페이지가 만료되었습니다. 목록을 새로고침해 주세요.');
       throw error;

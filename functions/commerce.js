@@ -1,5 +1,6 @@
 const crypto = require("node:crypto");
 const startupVietnam = require('./manual-vietnam-settings.json');
+const { couponTime, campaignStatus, readCouponWallet, MAX_HELD_COUPONS } = require('./couponWallet');
 
 class CommerceError extends Error {
   constructor(code, message) { super(message); this.code = code; }
@@ -34,9 +35,9 @@ function calculateCoupon(coupon, { code, currency, subtotal, currentTime }) {
   const maxDiscount = integer(coupon.maxDiscount, '최대 할인액', 1, 1000000000);
   const usageLimit = integer(coupon.usageLimit, '총 사용 횟수', 1, 1000000);
   const usedCount = integer(coupon.usedCount || 0, '사용 횟수', 0, 1000000);
-  const starts = Date.parse(coupon.startsAt);
-  const ends = Date.parse(coupon.endsAt);
-  if (!Number.isFinite(starts) || !Number.isFinite(ends) || usedCount >= usageLimit || currentTime < starts || currentTime > ends) fail('failed-precondition', '기간이 지났거나 소진된 쿠폰입니다.');
+  const state = campaignStatus({ ...coupon, usageLimit, usedCount }, currentTime);
+  const reasons = { invalid: '쿠폰의 사용 기간 설정을 확인해 주세요.', scheduled: '아직 사용 시작일이 되지 않은 쿠폰입니다.', expired: '사용 기간이 만료된 쿠폰입니다.', exhausted: '쿠폰 행사의 전체 사용 한도가 소진되었습니다.' };
+  if (reasons[state]) fail('failed-precondition', reasons[state]);
   if (subtotal < minSubtotal) fail('failed-precondition', '쿠폰 최소 주문 금액에 도달하지 않았습니다.');
   return Math.min(Math.floor(subtotal * percent / 100), maxDiscount);
 }
@@ -230,16 +231,25 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     if (!uid || !Number.isFinite(joinedAt)) return { issued: 0 };
     const campaigns = await db.collection('coupons').where('autoIssue', '==', true).get();
     let issued = 0;
-    for (const entry of campaigns.docs) {
+    for (const entry of campaigns.docs.sort((a, b) => a.id.localeCompare(b.id))) {
       const coupon = entry.data();
       const code = couponCode(coupon.code);
-      const starts = Date.parse(coupon.startsAt);
-      const ends = Date.parse(coupon.endsAt);
+      const starts = couponTime(coupon.startsAt);
+      const ends = couponTime(coupon.endsAt);
       if (!code || code !== entry.id || coupon.active !== true || !['KRW', 'VND'].includes(coupon.currency) || !Number.isFinite(starts) || !Number.isFinite(ends) || joinedAt < starts || joinedAt > ends) continue;
       const entitlementRef = ref('userCoupons', hash(`${code}:${uid}`));
       const created = await db.runTransaction(async (transaction) => {
+        const lock = ref('couponWalletLocks', uid);
+        await transaction.get(lock);
+        const latest = await transaction.get(ref('coupons', code));
+        if (!latest.exists) return false;
+        const coupon = latest.data();
+        if (coupon.autoIssue !== true || coupon.active !== true || joinedAt < couponTime(coupon.startsAt) || joinedAt > couponTime(coupon.endsAt) || campaignStatus(coupon, now()) !== 'available') return false;
         const existing = await transaction.get(entitlementRef);
         if (existing.exists) return false;
+        const wallet = await readCouponWallet(db, uid, now(), transaction);
+        if (wallet.heldCount >= MAX_HELD_COUPONS) return false;
+        transaction.set(lock, { updatedAt: serverTimestamp() });
         transaction.create(entitlementRef, {
           userId: uid, code, title: text(coupon.title, 120) || code, currency: coupon.currency,
           percent: coupon.percent, minSubtotal: coupon.minSubtotal, maxDiscount: coupon.maxDiscount, endsAt: coupon.endsAt,
@@ -250,6 +260,11 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       if (created) issued += 1;
     }
     return { issued };
+  }
+
+  async function listMyCoupons(_data, context = {}) {
+    if (!context.auth?.uid) fail('unauthenticated', '로그인이 필요합니다.');
+    return readCouponWallet(db, context.auth.uid, now());
   }
 
   async function quoteCoupon(data, context = {}) {
@@ -263,7 +278,10 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     if (!['KRW', 'VND'].includes(currency)) fail('invalid-argument', '주문 통화를 확인해 주세요.');
     const subtotal = integer(data?.subtotal, '상품금액', 1, 1000000000);
     const [coupon, used, entitlement] = await Promise.all([ref('coupons', code).get(), ref('couponUses', hash(`${code}:${context.auth.uid}`)).get(), ref('userCoupons', hash(`${code}:${context.auth.uid}`)).get()]);
-    if (used.exists && used.data().released !== true) fail('failed-precondition', '이미 사용한 쿠폰입니다.');
+    if (used.exists && used.data().released !== true) {
+      const order = used.data().orderId ? await ref('orders', used.data().orderId).get() : null;
+      fail('failed-precondition', order?.exists && order.data().status === STATUS.WAITING ? '입금 대기 주문에 적용된 쿠폰입니다. 해당 주문을 취소하면 다시 사용할 수 있습니다.' : '이미 사용한 쿠폰입니다.');
+    }
     if (coupon.exists && coupon.data().autoIssue === true && (!entitlement.exists || entitlement.data().userId !== context.auth.uid)) fail('permission-denied', '발급받은 쿠폰만 사용할 수 있습니다.');
     return { code, discountAmount: calculateCoupon(coupon.exists ? coupon.data() : null, { code, currency, subtotal, currentTime: now() }) };
   }
@@ -543,7 +561,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     }
     return { examined: results.length, expired: results.filter((result) => !result.skipped && !result.failed).length, failed: results.filter((result) => result.failed).map((result) => result.id) };
   }
-  return { setVariantStock, createBankTransferOrder, quoteCoupon, issueWelcomeCoupons, getOrder, updateOrder, expireOrder, expireBankTransferOrders, isAdmin };
+  return { setVariantStock, createBankTransferOrder, quoteCoupon, listMyCoupons, issueWelcomeCoupons, getOrder, updateOrder, expireOrder, expireBankTransferOrders, isAdmin };
 }
 
 module.exports = { CommerceError, createCommerceService, variantIdFor, STATUS };
