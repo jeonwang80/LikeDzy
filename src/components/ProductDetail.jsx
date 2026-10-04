@@ -166,6 +166,10 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
   const youtubeEmbedUrl = getYouTubeEmbedUrl(product.youtubeUrl);
   const addToBagDisabled = stockLoading || !!stockError || !sizes[selectedSizeIdx]?.variantId
     || sizes[selectedSizeIdx]?.stock <= 0 || product.isActive === false;
+  const preparingLabel = language === 'ko' ? '상품 준비중' : 'Coming soon';
+  const addToBagLabel = stockLoading ? (language === 'ko' ? '재고 확인 중…' : 'Checking stock…')
+    : stockError ? (language === 'ko' ? '재고 확인 불가' : 'Stock unavailable')
+      : addToBagDisabled ? preparingLabel : 'ADD TO BAG';
 
   const toggleWishlist = () => {
     try {
@@ -183,7 +187,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
     const selectedOpt = sizes[selectedSizeIdx];
     
     if (stockLoading || stockError || !selectedOpt?.variantId || selectedOpt.stock <= 0) {
-      alert('해당 옵션은 품절되었습니다.');
+      alert(stockError || (stockLoading ? (language === 'ko' ? '재고 확인 중입니다.' : 'Checking stock.') : preparingLabel));
       return false;
     }
 
@@ -320,7 +324,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
                     }}
                     disabled={sz.stock <= 0}
                   >
-                    {sz.name}
+                    {sz.name}{!stockLoading && !stockError && sz.stock <= 0 && <small style={{ display: 'block', fontSize: '0.6rem', lineHeight: 1.3 }}>{preparingLabel}</small>}
                   </button>
                 ))}
               </div>
@@ -328,7 +332,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
 
             {/* 5. CTA Buttons: ADD TO BAG & ADD TO WISHLIST */}
             <div className="alo-cta-group">
-              <p role="status">{stockError || (stockLoading ? '재고 확인 중…' : !sizes.some((item) => item.stock > 0) ? '현재 선택 색상은 품절 또는 판매 준비 중입니다.' : '')}</p>
+              <p role="status">{stockError || (stockLoading ? (language === 'ko' ? '재고 확인 중…' : 'Checking stock…') : !sizes.some((item) => item.stock > 0) ? (language === 'ko' ? '현재 선택한 색상은 상품 준비중입니다.' : 'This color is coming soon.') : sizes[selectedSizeIdx]?.stock <= 0 ? (language === 'ko' ? '선택한 사이즈는 상품 준비중입니다. 다른 사이즈를 선택해 주세요.' : 'This size is coming soon. Please select another size.') : '')}</p>
               <button 
                 className="alo-add-to-bag-btn"
                 disabled={addToBagDisabled}
@@ -337,7 +341,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
                   if (success) setIsCartOpen(true);
                 }}
               >
-                ADD TO BAG
+                {addToBagLabel}
               </button>
               
               <button 
@@ -417,7 +421,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
             if (success) setIsCartOpen(true);
           }}
         >
-          ADD TO BAG
+          {addToBagLabel}
         </button>
       </div>, document.body)}
 

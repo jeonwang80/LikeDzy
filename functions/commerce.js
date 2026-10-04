@@ -371,7 +371,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       if (couponRef) {
         transaction.update(couponRef, { usedCount: (couponSnapshot.data().usedCount || 0) + 1, updatedAt: serverTimestamp() });
         transaction.set(useRef, { code, userId: actorUid, orderId: orderRef.id, released: false, createdAt: serverTimestamp() });
-        if (couponSnapshot.data().autoIssue === true) transaction.update(entitlementRef, { orderId: orderRef.id, redeemedAt: serverTimestamp() });
+        if (entitlementSnapshot?.exists) transaction.update(entitlementRef, { orderId: orderRef.id, redeemedAt: serverTimestamp() });
       }
       transaction.create(ref("orderAccess", orderRef.id), { tokenHash: hash(accessToken), createdAt: serverTimestamp() });
       transaction.create(requestRef, { orderId: orderRef.id, fingerprint, createdAt: serverTimestamp() });
@@ -485,7 +485,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         const useRef = ref('couponUses', hash(`${order.couponCode}:${order.userId}`));
         const [coupon, use] = await Promise.all([transaction.get(couponRef), transaction.get(useRef)]);
         if (coupon.exists && use.exists && use.data().orderId === orderId && use.data().released !== true) {
-          const entitlementRef = coupon.data().autoIssue === true ? ref('userCoupons', hash(`${order.couponCode}:${order.userId}`)) : null;
+          const entitlementRef = ref('userCoupons', hash(`${order.couponCode}:${order.userId}`));
           const entitlement = entitlementRef ? await transaction.get(entitlementRef) : null;
           couponRelease = { couponRef, useRef, usedCount: coupon.data().usedCount || 0, entitlementRef: entitlement?.exists && entitlement.data().orderId === orderId ? entitlementRef : null };
         }

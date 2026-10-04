@@ -7,6 +7,9 @@ import {
 } from '../utils/productPresentation';
 import { getProductImageSources } from '../utils/productImageSources';
 import { buildProductUrl } from '../utils/productRoutes';
+import { useProductStock } from '../hooks/useProductStock';
+import { hasAvailableProductStock } from '../utils/productStock';
+import { useLanguage } from '../i18n/LanguageContext';
 
 function applyNextImageFallback(image, candidates) {
   image.removeAttribute('srcset');
@@ -31,6 +34,10 @@ export default function ProductCard({
   priority = false,
 }) {
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
+  const { language } = useLanguage();
+  const { variants, loading: stockLoading, error: stockError } = useProductStock(product.id);
+  const preparing = !stockLoading && !stockError && !hasAvailableProductStock(product, variants);
+  const badgeText = preparing ? (language === 'ko' ? '상품 준비중' : 'Coming soon') : product.badgeText;
   const [isHovered, setIsHovered] = useState(false);
   const [requestedHoverUrls, setRequestedHoverUrls] = useState(() => new Set());
   const [loadedHoverUrl, setLoadedHoverUrl] = useState('');
@@ -51,7 +58,7 @@ export default function ProductCard({
     'BEST SELLER': 'badge-best-seller',
     NEW: 'badge-new',
     RECOMMENDED: 'badge-recommended',
-  }[product.badgeText] || 'badge-default';
+  }[badgeText] || 'badge-default';
 
   const openProduct = () => onProductSelect(product);
   const requestHover = () => {
@@ -180,11 +187,11 @@ export default function ProductCard({
       </div>
 
       <div
-        className={`alo-badge-wrapper ${product.badgeText ? 'has-badge' : 'is-empty'}`}
-        aria-hidden={!product.badgeText}
+        className={`alo-badge-wrapper ${badgeText ? 'has-badge' : 'is-empty'}`}
+        aria-hidden={!badgeText}
       >
-        {product.badgeText && (
-          <span className={`alo-badge-pill ${badgeVariant}`}>{product.badgeText}</span>
+        {badgeText && (
+          <span className={`alo-badge-pill ${badgeVariant}`}>{badgeText}</span>
         )}
       </div>
 

@@ -4,6 +4,7 @@ const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestor
 const { CommerceError, createCommerceService } = require("./commerce");
 const { getAuth } = require('firebase-admin/auth');
 const { createMemberService } = require('./members');
+const { createCouponGrantService } = require('./couponGrants');
 
 initializeApp();
 const commerce = createCommerceService({
@@ -33,6 +34,7 @@ function callable(method) {
 exports.createBankTransferOrder = callable(commerce.createBankTransferOrder);
 exports.quoteCoupon = callable(commerce.quoteCoupon);
 exports.listMembers = callable(createMemberService({ auth: getAuth(), isAdmin: commerce.isAdmin }));
+exports.grantMemberCoupon = callable(createCouponGrantService({ db: getFirestore(), auth: getAuth(), isAdmin: commerce.isAdmin, serverTimestamp: () => FieldValue.serverTimestamp() }));
 exports.issueWelcomeCoupons = functions.auth.user().onCreate(async (user) => {
   const result = await commerce.issueWelcomeCoupons(user);
   functions.logger.info('New member coupon issuance', { uid: user.uid, issued: result.issued });

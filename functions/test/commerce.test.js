@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const { randomBytes } = require("node:crypto");
 const { createCommerceService, variantIdFor, STATUS } = require("../commerce");
 const { FakeFirestore } = require("./fake-firestore");
+const { createCouponGrantService } = require('../couponGrants');
 
 const admin = { auth: { uid: "test-admin", token: { admin: true, email: "admin@example.test", email_verified: true } } };
 const guest = { rawRequest: { ip: "127.0.0.1" } };
@@ -403,3 +404,21 @@ test('Korean checkout stays KRW with Vietnam settings present and legacy orders 
   f.db.data.set(`orders/${created.id}`, saved);
   assert.equal((await f.service.getOrder({ orderId: created.id, guestAccessToken: request.guestAccessToken })).currency, 'KRW');
 });
+
+for (const autoIssue of [true, false]) {
+  test(`admin-issued coupon supports checkout and cancellation (autoIssue=${autoIssue})`, async () => {
+    const f = await fixture();
+    f.db.data.set('coupons/GIFT30', { code: 'GIFT30', active: true, autoIssue, currency: 'KRW', percent: 30, minSubtotal: 0, maxDiscount: 20000, usageLimit: 100, usedCount: 0, startsAt: '2026-09-01T00:00:00Z', endsAt: '2026-10-01T00:00:00Z' });
+    const grant = createCouponGrantService({ db: f.db, auth: { getUser: async (uid) => ({ uid, disabled: false }) }, isAdmin: f.service.isAdmin, now: () => Date.parse('2026-09-05T00:00:00Z'), serverTimestamp: () => 'TEST TIME' });
+    await grant({ code: 'GIFT30', userIds: ['old-member'] }, admin);
+    const owner = { ...guest, auth: { uid: 'old-member', token: {} } };
+    assert.equal((await f.service.quoteCoupon({ couponCode: 'GIFT30', currency: 'KRW', subtotal: 39000 }, owner)).discountAmount, 11700);
+    const created = await f.service.createBankTransferOrder(f.order({ couponCode: 'GIFT30', expectedTotal: 30300 }), owner);
+    const entry = [...f.db.data.entries()].find(([path]) => path.startsWith('userCoupons/'));
+    assert.equal(f.db.read(entry[0]).orderId, created.id);
+    assert.ok(f.db.read(entry[0]).redeemedAt);
+    await f.action(created.id, STATUS.WAITING, STATUS.CANCELLED);
+    assert.equal(f.db.read(entry[0]).redeemedAt, null);
+    assert.equal(f.db.read(entry[0]).orderId, '');
+  });
+}
