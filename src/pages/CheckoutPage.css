@@ -186,8 +186,23 @@ body.storefront-theme .checkout-country-note strong { color: #f0eee6; }
 .checkout-vietnam-payment .checkout-payment-account { font-size: 1.25rem; font-weight: 800; overflow-wrap: anywhere; }
 .checkout-vietnam-payment button { padding: 10px 14px; border: 1px solid #b9c8bc; border-radius: 7px; background: #fff; color: #18221b; font-weight: 700; }
 .checkout-vietnam-payment small { display: block; margin-top: 14px; line-height: 1.6; }
-.checkout-vietnam-payment details { margin-top: 14px; }
-.checkout-vietnam-payment summary { cursor: pointer; font-weight: 700; }
-.checkout-vietnam-payment details a { display: flex; align-items: center; flex-direction: column; gap: 8px; margin-top: 12px; }
-.checkout-vietnam-payment img { display: block; width: 100%; max-width: 280px; height: auto; border-radius: 8px; }
-.checkout-vietnam-payment.compact { padding: 16px; }
+.checkout-payment-layout { display: grid; gap: 20px; align-items: center; }
+.checkout-payment-layout.with-qr { grid-template-columns: minmax(0, 1fr) 160px; }
+.checkout-payment-details { min-width: 0; }
+.checkout-payment-details > strong { display: block; overflow-wrap: anywhere; }
+.checkout-payment-qr { min-width: 0; text-align: center; }
+.checkout-payment-qr svg { display: block; width: 100%; aspect-ratio: 1; background: #fff; border-radius: 6px; overflow: hidden; }
+.checkout-payment-qr span { display: block; margin-top: 6px; color: #657067; font-size: .75rem; }
+@media (max-width: 480px) {
+  .checkout-vietnam-payment { padding: 14px; }
+  .checkout-vietnam-payment h3 { margin-bottom: 10px; font-size: .88rem; }
+  .checkout-payment-layout { gap: 10px; }
+  .checkout-payment-layout.with-qr { grid-template-columns: minmax(0, 1fr) 112px; }
+  .checkout-payment-details { font-size: .8rem; }
+  .checkout-vietnam-payment .checkout-payment-account { font-size: 1rem; }
+  .checkout-vietnam-payment button { padding: 9px 10px; font-size: .78rem; }
+  .checkout-vietnam-payment small { font-size: .75rem; line-height: 1.5; }
+}
+@media (max-width: 360px) {
+  .checkout-payment-layout.with-qr { grid-template-columns: minmax(0, 1fr) 96px; }
+}

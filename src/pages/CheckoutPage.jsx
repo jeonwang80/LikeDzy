@@ -304,7 +304,7 @@ export default function CheckoutPage() {
             <div><span>{copy("입금기한")}</span><strong>{formatKoreanDateTime(orderResult.deadline, language)}</strong></div>
           </div>
 
-          <div className="checkout-bank-card">
+          {(orderResult.currency !== 'VND' || orderResult.isTestOrder) && <div className="checkout-bank-card">
             <div>
               <span>{copy("입금 계좌")}</span>
               <strong>{orderResult.bank.bankName} {orderResult.bank.accountNumber}</strong>
@@ -312,9 +312,9 @@ export default function CheckoutPage() {
             </div>
             <button type="button" onClick={() => copyText(orderResult.bank.accountNumber)} disabled={orderResult.isTestOrder}>
               <Copy size={16} />{copy("계좌 복사")}</button>
-          </div>
+          </div>}
 
-          {orderResult.currency === 'VND' && !orderResult.isTestOrder && <VietnamPayment bank={orderResult.bank} amount={orderResult.totalAmountNumber} language={language} />}
+          {orderResult.currency === 'VND' && !orderResult.isTestOrder && <VietnamPayment bank={orderResult.bank} language={language} />}
           <p className="checkout-success-notice">{copy("주문자명과 입금자명이 다르면 확인이 늦어질 수 있습니다. 주문번호를 함께 보관해 주세요.")}</p>
           <div className="checkout-bank-card"><div><strong>{copy("비회원 주문 조회·복구 코드")}</strong><small>{copy("다른 기기에서 조회하려면 주문 ID와 복구 코드를 안전하게 보관하세요. 타인에게 공유하지 마세요.")}</small><small>{copy("주문 ID:")}{orderResult.id}</small><code style={{ overflowWrap: 'anywhere' }}>{recoveryToken}</code></div><button type="button" onClick={() => copyText(`주문 ID: ${orderResult.id}\n복구 코드: ${recoveryToken}`)}>{copy("조회 정보 복사")}</button></div>
           <div className="checkout-success-actions">
@@ -466,7 +466,7 @@ export default function CheckoutPage() {
 
             <fieldset className="checkout-section">
               <legend><span>03</span>{copy("무통장 입금")}</legend>
-              {currency === 'VND' ? <VietnamPayment bank={selectedSettings} amount={total} language={language} /> : <div className="checkout-bank-card checkout-bank-preview">
+              {currency === 'VND' ? <VietnamPayment bank={selectedSettings} language={language} /> : <div className="checkout-bank-card checkout-bank-preview">
                 <div>
                   <span>{copy("입금 계좌")}</span>
                   <strong>{ready ? `${activeSettings.bankName} ${activeSettings.accountNumber}` : copy("운영 설정 준비 중")}</strong>
@@ -523,7 +523,6 @@ export default function CheckoutPage() {
               {discountAmount > 0 && <div><dt>{copy('쿠폰 할인')} ({couponQuote.code})</dt><dd>−{money(discountAmount)}</dd></div>}
               <div className="checkout-grand-total"><dt>{copy("최종 입금액")}</dt><dd>{money(total)}</dd></div>
             </dl>
-            {currency === 'VND' && <VietnamPayment bank={selectedSettings} amount={total} language={language} compact />}
             <div className="checkout-coupon"><label htmlFor="checkout-coupon-code">{copy('쿠폰 코드')}</label><div><input id="checkout-coupon-code" value={couponInput} maxLength="32" onChange={(event) => { couponRequest.current += 1; setCouponInput(event.target.value.toUpperCase()); setCouponQuote(null); setCouponMessage(''); setForm((current) => ({ ...current, agreeOrder: false })); }} placeholder="CODE" /><button type="button" onClick={() => applyCoupon()} disabled={couponLoading || refreshing || !currentUser || !couponInput.trim()}>{couponLoading ? copy('확인 중…') : copy('적용')}</button></div>{memberCoupons.filter((coupon) => currentUser && coupon.userId === currentUser.uid && coupon.currency === currency && !coupon.redeemedAt && Date.parse(coupon.endsAt) >= viewTime).map((coupon) => <button className="checkout-member-coupon" type="button" key={coupon.code} onClick={() => { setCouponInput(coupon.code); applyCoupon(coupon.code); }} disabled={couponLoading || refreshing}>{coupon.percent}% {language === 'ko' ? '쿠폰 적용' : 'Apply coupon'} · {coupon.code}</button>)}{couponMessage && (!couponQuote || discountAmount > 0) && <p role="status">{couponMessage}</p>}{discountAmount > 0 && <button type="button" onClick={() => { couponRequest.current += 1; setCouponQuote(null); setCouponInput(''); setCouponMessage(''); setForm((current) => ({ ...current, agreeOrder: false })); }}>{language === 'ko' ? '쿠폰 적용 취소' : 'Remove coupon'}</button>}</div>
             {activeSettings.remoteAreaNotice && <p className="checkout-remote-note">{activeSettings.remoteAreaNotice}</p>}
             {refreshing && <p role="status">{language === 'ko' ? '주문 상품을 확인하고 있습니다…' : 'Checking your items…'}</p>}
