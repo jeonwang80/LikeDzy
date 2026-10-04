@@ -140,14 +140,10 @@ export default function Header({ onNavigateHome }) {
         </nav>
 
         <div className="header-actions" onMouseEnter={() => setActiveMegaCode('')}>
-          <div className="header-language-switch" role="group" aria-label={language === 'ko' ? '언어 선택' : 'Choose language'}>
-            <button type="button" className={language === 'ko' ? 'active' : ''} onClick={() => setLanguage('ko')} aria-label="한국어" aria-pressed={language === 'ko'} title="한국어">
-              <img className="header-language-flag" src="/flags/kr.svg" alt="" aria-hidden="true" width="24" height="16" /><span className="header-language-code">KO</span>
-            </button>
-            <button type="button" className={language === 'en' ? 'active' : ''} onClick={() => setLanguage('en')} aria-label="English" aria-pressed={language === 'en'} title="English">
-              <img className="header-language-flag" src="/flags/gb.svg" alt="" aria-hidden="true" width="24" height="16" /><span className="header-language-code">EN</span>
-            </button>
-          </div>
+          <select className="header-language-select" value={language} onChange={(event) => setLanguage(event.target.value)} aria-label={language === 'ko' ? '언어 선택' : 'Choose language'}>
+            <option value="ko">한국어</option>
+            <option value="en">English</option>
+          </select>
 
           {currentUser ? (
             <div className="header-account-links">

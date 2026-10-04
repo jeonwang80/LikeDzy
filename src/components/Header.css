@@ -18,33 +18,20 @@
 .header-category-tab.active { border-bottom-color: var(--colors-ink); color: var(--colors-ink); opacity: 1; }
 
 .storefront-header .header-actions { flex: 0 0 auto; }
-.header-language-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.header-language-switch button {
-  min-width: 46px;
+.header-language-select {
+  width: 92px;
   min-height: 38px;
-  padding: 3px 5px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
+  padding: 0 6px;
+  border: 1px solid var(--colors-hairline-soft);
+  border-radius: 6px;
+  background: #fff;
   color: var(--colors-ink);
-  font-size: 1.2rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
 }
-.header-language-switch button.active {
-  border-color: var(--colors-ink);
-  background: var(--colors-soft-cloud);
-}
-.header-language-switch button:focus-visible { outline: 2px solid var(--colors-success); outline-offset: 2px; }
-.header-language-flag { display: block; width: 24px; height: 16px; flex-shrink: 0; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12); }
-.header-language-code { font-size: 0.62rem; font-weight: 800; }
+.header-language-select:focus-visible { outline: 2px solid var(--colors-success); outline-offset: 2px; }
 .header-account-links { display: flex; align-items: center; gap: 10px; }
 .header-account-link { color: var(--colors-ink); font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
 .header-admin-link { padding: 4px 7px; border: 1px solid #cbd5e1; border-radius: 5px; background: #f8fafc; color: #334155; font-size: 0.64rem; font-weight: 800; }
@@ -95,7 +82,6 @@
   .storefront-header .header-nav a,
   .header-category-tab { font-size: 1rem; }
   .storefront-header .header-account-link { display: none; }
-  .header-language-code { display: none; }
   .category-mega-grid {
     grid-template-columns: repeat(auto-fit, minmax(180px, 230px));
     gap: 28px 24px;
@@ -107,8 +93,7 @@
   .header.storefront-header.scrolled { height: 64px; min-height: 64px; padding: 0 5%; }
   .storefront-header .header-logo { width: 104px; height: 40px; }
   .storefront-header .header-actions { gap: 9px; }
-  .header-language-switch { gap: 2px; }
-  .header-language-switch button { width: 33px; min-width: 33px; min-height: 36px; padding: 0; }
+  .header-language-select { width: 82px; min-height: 36px; font-size: 0.72rem; }
   .storefront-header .header-account-links,
   .storefront-header .header-actions > .header-account-link { display: none; }
   .storefront-header .mobile-menu-btn { display: grid; place-items: center; padding: 2px; }

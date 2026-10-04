@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: '/admin/stats', index: '05', label: '통계', description: '방문 데이터' },
   { to: '/admin/master-data', index: '06', label: '기준정보', description: '판매·배송·카테고리' },
   { to: '/admin/coupons', index: '07', label: '쿠폰', description: '할인 코드·이벤트' },
+  { to: '/admin/members', index: '08', label: '가입자 현황', description: '회원 조회·가입·인증 상태' },
 ];
 
 export default function AdminLayout() {
