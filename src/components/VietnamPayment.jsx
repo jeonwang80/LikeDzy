@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { formatMoney } from '../utils/market';
 
-export default function VietnamPayment({ bank, amount, language = 'ko' }) {
+export default function VietnamPayment({ bank, amount, language = 'ko', orderReceived = false }) {
   const [copied, setCopied] = useState(false);
   const ko = language === 'ko';
   const hasSavedBank = Boolean(bank?.accountNumber || bank?.accountHolder || bank?.bankName);
@@ -29,6 +29,8 @@ export default function VietnamPayment({ bank, amount, language = 'ko' }) {
         <span>{ko ? 'QR로 송금' : 'Scan to transfer'}</span>
       </div>}
     </div>
-    <small>{ko ? '주문 접수 후 최종 금액을 입금해 주세요. QR 수취인과 금액을 확인해 주세요.' : 'Transfer after placing your order. Check the QR recipient and final amount.'}</small>
+    <small>{orderReceived
+      ? (ko ? '입금기한 내 위 금액을 송금해 주세요. QR 수취인과 금액을 확인해 주세요.' : 'Transfer the amount above by the deadline. Check the QR recipient and amount.')
+      : (ko ? '주문 접수 후 최종 금액을 입금해 주세요. QR 수취인과 금액을 확인해 주세요.' : 'Transfer after placing your order. Check the QR recipient and final amount.')}</small>
   </section>;
 }

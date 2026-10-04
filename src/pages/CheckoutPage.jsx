@@ -1,6 +1,6 @@
 import { useStoreCopy } from '../i18n/storeCopy';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Check, Copy, MapPin, PackageCheck } from 'lucide-react';
+import { ArrowLeft, MapPin, PackageCheck } from 'lucide-react';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
@@ -11,7 +11,6 @@ import { checkoutAttempt, forgetAttempt, readAttempt, rememberOrder } from '../u
 import {
   calculateShippingFee,
   ADMIN_TEST_COMMERCE_SETTINGS,
-  formatKoreanDateTime,
   isCommerceReady,
   normalizeCommerceSettings,
 } from '../utils/commerce';
@@ -21,6 +20,7 @@ import { formatMoney, marketSettings, productPrice } from '../utils/market';
 import './CheckoutPage.css';
 import { useCheckoutCatalog } from '../hooks/useCheckoutCatalog';
 import VietnamPayment from '../components/VietnamPayment';
+import CheckoutSuccess from '../components/CheckoutSuccess';
 import { useCouponWallet } from '../hooks/useCouponWallet';
 import { couponDate, couponStatusText } from '../utils/couponDisplay';
 
@@ -281,50 +281,8 @@ export default function CheckoutPage() {
     }
   };
 
-  const copyText = async (value) => {
-    try {
-      await navigator.clipboard.writeText(String(value));
-    } catch {
-      window.prompt(copy("아래 내용을 복사해 주세요."), String(value));
-    }
-  };
-
   if (orderResult) {
-    return (
-      <main className="checkout-page checkout-success-page">
-        <section className="checkout-success-card">
-          <span className="checkout-success-icon"><Check size={32} /></span>
-          <p className="checkout-eyebrow">{orderResult.isTestOrder ? 'TEST ORDER RECEIVED' : 'ORDER RECEIVED'}</p>
-          <h1>{orderResult.isTestOrder ? copy("테스트 주문이 접수되었습니다.") : copy("주문이 접수되었습니다.")}</h1>
-          <p className="checkout-success-lead">{orderResult.isTestOrder ? copy("실제 입금하지 마세요. 관리자 주문 화면에서 테스트 결과를 확인할 수 있습니다.") : copy("입금이 확인되면 상품 준비를 시작합니다.")}</p>
-
-          <div className="checkout-success-order">
-            <div><span>{copy("주문번호")}</span><strong>{orderResult.orderNumber}</strong></div>
-            <div><span>{copy("입금할 금액")}</span><strong>{formatMoney(orderResult.totalAmountNumber, orderResult.currency || 'KRW')}</strong></div>
-            <div><span>{copy("입금기한")}</span><strong>{formatKoreanDateTime(orderResult.deadline, language)}</strong></div>
-          </div>
-
-          {(orderResult.currency !== 'VND' || orderResult.isTestOrder) && <div className="checkout-bank-card">
-            <div>
-              <span>{copy("입금 계좌")}</span>
-              <strong>{orderResult.bank.bankName} {orderResult.bank.accountNumber}</strong>
-              <small>{copy("예금주")}{orderResult.bank.accountHolder}</small>
-            </div>
-            <button type="button" onClick={() => copyText(orderResult.bank.accountNumber)} disabled={orderResult.isTestOrder}>
-              <Copy size={16} />{copy("계좌 복사")}</button>
-          </div>}
-
-          {orderResult.currency === 'VND' && !orderResult.isTestOrder && <VietnamPayment bank={orderResult.bank} language={language} />}
-          <p className="checkout-success-notice">{copy("주문자명과 입금자명이 다르면 확인이 늦어질 수 있습니다. 주문번호를 함께 보관해 주세요.")}</p>
-          <div className="checkout-bank-card"><div><strong>{copy("비회원 주문 조회·복구 코드")}</strong><small>{copy("다른 기기에서 조회하려면 주문 ID와 복구 코드를 안전하게 보관하세요. 타인에게 공유하지 마세요.")}</small><small>{copy("주문 ID:")}{orderResult.id}</small><code style={{ overflowWrap: 'anywhere' }}>{recoveryToken}</code></div><button type="button" onClick={() => copyText(`주문 ID: ${orderResult.id}\n복구 코드: ${recoveryToken}`)}>{copy("조회 정보 복사")}</button></div>
-          <div className="checkout-success-actions">
-            <button type="button" onClick={() => navigate(`/orders/${orderResult.id}`)}>{copy("주문·입금·배송 확인")}</button>
-            <button type="button" onClick={() => window.print()}>{copy("주문서 인쇄·저장")}</button>
-            <button type="button" className="checkout-primary-button" onClick={() => navigate('/')}>{copy("쇼핑 계속하기")}</button>
-          </div>
-        </section>
-      </main>
-    );
+    return <CheckoutSuccess order={orderResult} recoveryToken={recoveryToken} language={language} onNavigate={navigate} />;
   }
 
   if (!cart.length) {
