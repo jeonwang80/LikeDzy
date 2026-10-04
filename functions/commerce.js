@@ -127,7 +127,7 @@ function liveReady(settings) {
     && ["businessName", "representativeName", "businessNumber", "customerServicePhone", "customerServiceEmail", "businessAddress", "bankName", "accountNumber", "accountHolder", "termsText", "privacyText", "returnsText"].every((field) => Boolean(text(settings[field])));
 }
 
-function createCommerceService({ db, now = () => Date.now(), timestamp = (date) => date, serverTimestamp = () => new Date(), isEmulator = false }) {
+function createCommerceService({ db, now = () => Date.now(), timestamp = (date) => date, serverTimestamp = () => new Date() }) {
   const ref = (collection, id) => db.collection(collection).doc(id);
   async function isAdmin(context) {
     const auth = context?.auth;
@@ -250,7 +250,8 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
 
   async function quoteCoupon(data, context = {}) {
     if (!context.auth?.uid) fail('unauthenticated', '쿠폰 사용은 회원 로그인이 필요합니다.');
-    if (!isEmulator && !context.app?.appId) fail('failed-precondition', '안전한 주문 연결을 확인할 수 없습니다.');
+    // Read-only quote: authenticated membership and rate limits apply.
+    // Order creation independently verifies prices, stock and coupon eligibility.
     await consumeAttempt('coupon', context, 120);
     const code = couponCode(data?.couponCode);
     if (!code) fail('invalid-argument', '쿠폰 코드를 입력해 주세요.');
@@ -265,7 +266,6 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
 
   async function createBankTransferOrder(data, context = {}) {
     const adminUser = await isAdmin(context);
-    if (!isEmulator && !adminUser && !context.app?.appId) fail("failed-precondition", "안전한 주문 연결을 확인할 수 없습니다. 페이지를 새로고침해 주세요.");
     // This separate transaction commits even if later validation/order creation fails.
     await consumeAttempt("create", context, 10);
     const currency = data?.currency ?? 'KRW';
@@ -312,7 +312,6 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       const ready = liveReady(savedSettings);
       const isTestOrder = currency === 'KRW' && !ready && adminUser;
       if (!ready && !isTestOrder) fail("failed-precondition", "현재 주문 접수를 준비 중입니다.");
-      if (!isEmulator && !isTestOrder && !context.app?.appId) fail("failed-precondition", "안전한 주문 연결을 확인할 수 없습니다. 페이지를 새로고침해 주세요.");
       const settings = isTestOrder ? TEST_SETTINGS : savedSettings;
       const products = new Map();
       for (const productId of [...new Set(cart.map((item) => item.productId))]) {
@@ -381,7 +380,6 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
   }
 
   async function getOrder(data, context = {}) {
-    if (!isEmulator && !context.app?.appId) fail("failed-precondition", "안전한 주문 조회 연결을 확인할 수 없습니다. 페이지를 새로고침해 주세요.");
     await consumeAttempt("lookup", context, 120);
     let orderId;
     if (data?.orderId) orderId = identifier(data.orderId, "주문번호");

@@ -8,6 +8,7 @@ import { getOrder, recoverOrderAttempt } from '../services/orderService';
 import { forgetAttempt, orderAccess, readAttempt, rememberOrder } from '../utils/checkoutSession';
 import { formatKoreanDateTime, getTrackingUrl } from '../utils/commerce';
 import './CheckoutPage.css';
+import VietnamPayment from '../components/VietnamPayment';
 
 export default function OrderLookup() {
   const { orderId } = useParams();
@@ -70,6 +71,7 @@ function OrderLookupContent({ orderId }) {
       <p>{copy("상품")}{formatMoney(order.subtotal, order.currency || 'KRW')}{copy("+ 배송")}{formatMoney(order.shippingFee, order.currency || 'KRW')}{order.discountAmount > 0 && <> · {copy('쿠폰 할인')} −{formatMoney(order.discountAmount, order.currency || 'KRW')}</>}</p>
       {order.status === '입금 대기' && <div className="checkout-bank-card"><div><strong>{order.bank?.bankName} {order.bank?.accountNumber}</strong><p>{copy("예금주")}{order.bank?.accountHolder}</p><p>{copy("입금기한")}{formatKoreanDateTime(order.deadline, language)}</p><p>{copy("기한 후 입금은 고객센터에 먼저 문의해 주세요.")}</p></div></div>}
       {order.trackingNumber && <p><a href={getTrackingUrl(order.courier, order.trackingNumber)} target="_blank" rel="noreferrer">{order.courier} · {order.trackingNumber}{copy("배송 조회 ↗")}</a></p>}
+      {order.status === '입금 대기' && order.currency === 'VND' && !order.isTestOrder && <VietnamPayment bank={order.bank} amount={order.totalAmountNumber} language={language} />}
       <p>{copy("취소·교환·반품은")}<Link to="/policies/returns">{copy("교환·반품 안내 및 고객센터")}</Link>{copy("를 확인해 주세요.")}</p>
       <div className="checkout-success-actions"><button disabled={loading} onClick={() => { setLoading(true); setError(''); setOrder(null); setRefresh((n) => n + 1); }}>{copy("현재 상태 새로고침")}</button><button onClick={() => window.print()}>{copy("주문서 인쇄·저장")}</button></div>
     </>}

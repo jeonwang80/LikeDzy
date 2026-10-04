@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { compactCartItem } from '../utils/checkoutSession';
 
 const CartContext = createContext();
@@ -74,9 +74,10 @@ export function CartProvider({ children }) {
   };
 
   const clearCart = () => setCart([]);
+  const replaceCart = useCallback((items) => setCart(items.map(compactCartItem)), []);
 
   return (
-    <CartContext.Provider value={{ cart, replaceCart: (items) => setCart(items.map(compactCartItem)), addToCart, removeFromCart, updateQuantity, clearCart, isCartOpen, setIsCartOpen }}>
+    <CartContext.Provider value={{ cart, replaceCart, addToCart, removeFromCart, updateQuantity, clearCart, isCartOpen, setIsCartOpen }}>
       {children}
     </CartContext.Provider>
   );

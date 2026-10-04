@@ -1,9 +1,9 @@
 import { useStoreCopy } from '../i18n/storeCopy';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Check, Copy, MapPin, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
-import { collection, doc, getDoc, getDocs, limit, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { appCheckConfigured, db } from '../firebase';
+import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { createBankTransferOrder, quoteCoupon, recoverOrderAttempt } from '../services/orderService';
@@ -19,6 +19,8 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { cleanProfile } from '../utils/customerProfile';
 import { formatMoney, marketSettings, productPrice } from '../utils/market';
 import './CheckoutPage.css';
+import { useCheckoutCatalog } from '../hooks/useCheckoutCatalog';
+import VietnamPayment from '../components/VietnamPayment';
 
 const EMPTY_FORM = {
   country: 'KR',
@@ -75,11 +77,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
   const [orderResult, setOrderResult] = useState(null);
   const [recoveryToken, setRecoveryToken] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
-  const [checkedCurrency, setCheckedCurrency] = useState(null);
-  const catalogChecked = checkedCurrency === currency;
-  const setCatalogChecked = (checked) => setCheckedCurrency(checked ? currency : null);
-  const [cartNotice, setCartNotice] = useState('');
+  const couponRequest = useRef(0);
   const [profileNotice, setProfileNotice] = useState('');
   const [savedProfile, setSavedProfile] = useState(null);
   const [couponInput, setCouponInput] = useState('');
@@ -88,6 +86,12 @@ export default function CheckoutPage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [viewTime] = useState(() => Date.now());
   const [memberCoupons, setMemberCoupons] = useState([]);
+  const onPriceChange = useCallback(() => {
+    couponRequest.current += 1;
+    setCouponQuote(null); setCouponMessage('');
+    setForm((current) => ({ ...current, agreeOrder: false }));
+  }, []);
+  const { checked: catalogChecked, loading: refreshing, error: cartNotice } = useCheckoutCatalog(cart, currency, language, replaceCart, onPriceChange);
 
   useEffect(() => {
     if (!currentUser) return undefined;
@@ -145,36 +149,9 @@ export default function CheckoutPage() {
   const testMode = currency === 'KRW' && !liveReady && isAdmin;
   const activeSettings = testMode ? ADMIN_TEST_COMMERCE_SETTINGS : selectedSettings;
   const shippingFee = calculateShippingFee(subtotal, activeSettings);
-  const discountAmount = couponQuote?.currency === currency && couponQuote?.subtotal === subtotal ? couponQuote.discountAmount : 0;
+  const discountAmount = couponQuote?.userId === currentUser?.uid && couponQuote?.currency === currency && couponQuote?.subtotal === subtotal ? couponQuote.discountAmount : 0;
   const total = subtotal === null || shippingFee === null ? null : subtotal + shippingFee - discountAmount;
-  const ready = (liveReady && appCheckConfigured) || testMode;
-
-  const refreshCart = async () => {
-    setRefreshing(true); setCatalogChecked(false); setError(''); setCouponQuote(null); setCouponMessage('');
-    try {
-      const productIds = [...new Set(cart.map((item) => item.product.id))];
-      const entries = await Promise.all(productIds.map(async (id) => {
-        const [product, stock] = await Promise.all([getDoc(doc(db, 'products', id)), getDocs(query(collection(db, 'stockAvailability'), where('productId', '==', id), limit(200)))]);
-        return [id, { product: product.exists() ? product.data() : null, variants: stock.docs.map((entry) => ({ id: entry.id, ...entry.data() })) }];
-      }));
-      const current = new Map(entries);
-      let blocked = false; let changed = false;
-      const next = cart.map((item) => {
-        const entry = current.get(item.product.id);
-        const variant = entry.variants.find((row) => row.colorName === (item.product.cartColorName || '기본') && row.optionName === item.option.name);
-        const price = productPrice(entry.product, currency) || 0;
-        const available = Math.max(0, Number(variant?.available) || 0);
-        if (!entry.product || entry.product.isActive === false || !price || !variant || available < item.quantity) blocked = true;
-        if (price !== item.product.prices[currency] || variant?.id !== item.option.variantId) changed = true;
-        return { ...item, product: { ...item.product, name: entry.product?.[language]?.name || entry.product?.name || item.product.name, ko: entry.product?.ko, en: entry.product?.en, prices: { ...entry.product?.prices, [currency]: price } }, option: { ...item.option, variantId: variant?.id || '', stock: available } };
-      });
-      replaceCart(next);
-      setForm((currentForm) => ({ ...currentForm, agreeOrder: false }));
-      setCatalogChecked(!blocked);
-      setCartNotice(blocked ? copy("품절·재고 미등록·판매 중지 상품이 있습니다. 장바구니에서 수량을 줄이거나 삭제해 주세요.") : changed ? copy("최신 가격·옵션으로 갱신했습니다. 금액을 다시 확인하고 동의해 주세요.") : copy("최신 가격과 재고를 확인했습니다. 주문 접수 시 서버에서 다시 검증합니다."));
-    } catch { setError(copy("최신 상품 정보를 확인하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.")); }
-    finally { setRefreshing(false); }
-  };
+  const ready = liveReady || testMode;
 
   const recoverAttempt = async () => {
     const attempt = readAttempt();
@@ -195,8 +172,7 @@ export default function CheckoutPage() {
       ...current, country, postcode: '', province: '', ward: '', address1: '', address2: '',
       agreeOrder: false,
     }));
-    setCatalogChecked(false);
-    setCartNotice('');
+    couponRequest.current += 1;
     setCouponQuote(null);
     setCouponMessage('');
     setError('');
@@ -205,22 +181,26 @@ export default function CheckoutPage() {
   const applyCoupon = async (selectedCode = couponInput) => {
     if (!currentUser) { setCouponMessage(copy('쿠폰 사용은 로그인이 필요합니다.')); return; }
     if (!subtotal) { setCouponMessage(copy('상품금액을 확인해 주세요.')); return; }
+    const requestId = ++couponRequest.current;
     setCouponLoading(true); setCouponMessage(''); setCouponQuote(null);
     try {
       const quote = await quoteCoupon(selectedCode.trim().toUpperCase(), currency, subtotal);
-      setCouponQuote({ ...quote, currency, subtotal });
+      if (requestId !== couponRequest.current) return;
+      setCouponInput(quote.code);
+      setCouponQuote({ ...quote, userId: currentUser.uid, currency, subtotal });
       setCouponMessage(copy('쿠폰 할인이 적용되었습니다.'));
       setForm((current) => ({ ...current, agreeOrder: false }));
-    } catch (couponError) { setCouponMessage(couponError.message || copy('쿠폰을 사용할 수 없습니다.')); }
+    } catch (couponError) { if (requestId === couponRequest.current) setCouponMessage((language === 'ko' ? couponError.message : '') || copy('쿠폰을 사용할 수 없습니다.')); }
     finally { setCouponLoading(false); }
   };
 
   const applySavedProfile = () => {
     if (!savedProfile) return;
+    couponRequest.current += 1;
+    setCouponMessage('');
     setForm((current) => ({ ...current, ...savedProfile, sameRecipient: savedProfile.recipientName === savedProfile.buyerName && savedProfile.recipientPhone === savedProfile.buyerPhone, agreeOrder: false }));
-    setCatalogChecked(false);
     setCouponQuote(null);
-    setProfileNotice(copy('기본 배송지를 적용했습니다. 주문 금액과 재고를 다시 확인해 주세요.'));
+    setProfileNotice(language === 'ko' ? '기본 배송지를 적용했습니다.' : 'Default delivery address applied.');
   };
 
   const handleAddressSearch = async () => {
@@ -241,11 +221,12 @@ export default function CheckoutPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
+    if (couponLoading) return;
     if (!ready) {
       setError(copy("현재 주문 접수를 준비 중입니다. 잠시 후 다시 이용해 주세요."));
       return;
     }
-    if (!catalogChecked) { setError(copy("최신 상품·재고 확인 버튼을 눌러 주세요.")); return; }
+    if (!catalogChecked) { setError(cartNotice || (language === 'ko' ? '상품 정보를 확인하고 있습니다. 잠시만 기다려 주세요.' : 'Checking your items. Please wait.')); return; }
     if (!form.agreeOrder || !form.agreePrivacy) {
       setError(copy("주문 내용과 개인정보 수집 안내를 확인해 주세요."));
       return;
@@ -333,6 +314,7 @@ export default function CheckoutPage() {
               <Copy size={16} />{copy("계좌 복사")}</button>
           </div>
 
+          {orderResult.currency === 'VND' && !orderResult.isTestOrder && <VietnamPayment bank={orderResult.bank} amount={orderResult.totalAmountNumber} language={language} />}
           <p className="checkout-success-notice">{copy("주문자명과 입금자명이 다르면 확인이 늦어질 수 있습니다. 주문번호를 함께 보관해 주세요.")}</p>
           <div className="checkout-bank-card"><div><strong>{copy("비회원 주문 조회·복구 코드")}</strong><small>{copy("다른 기기에서 조회하려면 주문 ID와 복구 코드를 안전하게 보관하세요. 타인에게 공유하지 마세요.")}</small><small>{copy("주문 ID:")}{orderResult.id}</small><code style={{ overflowWrap: 'anywhere' }}>{recoveryToken}</code></div><button type="button" onClick={() => copyText(`주문 ID: ${orderResult.id}\n복구 코드: ${recoveryToken}`)}>{copy("조회 정보 복사")}</button></div>
           <div className="checkout-success-actions">
@@ -484,13 +466,14 @@ export default function CheckoutPage() {
 
             <fieldset className="checkout-section">
               <legend><span>03</span>{copy("무통장 입금")}</legend>
-              <div className="checkout-bank-card checkout-bank-preview">
+              {currency === 'VND' ? <VietnamPayment bank={selectedSettings} amount={total} language={language} /> : <div className="checkout-bank-card checkout-bank-preview">
                 <div>
                   <span>{copy("입금 계좌")}</span>
                   <strong>{ready ? `${activeSettings.bankName} ${activeSettings.accountNumber}` : copy("운영 설정 준비 중")}</strong>
                   <small>{ready ? (language === 'ko' ? `예금주 ${activeSettings.accountHolder} · 주문 후 ${activeSettings.depositDeadlineHours}시간 이내 입금` : `${activeSettings.accountHolder} · Pay within ${activeSettings.depositDeadlineHours} hours`) : copy("계좌 설정 후 주문 접수가 활성화됩니다.")}</small>
                 </div>
               </div>
+              }
               <label>
                 <span>{copy("입금자명")}</span>
                 <input value={form.depositorName} onChange={(event) => updateForm('depositorName', event.target.value)} placeholder={copy("주문자와 다를 경우 입력")} />
@@ -540,13 +523,14 @@ export default function CheckoutPage() {
               {discountAmount > 0 && <div><dt>{copy('쿠폰 할인')} ({couponQuote.code})</dt><dd>−{money(discountAmount)}</dd></div>}
               <div className="checkout-grand-total"><dt>{copy("최종 입금액")}</dt><dd>{money(total)}</dd></div>
             </dl>
-            <div className="checkout-coupon"><label htmlFor="checkout-coupon-code">{copy('쿠폰 코드')}</label><div><input id="checkout-coupon-code" value={couponInput} maxLength="32" onChange={(event) => { setCouponInput(event.target.value.toUpperCase()); setCouponQuote(null); setCouponMessage(''); setForm((current) => ({ ...current, agreeOrder: false })); }} placeholder="CODE" /><button type="button" onClick={() => applyCoupon()} disabled={couponLoading || !couponInput.trim()}>{couponLoading ? copy('확인 중…') : copy('적용')}</button></div>{memberCoupons.filter((coupon) => coupon.currency === currency && !coupon.redeemedAt && Date.parse(coupon.endsAt) >= viewTime).map((coupon) => <button className="checkout-member-coupon" type="button" key={coupon.code} onClick={() => { setCouponInput(coupon.code); applyCoupon(coupon.code); }} disabled={couponLoading}>{coupon.percent}% {copy('가입 쿠폰 사용')} · {coupon.code}</button>)}{couponMessage && <p role="status">{couponMessage}</p>}</div>
+            {currency === 'VND' && <VietnamPayment bank={selectedSettings} amount={total} language={language} compact />}
+            <div className="checkout-coupon"><label htmlFor="checkout-coupon-code">{copy('쿠폰 코드')}</label><div><input id="checkout-coupon-code" value={couponInput} maxLength="32" onChange={(event) => { couponRequest.current += 1; setCouponInput(event.target.value.toUpperCase()); setCouponQuote(null); setCouponMessage(''); setForm((current) => ({ ...current, agreeOrder: false })); }} placeholder="CODE" /><button type="button" onClick={() => applyCoupon()} disabled={couponLoading || refreshing || !currentUser || !couponInput.trim()}>{couponLoading ? copy('확인 중…') : copy('적용')}</button></div>{memberCoupons.filter((coupon) => currentUser && coupon.userId === currentUser.uid && coupon.currency === currency && !coupon.redeemedAt && Date.parse(coupon.endsAt) >= viewTime).map((coupon) => <button className="checkout-member-coupon" type="button" key={coupon.code} onClick={() => { setCouponInput(coupon.code); applyCoupon(coupon.code); }} disabled={couponLoading || refreshing}>{coupon.percent}% {language === 'ko' ? '쿠폰 적용' : 'Apply coupon'} · {coupon.code}</button>)}{couponMessage && (!couponQuote || discountAmount > 0) && <p role="status">{couponMessage}</p>}{discountAmount > 0 && <button type="button" onClick={() => { couponRequest.current += 1; setCouponQuote(null); setCouponInput(''); setCouponMessage(''); setForm((current) => ({ ...current, agreeOrder: false })); }}>{language === 'ko' ? '쿠폰 적용 취소' : 'Remove coupon'}</button>}</div>
             {activeSettings.remoteAreaNotice && <p className="checkout-remote-note">{activeSettings.remoteAreaNotice}</p>}
-            <button type="button" className="checkout-primary-button" disabled={refreshing || submitting} onClick={refreshCart}>{refreshing ? copy("확인 중…") : copy("최신 상품·재고 확인")}</button>
-            {cartNotice && <p role="status">{cartNotice}</p>}
+            {refreshing && <p role="status">{language === 'ko' ? '주문 상품을 확인하고 있습니다…' : 'Checking your items…'}</p>}
+            {cartNotice && <p role="alert">{cartNotice}</p>}
             {readAttempt() && <button type="button" disabled={submitting} onClick={recoverAttempt}>{copy("이전 주문 요청 복구")}</button>}
             {error && <div className="checkout-error" role="alert">{error}</div>}
-            <button className="checkout-primary-button" type="submit" form="checkout-page-form" disabled={submitting || settingsLoading || !ready || !catalogChecked || refreshing}>
+            <button className="checkout-primary-button" type="submit" form="checkout-page-form" disabled={submitting || couponLoading || settingsLoading || !ready || !catalogChecked || refreshing}>
               {submitting ? copy("주문 접수 중…") : testMode ? copy("관리자 테스트 주문 접수") : copy("무통장 입금으로 주문 접수")}
             </button>
             <div className="checkout-trust-list">

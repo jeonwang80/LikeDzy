@@ -11,7 +11,6 @@ const commerce = createCommerceService({
   db: getFirestore(),
   timestamp: (date) => Timestamp.fromDate(date),
   serverTimestamp: () => FieldValue.serverTimestamp(),
-  isEmulator: process.env.FUNCTIONS_EMULATOR === "true",
 });
 
 const api = functions.region("us-central1").runWith({ maxInstances: 10, timeoutSeconds: 60, memory: "256MB" });

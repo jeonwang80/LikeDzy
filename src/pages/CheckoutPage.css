@@ -179,3 +179,15 @@ body.storefront-theme .checkout-country-note strong { color: #f0eee6; }
   .checkout-success-card { box-shadow: none; }
   .checkout-success-actions { display: none; }
 }
+
+.checkout-vietnam-payment { margin: 18px 0; padding: 20px; border: 1px solid #d9e4dc; border-radius: 12px; background: #f4f8f4; color: #18221b; }
+.checkout-vietnam-payment h3 { margin: 0 0 14px; font-size: 1rem; }
+.checkout-vietnam-payment p { margin: 8px 0; }
+.checkout-vietnam-payment .checkout-payment-account { font-size: 1.25rem; font-weight: 800; overflow-wrap: anywhere; }
+.checkout-vietnam-payment button { padding: 10px 14px; border: 1px solid #b9c8bc; border-radius: 7px; background: #fff; color: #18221b; font-weight: 700; }
+.checkout-vietnam-payment small { display: block; margin-top: 14px; line-height: 1.6; }
+.checkout-vietnam-payment details { margin-top: 14px; }
+.checkout-vietnam-payment summary { cursor: pointer; font-weight: 700; }
+.checkout-vietnam-payment details a { display: flex; align-items: center; flex-direction: column; gap: 8px; margin-top: 12px; }
+.checkout-vietnam-payment img { display: block; width: 100%; max-width: 280px; height: auto; border-radius: 8px; }
+.checkout-vietnam-payment.compact { padding: 16px; }

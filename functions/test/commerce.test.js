@@ -175,12 +175,12 @@ test("admin email must be verified and claim or UID list is required", async () 
   assert.equal(f.inventory().stock, 2);
 });
 
-test("live order is blocked without App Check; policy text is a required release gate", async () => {
+test("live order works without App Check; policy text remains a required release gate", async () => {
   const f = await fixture(2, { isEmulator: false });
-  await rejectsCode(f.service.createBankTransferOrder(f.order(), guest), "failed-precondition");
-  await f.service.createBankTransferOrder(f.order(), { ...guest, app: { appId: "test-app" } });
+  const created = await f.service.createBankTransferOrder(f.order(), guest);
+  assert.equal(created.isTestOrder, false);
   f.db.data.set("settings/commerce", { ...settings, termsText: "" });
-  await rejectsCode(f.service.createBankTransferOrder(f.order(), { ...guest, app: { appId: "test-app" } }), "failed-precondition");
+  await rejectsCode(f.service.createBankTransferOrder(f.order(), guest), "failed-precondition");
   const testOrder = await f.service.createBankTransferOrder(f.order(), admin);
   assert.equal(testOrder.isTestOrder, true); assert.equal(testOrder.bank.accountNumber, "실제 입금 금지");
 });
@@ -234,12 +234,13 @@ test("expiry is bounded to 100 orders and repeated batches finish without blocki
   assert.equal(f.inventory().stock, 101); assert.equal(f.inventory().reserved, 0);
 });
 
-test("production lookup requires App Check even with a correct guest token or member session", async () => {
+test("production lookup works without App Check while guest secrets and member ownership remain required", async () => {
   const f = await fixture(2, { isEmulator: false }); const request = f.order();
-  const owner = { ...guest, app: { appId: "test-app" }, auth: { uid: "test-buyer", token: { email: "buyer@example.test" } } };
+  const owner = { ...guest, auth: { uid: "test-buyer", token: { email: "buyer@example.test" } } };
   const created = await f.service.createBankTransferOrder(request, owner);
-  await rejectsCode(f.service.getOrder({ orderId: created.id, guestAccessToken: request.guestAccessToken }, guest), "failed-precondition");
-  await rejectsCode(f.service.getOrder({ orderId: created.id }, { auth: owner.auth, ...guest }), "failed-precondition");
+  assert.equal((await f.service.getOrder({ orderId: created.id, guestAccessToken: request.guestAccessToken }, guest)).id, created.id);
+  await rejectsCode(f.service.getOrder({ orderId: created.id, guestAccessToken: secret() }, guest), "not-found");
+  await rejectsCode(f.service.getOrder({ orderId: created.id }, { ...guest, auth: { uid: 'another-member', token: {} } }), "not-found");
   assert.equal((await f.service.getOrder({ orderId: created.id }, owner)).id, created.id);
   assert.equal((await f.service.getOrder({ orderId: created.id, guestAccessToken: request.guestAccessToken }, { ...guest, app: { appId: "test-app" } })).id, created.id);
 });
@@ -328,6 +329,24 @@ test('30% coupon is priced by the server, limited per member, and restored after
   assert.equal(f.db.count('orders'), 1);
   const second = await f.service.createBankTransferOrder(f.order({ expectedTotal: 30300, couponCode: 'WELCOME30' }), owner);
   assert.equal(second.discountAmount, 11700);
+});
+
+test('production coupon checkout works without App Check while membership and server pricing remain enforced', async () => {
+  const f = await fixture(2, { isEmulator: false });
+  f.db.data.set('coupons/WELCOME30', { code: 'WELCOME30', active: true, autoIssue: true, currency: 'KRW', percent: 30, minSubtotal: 0, maxDiscount: 20000, usageLimit: 100, usedCount: 0, startsAt: '2026-09-01T00:00:00Z', endsAt: '2026-10-01T00:00:00Z' });
+  await f.service.issueWelcomeCoupons({ uid: 'new-member', metadata: { creationTime: '2026-09-05T00:00:00Z' } });
+  const member = { ...guest, auth: { uid: 'new-member', token: {} } };
+  const quote = { couponCode: 'WELCOME30', currency: 'KRW', subtotal: 39000 };
+  assert.equal((await f.service.quoteCoupon(quote, member)).discountAmount, 11700);
+  await rejectsCode(f.service.quoteCoupon(quote, guest), 'unauthenticated');
+  await rejectsCode(f.service.quoteCoupon(quote, { ...guest, auth: { uid: 'other-member', token: {} } }), 'permission-denied');
+  await rejectsCode(f.service.createBankTransferOrder(f.order({ expectedTotal: 1, couponCode: 'WELCOME30' }), member), 'aborted');
+  assert.equal(f.db.count('orders'), 0);
+  assert.equal(f.inventory().reserved, 0);
+  assert.equal(f.db.read('coupons/WELCOME30').usedCount, 0);
+  const created = await f.service.createBankTransferOrder(f.order({ expectedTotal: 30300, couponCode: 'WELCOME30' }), member);
+  assert.equal(created.discountAmount, 11700);
+  assert.equal(f.db.read(`orders/${created.id}`).totalAmountNumber, 30300);
 });
 
 test('coupon rejects wrong currency, expired window, and exhausted campaign', async () => {
