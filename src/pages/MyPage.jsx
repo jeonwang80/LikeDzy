@@ -9,6 +9,7 @@ import { formatMoney } from '../utils/market';
 import { getTrackingUrl } from '../utils/commerce';
 import { cleanProfile, EMPTY_PROFILE, validateProfile } from '../utils/customerProfile';
 import './MyPage.css';
+import OrderStatementDialog from '../components/OrderStatementDialog';
 import { useCouponWallet } from '../hooks/useCouponWallet';
 import { couponDate, couponStatusText } from '../utils/couponDisplay';
 
@@ -25,6 +26,7 @@ export default function MyPage() {
   const wallet = useCouponWallet(currentUser?.uid);
   const { coupons, loading: couponsLoading } = wallet;
   const [orders, setOrders] = useState([]);
+  const [statementId, setStatementId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [cursors, setCursors] = useState([null]);
@@ -105,8 +107,10 @@ export default function MyPage() {
     <section className="account-orders" aria-labelledby="account-orders-title"><div className="account-section-heading"><div><span>03</span><h2 id="account-orders-title">{label('주문 내역', 'My orders')}</h2></div></div>
       <button className="account-guest-link" type="button" onClick={() => navigate('/orders/lookup')}>{label('비회원 주문 조회', 'Guest order tracking')} →</button>
       {error && <p role="alert">{error} <button onClick={() => setRefresh((value) => value + 1)}>{copy('다시 시도')}</button></p>}
-      {loading ? <p role="status">{label('주문 내역을 불러오는 중…', 'Loading orders…')}</p> : error ? null : orders.length === 0 ? <div className="account-empty">{label('아직 주문 내역이 없습니다.', 'No orders yet.')}</div> : <div className="account-order-list">{orders.map((order) => <article className="account-order-card" key={order.id}><div className="account-order-top"><span>{order.createdAt?.toLocaleDateString(ko ? 'ko-KR' : 'en-US') || '—'}</span><strong>{copy(order.status)}</strong></div><h3>{order.items?.map((item) => item.productName).join(', ')}</h3><p>{label('주문번호', 'Order no.')} {order.orderNumber || order.id}</p><div className="account-order-total"><span>{label('결제 금액', 'Order total')}</span><strong>{formatMoney(order.totalAmountNumber, order.currency || 'KRW')}</strong></div>{order.trackingNumber && <a href={getTrackingUrl(order.courier, order.trackingNumber)} target="_blank" rel="noreferrer">{label('배송 조회', 'Track shipment')} →</a>}</article>)}</div>}
+      {loading ? <p role="status">{label('주문 내역을 불러오는 중…', 'Loading orders…')}</p> : error ? null : orders.length === 0 ? <div className="account-empty">{label('아직 주문 내역이 없습니다.', 'No orders yet.')}</div> : <div className="account-order-list">{orders.map((order) => <article className="account-order-card" key={order.id}><div className="account-order-top"><span>{order.createdAt?.toLocaleDateString(ko ? 'ko-KR' : 'en-US') || '—'}</span><strong>{copy(order.status)}</strong></div><h3>{order.items?.map((item) => item.productName).join(', ')}</h3><p>{label('주문번호', 'Order no.')} {order.orderNumber || order.id}</p><div className="account-order-total"><span>{label('결제 금액', 'Order total')}</span><strong>{formatMoney(order.totalAmountNumber, order.currency || 'KRW')}</strong></div><div className="account-order-actions"><button type="button" onClick={() => setStatementId(order.id)} aria-label={`${label('전표 보기', 'View statement')} · ${order.orderNumber || order.id}`}>{label('전표 보기', 'View statement')}</button>{order.trackingNumber && <a href={getTrackingUrl(order.courier, order.trackingNumber)} target="_blank" rel="noreferrer">{label('배송 조회', 'Track shipment')} →</a>}</div></article>)}</div>}
       {(cursors.length > 1 || (!loading && orders.length === 20 && lastDoc)) && <nav className="account-pagination" aria-label={label('주문 페이지', 'Order pages')}><button disabled={loading || cursors.length === 1} onClick={() => setCursors((value) => value.slice(0, -1))}>{label('이전', 'Previous')}</button><span>{cursors.length}</span><button disabled={loading || orders.length < 20 || !lastDoc} onClick={() => setCursors((value) => [...value, lastDoc])}>{label('다음', 'Next')}</button></nav>}
     </section>
-  </div></main>;
+  </div>
+    {statementId && <OrderStatementDialog key={`${currentUser.uid}:${statementId}`} orderId={statementId} userId={currentUser.uid} language={language} onClose={() => setStatementId('')} />}
+  </main>;
 }
