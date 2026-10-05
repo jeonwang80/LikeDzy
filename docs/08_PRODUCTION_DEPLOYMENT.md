@@ -1,5 +1,13 @@
 # 운영 배포 기록 — 2026-09-06
 
+## 2026-10-05 현재 색상·사이즈 기준 재고 집계
+
+- 소스 커밋 `922894c`, Firebase Hosting 및 Vercel 운영 배포 완료.
+- Vercel Production `dpl_7uSHAdgW3ucsWMEmJnE8TJpwAGZM`, READY. https://likedzy-knkzh0kxj-jeonwang80-6811s-projects.vercel.app
+- likedzy.com, www.likedzy.com, likedzy-store.web.app HTTP 200, 진입 번들 `/assets/index-DMUwxykn.js` 일치 및 `AdminInventory-g4mGsR81.js` SHA-256 로컬 검증 빌드 일치 확인.
+- 목록·총 재고·품절/부족 필터에서 이전 옵션 재고를 제외한다. 옵션 기준은 재고 입력표와 공유하며 최신 상품 구독값을 사용한다. 운영 DB 수량과 판매 이력은 변경하지 않았다.
+- 운영 데이터를 읽기 전용으로 대조해 모션 반팔 폴로 146 → 111개, 카라배색 반팔 폴로 56개 유지 확인. 관련 테스트 5개, 변경 파일 lint 및 운영 build 통과.
+
 ## 2026-10-05 관리자 판매 중지·재개 색상 구분
 
 - 소스 커밋 `98c6ae8`, Firebase Hosting 및 Vercel 운영 배포 완료.
