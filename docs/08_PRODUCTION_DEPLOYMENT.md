@@ -1,5 +1,12 @@
 # 운영 배포 기록 — 2026-09-06
 
+## 2026-10-05 준비중 중앙 문구 제거
+
+- 소스 커밋 `d01176b`, Firebase Hosting 및 Vercel 운영 배포 완료.
+- Vercel Production `dpl_HqCrUvsppJrup1HT3HBi4Bm172xU`, READY. https://likedzy-jw3fyb1cq-jeonwang80-6811s-projects.vercel.app
+- likedzy.com, www.likedzy.com, likedzy-store.web.app HTTP 200 및 `/assets/index-DCLhzMt2.js` 일치 확인.
+- 사진 중앙의 중복 문구를 제거하고 회색 음영과 사진 아래 준비중 배지를 유지했다. 운영 목록에서 확인 완료.
+
 ## 2026-10-05 상품 준비중 회색 음영
 
 - 소스 커밋 `d14303d`, `origin/master` 푸시 및 Firebase Hosting 배포 완료.
