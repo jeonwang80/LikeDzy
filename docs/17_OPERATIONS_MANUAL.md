@@ -30,3 +30,11 @@
 - Firebase Hosting 배포 완료.
 - likedzy.com, www.likedzy.com, likedzy-store.web.app에서 `/guide`, `/guide/`, CSS, JS 응답 200과 로컬 파일 내용 일치 확인.
 - 운영 진입 번들 `/assets/index-LJybrhsR.js` 일치 확인.
+
+### 시스템 구조·ERD 및 모바일 카드 운영 반영
+
+- 소스 커밋: 86dc59e. 모바일 320px/390px, PC 1280px 검수 및 빌드 통과.
+- ERD 검색·목차 이동, 도표 로드와 도표 영역 내부 스크롤 확인.
+- Vercel Production dpl_AcW4oBeDnNSs4zVxwdsFPAndHkbV READY, Firebase Hosting 배포 완료.
+- likedzy.com / www.likedzy.com / likedzy-store.web.app에서 매뉴얼 HTML·CSS·JS·SVG 2종 내용 일치 및 진입 번들 index-CNaUN3s1.js 확인.
+
