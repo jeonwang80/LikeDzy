@@ -6,3 +6,8 @@
 .image-background-actions input[type=color]{width:32px;height:28px;padding:0;border:0;cursor:pointer}
 .image-background-control small,.image-background-control p{font-size:12px;line-height:1.6;margin:4px 0;color:#647067}
 .image-background-control [role=alert]{color:#b42318}
+.image-background-picker{margin-top:12px}
+.image-background-picker .image-background-pick-surface{display:block;width:100%;padding:0;border:0;background:transparent;cursor:crosshair;line-height:0}
+.image-background-pick-surface canvas{display:block;width:100%;height:auto}
+.image-background-pick-surface:focus-visible{outline:3px solid #2878bd;outline-offset:3px}
+.image-background-picker>button:last-child{margin-top:10px;min-height:40px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;background:white;color:#243128}

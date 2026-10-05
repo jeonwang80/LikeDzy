@@ -25,7 +25,7 @@ export function sampleEdgeColor(data, width, height) {
   return '#' + winner.sum.map(v => Math.round(v / winner.count).toString(16).padStart(2, '0')).join('');
 }
 
-export function detectImageBackground(url) {
+export function loadBackgroundCanvas(url, maxSide = 1024) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -35,12 +35,32 @@ export function detectImageBackground(url) {
       clearTimeout(timer);
       try {
         const canvas = document.createElement('canvas');
-        canvas.width = 96; canvas.height = 96;
+        const ratio = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * ratio));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * ratio));
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.drawImage(img, 0, 0, 96, 96);
-        resolve(sampleEdgeColor(ctx.getImageData(0, 0, 96, 96).data, 96, 96));
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        ctx.getImageData(0, 0, 1, 1); // Verify pixel access before offering the picker.
+        resolve(canvas);
       } catch { reject(new Error('이 사진의 배경색을 읽을 수 없습니다. 직접 지정해 주세요.')); }
     };
-    img.src = url;
+    const source = new URL(url, window.location.href);
+    // Separate CORS reads from the regular display image cached without CORS.
+    if (source.hostname === 'firebasestorage.googleapis.com') source.searchParams.set('backgroundRead', 'v2');
+    img.src = source.href;
   });
+}
+
+export async function detectImageBackground(url) {
+  const canvas = await loadBackgroundCanvas(url, 128);
+  const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+  return sampleEdgeColor(pixels.data, canvas.width, canvas.height);
+}
+
+export function sampleCanvasColor(canvas, x, y) {
+  const px = Math.max(0, Math.min(canvas.width - 1, Math.floor(x)));
+  const py = Math.max(0, Math.min(canvas.height - 1, Math.floor(y)));
+  const [r, g, b, a] = canvas.getContext('2d').getImageData(px, py, 1, 1).data;
+  if (a < 240) return null;
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
 }

@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://likedzy.com", "https://www.likedzy.com", "https://likedzy-store.web.app", "https://likedzy-store.firebaseapp.com"],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type"],
+    "maxAgeSeconds": 3600
+  }
+]
