@@ -1,5 +1,15 @@
 # 운영 배포 기록 — 2026-09-06
 
+## 2026-10-05 신상품 출시 팝업 및 상품 상태 색상
+
+- 소스 커밋 `b3bde2f`, `origin/master` 푸시 완료. 화이트·올리브·네이비 사진 3장과 30% 할인 안내, 홈 진입 팝업, 관리자 편집 기능을 배포했다.
+- 추천 파랑 / NEW 금색 / BEST 초록 / 상품 준비중 회색을 관리자·편집 미리보기·스토어에서 함께 사용한다.
+- Firebase `likedzy-store` Hosting 배포 완료. Vercel Preview 빌드 후 운영 승격 완료.
+- Vercel Production `dpl_8GYLqkHZbZmMqTJbFKu2VQmhEoKX`, READY. 배포 주소: https://likedzy-d7q9ou95m-jeonwang80-6811s-projects.vercel.app
+- likedzy.com, www.likedzy.com, likedzy-store.web.app HTTP 200 및 진입 번들 `/assets/index-vTxQg1dL.js` 일치 확인.
+- `/campaigns/`를 Vercel SPA rewrite 대상에서 제외했다. 운영 사진 3장 image/jpeg 응답과 브라우저 로딩, 팝업 노출·상품 목록 이동 및 배지 색상 확인.
+- 빌드·팝업 테스트 3건 통과. 기존 주문·쿠폰·재고 데이터 및 서버 함수 변경 없음.
+
 ## 2026-10-05 사이즈 가이드 종류 및 모바일 리뷰·문의 개선
 
 - 소스 커밋 `c4844ce`, `origin/master` 푸시 완료.

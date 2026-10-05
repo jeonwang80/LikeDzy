@@ -33,4 +33,5 @@
 - 격리된 Firebase 에뮬레이터에서 관리자 문구 저장, 사진 업로드, 노출 중단/재개 실시간 반영 확인.
 - 고객 화면에서 상품 목록 이동, ESC 닫기, 닫은 후 새로고침 숨김, 오늘 숨김 확인.
 - 데스크톱 및 모바일 390px/320px 한국어·영어 미리보기 확인. 가로 넘침 없음.
-- 운영 배포 전 상태입니다.
+- 2026-10-05 운영 배포 완료. 소스 커밋 `b3bde2f`, Vercel Production `dpl_8GYLqkHZbZmMqTJbFKu2VQmhEoKX` 및 Firebase Hosting에 반영했습니다.
+- likedzy.com / www.likedzy.com / likedzy-store.web.app에서 `/assets/index-vTxQg1dL.js` 일치 확인. 운영 팝업 및 JPEG 사진 3장 정상 응답 확인.
