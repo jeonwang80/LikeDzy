@@ -10,3 +10,14 @@
 - 반응형 목차, 현재 위치 표시, 인쇄/PDF용 전체 문서 스타일 제공.
 - 기능 변경 시 본문과 기준일을 함께 갱신. 실제 계좌번호, 고객정보, 관리자 UID, 비밀키는 문서에 넣지 않음.
 - Vercel SPA rewrite에서 `/guide/` 제외. Firebase Hosting은 실제 정적 파일 우선 제공.
+
+## 운영 반영 확인
+
+- 소스 커밋: `efb19e8`.
+- 빌드, AdminLayout lint, 매뉴얼 JS 구문 검사 통과.
+- PC 1280px / 모바일 390px에서 레이아웃 검수. 가로 넘침 없음, 내부 앵커 누락 없음, 검색·빈 결과·초기화·모바일 목차 이동 확인.
+- Vercel Production `dpl_2y1NMSRVA7GNxnLW87k9RbRhEfgK` READY 확인.
+- 배포 주소: https://likedzy-7u4tpak0o-jeonwang80-6811s-projects.vercel.app
+- Firebase Hosting 배포 완료.
+- likedzy.com, www.likedzy.com, likedzy-store.web.app에서 `/guide`, `/guide/`, CSS, JS 응답 200과 로컬 파일 내용 일치 확인.
+- 운영 진입 번들 `/assets/index-LJybrhsR.js` 일치 확인.
