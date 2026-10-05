@@ -1,5 +1,17 @@
 # 운영 배포 기록 — 2026-09-06
 
+## 2026-10-05 사이즈 가이드 종류 및 모바일 리뷰·문의 개선
+
+- 소스 커밋 `c4844ce`, `origin/master` 푸시 완료.
+- 상의·바지·모자 가이드 선택, 종류별 측정표·그림·설명과 기존 상의 호환을 반영했다.
+- 모바일 리뷰·문의 전용 작성창, 입력 간격, 고정 버튼 영역, 사진 미리보기, 상품 상세 탭 간격을 개선했다. 관리자 답변의 낮은 글자 대비를 수정했다.
+- Firebase `likedzy-store` Hosting 및 Firestore 색인 배포 완료. 관리자 상품별 전체 문의 조회용 `qnaV2(productId, createdAt desc)` 색인이 운영 목록에 포함됨을 확인했다.
+- Git 자동 배포는 Preview로 생성되어 Vercel promote로 운영 반영했다. 운영 배포 `dpl_HAZF59v9M6qWqCK6b33XJwF1DWyK`, Production / READY.
+- 배포 URL: https://likedzy-a509agduo-jeonwang80-6811s-projects.vercel.app
+- likedzy.com, www.likedzy.com, likedzy-store.web.app HTTP 200 및 진입 번들 `/assets/index-CJMJ2gtj.js` 일치 확인. CSS `/assets/index-DJfRe4GJ.css`.
+- 사이즈 가이드 테스트 4개, 변경 컴포넌트 lint, 운영 build 통과. 앞선 로컬 검증에서 320/390px 및 데스크톱 작성창, 리뷰·문의 등록, 관리자 답변 실시간 표시, 비밀글 접근 제한을 확인했다.
+- 운영 상품·리뷰·문의 데이터는 테스트로 생성하거나 수정하지 않았다.
+
 사용자가 수정사항의 운영 배포를 명시적으로 요청하여 수행했다. 이전 검증 문서의 미배포 표시는 2026-09-05 검증 당시 상태이며 이 기록으로 갱신한다.
 
 - 애플리케이션 배포 커밋: `10c5df211b28e335ce36a3d9d11ccd29676f29a0`.
