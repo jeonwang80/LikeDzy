@@ -1,5 +1,11 @@
 # 운영 배포 기록 — 2026-09-06
 
+## 2026-10-05 아이폰·아이패드 설치 가이드
+
+- 소스 `1b4ae1c`, Firebase Hosting 및 Vercel Production `dpl_DngMfSYWT3hWCLmALvAFqbkcpjjx` READY 확인. https://likedzy-qp94l8t9y-jeonwang80-6811s-projects.vercel.app
+- Apple 모바일은 `설치 가이드`/`Installation guide` 버튼과 Safari 홈 화면 추가 안내만 표시한다. Android/PC의 설치 동작은 유지한다.
+- 운영 빌드 통과. likedzy.com, www.likedzy.com, likedzy-store.web.app의 `/assets/index-DI_hFaxv.js` 및 PWA 정적 파일 HTTP 200, MIME, 로컬 빌드 내용 일치 확인.
+
 ## 2026-10-05 PWA 설치 기능
 
 - 소스 커밋 `040e50e`, Firebase Hosting 및 Vercel 운영 배포 완료.
