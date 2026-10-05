@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "LIKEDZY — Technical Outdoor",
+  "short_name": "LIKEDZY",
+  "description": "도시와 자연의 경계를 넘는 테크니컬 아웃도어",
+  "lang": "ko",
+  "start_url": "/#/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f7f7",
+  "theme_color": "#233328",
+  "icons": [
+    { "src": "/pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

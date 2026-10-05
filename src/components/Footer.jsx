@@ -5,6 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { useLanguage } from '../i18n/LanguageContext';
 import { db } from '../firebase';
 import { normalizeCommerceSettings } from '../utils/commerce';
+import InstallApp from './InstallApp';
 
 export default function Footer() {
   const copy = useStoreCopy();
@@ -23,6 +24,7 @@ export default function Footer() {
         <img src="/likedzy-logo.png" alt="LIKEDZY" />
       </div>
       <p className="footer-rights">{t('footer.rights')}</p>
+      <InstallApp />
       <nav aria-label={copy("쇼핑 안내")} style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center', padding: '12px 0' }}><Link to="/orders/lookup">{copy("주문 조회")}</Link><Link to="/policies/terms">{copy("이용약관")}</Link><Link to="/policies/privacy">{copy("개인정보 처리방침")}</Link><Link to="/policies/returns">{copy("교환·반품 안내")}</Link></nav>
       <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('footer.company')}</p>
       {commerce.businessName && (
