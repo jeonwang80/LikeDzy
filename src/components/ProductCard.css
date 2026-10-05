@@ -47,6 +47,31 @@
   color: #fff;
 }
 
+/* Fill the compact mobile grid without an inset photo inside a taller frame. */
+@media (max-width: 767px) {
+  .alo-product-card .alo-card-media,
+  .skeleton-card .skeleton-img {
+    aspect-ratio: 1 / 1;
+  }
+
+  .alo-product-card .alo-card-img {
+    object-fit: cover !important;
+    padding: 0;
+  }
+
+  .alo-product-card .alo-card-media:hover .alo-card-img {
+    transform: none;
+  }
+
+  body .alo-product-card .alo-quick-bag-btn-overlay {
+    display: flex;
+  }
+
+  body .alo-product-card .alo-quick-bag-btn-tools {
+    display: none;
+  }
+}
+
 @media (max-width: 600px) {
   .alo-product-card.is-preparing .alo-card-tools-row,
   .alo-product-card.is-preparing > .product-badges,

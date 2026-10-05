@@ -11,6 +11,15 @@
 - 기능 변경 시 본문과 기준일을 함께 갱신. 실제 계좌번호, 고객정보, 관리자 UID, 비밀키는 문서에 넣지 않음.
 - Vercel SPA rewrite에서 `/guide/` 제외. Firebase Hosting은 실제 정적 파일 우선 제공.
 
+## 시스템 구조 및 ERD 확장
+
+- `#architecture`: 호스팅, React 화면, Auth, Cloud Functions, Firestore, Storage, 자동 트리거 구성과 주문 트랜잭션 흐름.
+- `#erd`: 상품/재고와 회원/주문/쿠폰 논리 ERD. Firestore는 FK를 강제하는 관계형 DB가 아님을 명시. orders.items[]는 내장 배열, Auth는 별도 서비스로 표현.
+- `#data-reference`: 주요 필드, 보조 컬렉션, 문서별 설정, 읽기/쓰기 권한, 로컬 브라우저 데이터 설명.
+- SVG 원본 생성: `node scripts/build-manual-diagrams.mjs` → `public/guide/diagrams/*.svg`. 외부 라이브러리/CDN 의존성 없이 표시·인쇄 가능.
+- 작은 화면에서는 그림 영역만 가로 스크롤, SVG 새 탭 크게 보기와 텍스트 관계표 제공.
+- 필드·관계는 실제 소스와 규칙에서 검토. 계정 목록은 Auth, 사용자 프로필은 users에 분리. 쿠폰 발급 사본과 최신 행사 조건, 사용 상태 문서와 주문 이벤트를 구분.
+
 ## 운영 반영 확인
 
 - 소스 커밋: `efb19e8`.
