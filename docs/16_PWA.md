@@ -12,9 +12,11 @@
 
 참고: [MDN 설치 조건](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable), [web.dev 설치 프롬프트](https://web.dev/learn/pwa/installation-prompt).
 
-## 검증 — 2026-10-05 (운영 미배포)
+## 검증 — 2026-10-05
 
 - 운영 빌드 및 변경 JS/JSX lint 통과. 서비스 워커 캐시 경계·탐색 실패·API 우회·manifest/아이콘/rewrite·설치 이벤트 테스트 5개 통과.
 - 로컬 운영 빌드를 브라우저에서 열어 서비스 워커 `/sw.js` 등록, `activated`, 페이지 제어를 확인했다.
 - 모바일 390px 설치 안내 표시/닫기, 데스크톱 영어 전환, 320px 연결 안내에서 가로 넘침 없음을 확인했다.
-- 기기에 앱을 실제로 설치하는 OS 단계 및 운영 HTTPS 도메인 반영은 아직 수행하지 않았다.
+- 운영 배포 완료: 소스 `040e50e`, Vercel Production `dpl_3foXi2jgcnqZBGfXrt1nTF7xtn8W` READY 및 Firebase Hosting release complete.
+- likedzy.com, www.likedzy.com, likedzy-store.web.app에서 진입 번들 `/assets/index-CV_J67L_.js`, 서비스 워커, manifest, offline.html, 아이콘 4개의 HTTP 200·MIME·검증 빌드 내용 일치를 확인했다. 서비스 워커 재검증 헤더도 확인했다.
+- 기기에 앱을 실제로 설치하는 OS 단계는 수행하지 않았다.

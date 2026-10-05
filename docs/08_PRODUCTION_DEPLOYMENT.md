@@ -1,5 +1,13 @@
 # 운영 배포 기록 — 2026-09-06
 
+## 2026-10-05 PWA 설치 기능
+
+- 소스 커밋 `040e50e`, Firebase Hosting 및 Vercel 운영 배포 완료.
+- Vercel Production `dpl_3foXi2jgcnqZBGfXrt1nTF7xtn8W`, READY. https://likedzy-pi8xee3a2-jeonwang80-6811s-projects.vercel.app
+- 스토어 하단 설치 버튼, Safari 설치 안내, 홈 화면 아이콘, standalone manifest 및 오프라인 연결 안내를 반영했다. 서비스 워커는 연결 안내 페이지만 저장하며 주문·회원·재고 데이터를 캐시하지 않는다.
+- likedzy.com, www.likedzy.com, likedzy-store.web.app 모두 진입 번들 `/assets/index-CV_J67L_.js`, sw.js/manifest/offline.html/아이콘 4개의 HTTP 200·MIME·로컬 빌드 내용 일치 및 SW 재검증 헤더 확인.
+- 빌드 통과, 직전 구현 검증의 테스트 5개 및 로컬 브라우저 서비스 워커 활성화·설치 안내 확인 완료. 실제 휴대폰 OS 설치 단계는 미실행.
+
 ## 2026-10-05 현재 색상·사이즈 기준 재고 집계
 
 - 소스 커밋 `922894c`, Firebase Hosting 및 Vercel 운영 배포 완료.
