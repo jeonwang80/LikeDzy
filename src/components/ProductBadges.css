@@ -1,0 +1,16 @@
+/* Shared by inventory toggles, editor preview, product cards and details. */
+:root{
+  --badge-recommended-bg:#dbeafe;--badge-recommended-ink:#1e40af;
+  --badge-new-bg:#f5dfa7;--badge-new-ink:#61420c;
+  --badge-best-bg:#deebc9;--badge-best-ink:#365522;
+  --badge-preparing-bg:#e5e7eb;--badge-preparing-ink:#4b5563;
+}
+.badge-recommended{--product-badge-bg:var(--badge-recommended-bg);--product-badge-ink:var(--badge-recommended-ink)}
+.badge-new{--product-badge-bg:var(--badge-new-bg);--product-badge-ink:var(--badge-new-ink)}
+.badge-best-seller{--product-badge-bg:var(--badge-best-bg);--product-badge-ink:var(--badge-best-ink)}
+.badge-preparing,.badge-default{--product-badge-bg:var(--badge-preparing-bg);--product-badge-ink:var(--badge-preparing-ink)}
+.product-badges{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0;margin:3px 0 6px}
+.alo-badge-pill.product-badge{display:inline-flex;align-items:center;background:var(--product-badge-bg);color:var(--product-badge-ink);border-radius:4px;padding:4px 8px;font-size:11px;font-weight:750;line-height:1.4;letter-spacing:.02em;white-space:nowrap}
+.admin-visibility-toggles button.active{background:var(--product-badge-bg);border-color:var(--product-badge-bg);color:var(--product-badge-ink)}
+.admin-visibility-toggles button[aria-pressed=false]{background:#fff;color:#647067;border-color:#dce1dd}
+.admin-visibility-toggles button:focus-visible{outline:2px solid #1e40af;outline-offset:2px}

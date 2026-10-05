@@ -231,29 +231,6 @@ body.storefront-theme .alo-quick-bag-btn:hover {
   color: var(--colors-on-primary);
 }
 
-body.storefront-theme .alo-badge-pill {
-  background: var(--colors-success);
-  color: var(--colors-on-primary);
-  font-size: 0.7rem;
-  padding: 4px 8px;
-}
-
-body.storefront-theme .alo-badge-pill.badge-best-seller {
-  background: #a8b891;
-}
-
-body.storefront-theme .alo-badge-pill.badge-new {
-  background: #d6b46d;
-}
-
-body.storefront-theme .alo-badge-pill.badge-recommended {
-  background: #91a8b4;
-}
-
-body.storefront-theme .alo-badge-pill.badge-default {
-  background: #c8c1b5;
-}
-
 body.storefront-theme .alo-badge-wrapper {
   min-height: 23px;
   display: flex;

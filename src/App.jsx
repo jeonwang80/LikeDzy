@@ -32,7 +32,7 @@ function App() {
       
       <Suspense fallback={<div role="status" style={{ padding: '6rem 5%', textAlign: 'center' }}>화면을 불러오는 중입니다.</div>}>
       <Routes>
-        <Route path="/" element={<Storefront />} />
+        <Route path="/" element={<Storefront introComplete={!showSplash} />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/mypage" element={<MyPage />} />

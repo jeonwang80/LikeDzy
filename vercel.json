@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/((?!(?:assets|payments)/).*)", "destination": "/index.html" }
+    { "source": "/((?!(?:assets|payments|campaigns)/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

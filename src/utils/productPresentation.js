@@ -38,6 +38,18 @@ export function getProductBadge(product) {
   return '';
 }
 
+export function getProductBadges(product) {
+  const badges = [];
+  if (product?.isFeatured) badges.push({ type: 'recommended', label: 'RECOMMENDED' });
+  if (product?.isNew) badges.push({ type: 'new', label: 'NEW' });
+  if (product?.isBestSeller) badges.push({ type: 'best-seller', label: 'BEST SELLER' });
+  const legacy = normalizeProductBadge(product?.badgeText);
+  if (legacy && !badges.some(badge => badge.label === legacy)) {
+    badges.push({ type: { RECOMMENDED: 'recommended', NEW: 'new', 'BEST SELLER': 'best-seller', '상품 준비중': 'preparing', 'Coming soon': 'preparing' }[legacy] || 'default', label: legacy });
+  }
+  return badges;
+}
+
 export function presentProduct(originalProduct, language = 'ko') {
   const product = normalizeProductImages(originalProduct);
   const localized = product?.[language] || product?.ko || {};

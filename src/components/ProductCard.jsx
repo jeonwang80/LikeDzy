@@ -1,3 +1,4 @@
+import ProductBadges from './ProductBadges';
 import React, { useState } from 'react';
 import { Heart } from 'lucide-react';
 import {
@@ -37,7 +38,6 @@ export default function ProductCard({
   const { language } = useLanguage();
   const { variants, loading: stockLoading, error: stockError } = useProductStock(product.id);
   const preparing = !stockLoading && !stockError && !hasAvailableProductStock(product, variants);
-  const badgeText = preparing ? (language === 'ko' ? '상품 준비중' : 'Coming soon') : product.badgeText;
   const [isHovered, setIsHovered] = useState(false);
   const [requestedHoverUrls, setRequestedHoverUrls] = useState(() => new Set());
   const [loadedHoverUrl, setLoadedHoverUrl] = useState('');
@@ -54,11 +54,7 @@ export default function ProductCard({
   const primarySources = getProductImageSources(product, cardPrimary);
   const hoverSources = getProductImageSources(product, cardHover);
   const showHover = isHovered && hasHoverImage && loadedHoverUrl === cardHover;
-  const badgeVariant = {
-    'BEST SELLER': 'badge-best-seller',
-    NEW: 'badge-new',
-    RECOMMENDED: 'badge-recommended',
-  }[badgeText] || 'badge-default';
+
 
   const openProduct = () => onProductSelect(product);
   const requestHover = () => {
@@ -186,14 +182,7 @@ export default function ProductCard({
         </button>
       </div>
 
-      <div
-        className={`alo-badge-wrapper ${badgeText ? 'has-badge' : 'is-empty'}`}
-        aria-hidden={!badgeText}
-      >
-        {badgeText && (
-          <span className={`alo-badge-pill ${badgeVariant}`}>{badgeText}</span>
-        )}
-      </div>
+      <ProductBadges product={product} preparing={preparing} language={language}/>
 
       <div className="alo-card-details">
         <h3 className="alo-product-title"><a href={`#${buildProductUrl(product.id, product.fromCategory)}`} style={{ color: 'inherit', textDecoration: 'none' }} onClick={(event) => {

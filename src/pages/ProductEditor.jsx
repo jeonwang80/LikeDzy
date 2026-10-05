@@ -1,3 +1,4 @@
+import ProductBadges from '../components/ProductBadges';
 import { assignProductImage, normalizeProductImages, removeProductImage } from '../utils/productImages';
 import SizeGuideDrawer from '../components/SizeGuideDrawer';
 import { validateGuide } from '../utils/measurementGuide';
@@ -884,7 +885,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                         onChange={e => setFormData(prev => ({ ...prev, isBestSeller: e.target.checked }))} 
                         style={{ width: '15px', height: '15px', cursor: 'pointer' }}
                       />
-                      <span className="alo-badge-pill" style={{ opacity: formData.isBestSeller ? 1 : 0.4, margin: 0 }}>
+                      <span className="alo-badge-pill product-badge badge-best-seller" style={{ opacity: formData.isBestSeller ? 1 : 0.4, margin: 0 }}>
                         BEST SELLER
                       </span>
                     </label>
@@ -1163,11 +1164,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                 </div>
 
                 <div className="alo-detail-header-meta">
-                  <div className="admin-preview-badges">
-                    {formData.isFeatured && <span className="admin-preview-badge recommended">RECOMMENDED</span>}
-                    {formData.isNew && <span className="admin-preview-badge new">NEW</span>}
-                    {formData.isBestSeller && <span className="admin-preview-badge best">BEST SELLER</span>}
-                  </div>
+                  <ProductBadges product={formData}/>
                   <span className="admin-preview-category">{currentLangData.category || 'CATEGORY'}</span>
                   <h1 className="alo-detail-title">{currentLangData.name || '상품명을 입력하세요'}</h1>
                   <div className="alo-detail-price-rating-row">

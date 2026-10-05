@@ -579,7 +579,7 @@ textarea {
   font-weight: 800;
   cursor: pointer;
 }
-.admin-visibility-toggles button.active { background: var(--admin-forest); border-color: var(--admin-forest); color: #fff; }
+
 
 .admin-stock-summary { display: flex; flex-direction: column; gap: 4px; }
 .admin-stock-summary strong { font-size: 1rem; }
@@ -1118,11 +1118,6 @@ textarea {
 .admin-preview-status > div span { color: var(--admin-success); font-size: 0.58rem; font-weight: 900; letter-spacing: 0.12em; }
 .admin-preview-status > div strong { color: var(--admin-ink); font-size: 0.76rem; }
 .admin-preview-status > span { padding: 4px 7px; border-radius: 999px; background: #dfe9df; color: var(--admin-success); font-size: 0.58rem; font-weight: 800; white-space: nowrap; }
-.admin-preview-badges { min-height: 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.admin-preview-badge { padding: 4px 8px; border-radius: 4px; color: #151715; font-size: 0.58rem; font-weight: 900; letter-spacing: 0.04em; }
-.admin-preview-badge.recommended { background: #bdc8ce; }
-.admin-preview-badge.new { background: #d6b98a; }
-.admin-preview-badge.best { background: #afc194; }
 .admin-preview-category { color: var(--admin-muted); font-size: 0.66rem; font-weight: 800; letter-spacing: 0.06em; }
 .admin-preview-option-block { padding: 14px; border: 1px solid var(--admin-line); border-radius: 10px; background: var(--admin-surface-strong); }
 .admin-preview-option-block .alo-size-pill-btn { display: grid; place-items: center; cursor: default; }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
+import AdminLaunchPromotion from '../components/AdminLaunchPromotion';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -136,6 +137,7 @@ export default function AdminDashboard() {
         </button>
       </div>
 
+      <AdminLaunchPromotion />
       {/* Hero Banner Management */}
       <div className="admin-card">
         <h2 className="admin-card-title">

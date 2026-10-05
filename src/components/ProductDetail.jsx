@@ -1,3 +1,5 @@
+import ProductBadges from './ProductBadges';
+import { hasAvailableProductStock } from '../utils/productStock';
 import { normalizeProductImages } from '../utils/productImages';
 import SizeGuideDrawer from './SizeGuideDrawer';
 import React, { useEffect, useState, useMemo } from 'react';
@@ -217,9 +219,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
         {/* Product summary, gallery, and purchase options */}
         <div className="alo-detail-layout">
           <div className="alo-detail-header-meta">
-            {product.isBestSeller && (
-              <span className="alo-badge-pill" style={{ marginBottom: '8px' }}>BEST SELLER</span>
-            )}
+            <ProductBadges product={product} preparing={!stockLoading && !stockError && !hasAvailableProductStock(product, variants)} language={language}/>
             <h1 className="alo-detail-title">{name}</h1>
             <div className="alo-detail-price-rating-row">
               <span className="alo-detail-price-text">{displayPrice}</span>

@@ -1,0 +1,47 @@
+.launch-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgb(12 18 15 / 62%); backdrop-filter: blur(5px); }
+.launch-dialog { width: min(920px, 100%); max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: contain; background: #f7f7f2; color: #17221c; box-shadow: 0 24px 90px #0005; border-radius: 3px; outline: none; font-family: var(--font-body, sans-serif); }
+.launch-dialog * { box-sizing: border-box; }
+.launch-dialog button { font: inherit; cursor: pointer; text-transform: none; letter-spacing: normal; }
+.launch-dialog button:focus-visible { outline: 3px solid #3975d5; outline-offset: -3px; }
+.launch-topline { display: flex; align-items: center; gap: 20px; height: 54px; padding: 0 24px; }
+.launch-topline > span:first-child { font-size: 21px; font-weight: 900; letter-spacing: -1px; }
+.launch-topline > span:nth-child(2) { margin-left: auto; font-size: 10px; letter-spacing: 2px; font-weight: 600; }
+.launch-close { width: 36px; height: 36px; background: transparent; color: #17221c; border: 0; font-size: 28px !important; line-height: 1; }
+.launch-photos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; padding: 0 12px; }
+.launch-photos img { width: 100%; height: clamp(220px, 40vh, 375px); object-fit: cover; object-position: center 35%; display: block; min-width: 0; }
+.launch-content { padding: 26px 32px 18px; display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 16px 24px; align-items: center; }
+.launch-dialog .launch-eyebrow { margin: 0 0 10px; font-size: 10px; letter-spacing: 2px; font-weight: 700; color: #59634d; }
+.launch-dialog h2 { margin: 0; font-family: inherit; font-size: clamp(24px, 3vw, 32px); line-height: 1.3; font-weight: 750; letter-spacing: -1px; word-break: keep-all; overflow-wrap: anywhere; text-transform: none; }
+.launch-dialog .launch-description { font-size: 13px; line-height: 1.6; margin: 10px 0 0; color: #59634d; word-break: keep-all; }
+.launch-offer > p { font-size: 22px; font-weight: 750; line-height: 1.4; margin: 0 0 12px; letter-spacing: -0.6px; word-break: keep-all; }
+.launch-shop { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 46px; padding: 12px 18px; background: #20392b; color: #fff; border: 0; font-size: 13px !important; font-weight: 700 !important; gap: 12px; }
+.launch-shop:hover { background: #304e3c; }
+.launch-dialog .launch-note { grid-column: 1 / -1; font-size: 11px; line-height: 1.6; margin: 0; color: #62685e; overflow-wrap: anywhere; }
+.launch-footer { display: flex; justify-content: space-between; border-top: 1px solid #dedfd5; padding: 0 20px; background: #eeefe7; }
+.launch-footer button { min-height: 46px; padding: 10px 12px; color: #485144; background: transparent; border: 0; font-size: 12px; }
+.launch-admin-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 20px; }
+.launch-admin-grid label { display: grid; gap: 7px; font-size: 13px; font-weight: 600; }
+.launch-admin-photos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 20px 0; }
+.launch-admin-photos img { width: 100%; height: 190px; object-fit: cover; object-position: center 35%; border-radius: 8px; }
+.launch-admin-photos label { display: grid; gap: 10px; min-width: 0; font-size: 13px; }
+.launch-admin-photos input { width: 100%; font-size: 12px; }
+.launch-admin-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+.launch-admin-help { color: #697169; font-size: 13px; line-height: 1.7; margin: 12px 0; }
+@media (max-width: 600px) {
+  .launch-overlay { padding: 14px; }
+  .launch-dialog { max-height: calc(100dvh - 28px); }
+  .launch-topline { height: 48px; padding: 0 14px; gap: 8px; }
+  .launch-topline > span:nth-child(2) { font-size: 8px; letter-spacing: 1px; }
+  .launch-photos { padding: 0 7px; gap: 3px; }
+  .launch-photos img { height: clamp(160px, 29vh, 245px); }
+  .launch-content { display: block; padding: 20px 20px 16px; }
+  .launch-dialog h2 { font-size: 25px; letter-spacing: -0.8px; }
+  .launch-dialog .launch-description { font-size: 12px; margin-top: 6px; }
+  .launch-offer { margin-top: 18px; }
+  .launch-offer > p { font-size: 24px; margin-bottom: 10px; }
+  .launch-dialog .launch-note { margin-top: 12px; font-size: 10px; }
+  .launch-footer { padding: 0 8px; }
+  .launch-admin-grid { grid-template-columns: 1fr; }
+  .launch-admin-photos { gap: 8px; }
+  .launch-admin-photos img { height: 130px; }
+}

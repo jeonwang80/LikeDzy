@@ -9,12 +9,13 @@ import BrandStory from '../components/BrandStory';
 import Footer from '../components/Footer';
 import ProductDetail from '../components/ProductDetail';
 import CollectionList from '../components/CollectionList'; 
+import LaunchPromotion from '../components/LaunchPromotion';
 import { useLanguage } from '../i18n/LanguageContext';
 import { presentProduct } from '../utils/productPresentation';
 import { buildProductUrl, readProductRoute } from '../utils/productRoutes';
 import '../storefront-theme.css';
 
-export default function Storefront() {
+export default function Storefront({ introComplete = true }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { language } = useLanguage();
@@ -110,6 +111,7 @@ export default function Storefront() {
         )}
       </main>
       <Footer />
+      {viewMode === 'home' && <LaunchPromotion ready={introComplete} />}
     </>
   );
 }

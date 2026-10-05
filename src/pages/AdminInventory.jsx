@@ -1,3 +1,4 @@
+import '../components/ProductBadges.css';
 import React, { useEffect, useMemo, useState } from 'react';
 import { collection, doc, limit, query, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -229,9 +230,9 @@ export default function AdminInventory() {
               </div>
 
               <div className="admin-visibility-toggles">
-                <button type="button" className={product.isFeatured ? 'active' : ''} onClick={() => handleToggleFlag(product, 'isFeatured')}>추천</button>
-                <button type="button" className={product.isNew ? 'active' : ''} onClick={() => handleToggleFlag(product, 'isNew')}>NEW</button>
-                <button type="button" className={product.isBestSeller ? 'active' : ''} onClick={() => handleToggleFlag(product, 'isBestSeller')}>BEST</button>
+                <button type="button" aria-pressed={Boolean(product.isFeatured)} className={`badge-recommended ${product.isFeatured ? 'active' : ''}`} onClick={() => handleToggleFlag(product, 'isFeatured')}>추천</button>
+                <button type="button" aria-pressed={Boolean(product.isNew)} className={`badge-new ${product.isNew ? 'active' : ''}`} onClick={() => handleToggleFlag(product, 'isNew')}>NEW</button>
+                <button type="button" aria-pressed={Boolean(product.isBestSeller)} className={`badge-best-seller ${product.isBestSeller ? 'active' : ''}`} onClick={() => handleToggleFlag(product, 'isBestSeller')}>BEST</button>
               </div>
 
               <div className="admin-stock-summary">
