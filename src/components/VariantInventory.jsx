@@ -3,7 +3,7 @@ import { collection, limit, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../firebase';
 import { setVariantStock } from '../services/orderService';
 import { randomKey } from '../utils/checkoutSession';
-import { sortSizeOptions } from '../utils/sizeOrder';
+import { getInventoryAxes } from '../utils/inventorySummary';
 import './VariantInventory.css';
 const cellKey = (color, size) => JSON.stringify([color, size]);
 
@@ -12,8 +12,7 @@ export function InventoryGrid({ product, records, loading, readError, onSave, on
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState({});
-  const colors = useMemo(() => [...new Set((product.colorSwatches?.length ? product.colorSwatches : product.colors?.length ? product.colors : [{ name: '기본' }]).map(c => c.name || '기본'))], [product]);
-  const sizes = useMemo(() => [...new Set(sortSizeOptions((product.sizeOptions || product.options)?.length ? product.sizeOptions || product.options : [{ name: '기본' }]).map(s => s.name || '기본'))], [product]);
+  const { colors, sizes } = useMemo(() => getInventoryAxes(product), [product]);
   const byKey = useMemo(() => new Map(records.map(r => [cellKey(r.colorName, r.optionName), r])), [records]);
   const reset = key => {
     setDrafts(current => { const next = { ...current }; delete next[key]; return next; });

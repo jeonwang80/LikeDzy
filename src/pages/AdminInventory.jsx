@@ -6,6 +6,7 @@ import ProductEditor from './ProductEditor';
 import InventoryModal from '../components/VariantInventory';
 import { FALLBACK_PRODUCT_IMAGE, formatProductPrice, getSafeImageUrl } from '../utils/productPresentation';
 import { formatCategoryPath, useCategoryMasters } from '../hooks/useCategoryMasters';
+import { getCurrentInventoryStock, getInventoryAxes } from '../utils/inventorySummary';
 
 const sortProductList = (items) => [...items].sort((a, b) => {
   const orderA = a.orderIndex ?? 999;
@@ -32,7 +33,7 @@ export default function AdminInventory() {
   const [rawProducts, setProducts] = useState([]);
   const [inventory, setInventory] = useState([]);
   const products = useMemo(() => rawProducts.map((product) => ({ ...product,
-    skuStock: inventory.filter((item) => item.productId === product.id).reduce((sum, item) => sum + (Number(item.stock) || 0), 0),
+    skuStock: getCurrentInventoryStock(product, inventory),
     skuSales: inventory.filter((item) => item.productId === product.id).reduce((sum, item) => sum + (Number(item.sold) || 0), 0),
   })), [rawProducts, inventory]);
   useEffect(() => onSnapshot(query(collection(db, 'inventory'), limit(1000)), (snapshot) => setInventory(snapshot.docs.map((entry) => entry.data())), () => setInventory([])), []);
@@ -43,6 +44,7 @@ export default function AdminInventory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const currentSelectedProduct = products.find(product => product.id === selectedProduct?.id);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'products'), (snapshot) => {
@@ -165,7 +167,7 @@ export default function AdminInventory() {
           <span>재고 확인</span><strong>{metrics.lowStock}</strong><small>5개 이하 상품</small>
         </button>
         <div>
-          <span>총 재고</span><strong>{metrics.totalStock}</strong><small>전체 옵션 합계</small>
+          <span>총 재고</span><strong>{metrics.totalStock}</strong><small>현재 색상·사이즈 합계</small>
         </div>
       </section>
 
@@ -243,7 +245,7 @@ export default function AdminInventory() {
 
               <div className="admin-stock-summary">
                 <strong className={stock === 0 ? 'sold-out' : stock <= 5 ? 'low-stock' : ''}>{stock}개</strong>
-                <span>판매 {sales}개 · SKU 기준 · 옵션 {(product.options || []).length}개</span>
+                <span>판매 {sales}개 · 현재 옵션 기준 · 사이즈 {getInventoryAxes(product).sizes.length}개</span>
               </div>
 
               <div className="admin-order-controls">
@@ -262,7 +264,7 @@ export default function AdminInventory() {
         })}
       </section>
 
-      {selectedProduct && <InventoryModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />}
+      {currentSelectedProduct && <InventoryModal product={currentSelectedProduct} onClose={() => setSelectedProduct(null)} />}
       {isEditorOpen && (
         <ProductEditor
           product={editingProduct}
