@@ -133,6 +133,7 @@ export default function AdminLayout() {
 
           <div className="admin-topbar-actions">
             {resetMessage && <span className="admin-inline-notice">{resetMessage}</span>}
+            <a className="admin-topbar-btn admin-manual-link" href="/guide/" target="_blank" rel="noopener noreferrer">운영 매뉴얼 ↗</a>
             <button type="button" className="admin-topbar-btn" onClick={() => navigate('/')}>스토어 보기</button>
             <button type="button" className="admin-topbar-btn" onClick={handleQuickResetPassword}>비밀번호 변경</button>
             <button type="button" className="admin-topbar-profile" onClick={handleLogout} title="로그아웃">

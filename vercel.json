@@ -1,6 +1,7 @@
 {
   "rewrites": [
-    { "source": "/((?!(?:assets|payments|campaigns|pwa)/|(?:sw\\.js|offline\\.html|manifest\\.webmanifest)$).*)", "destination": "/index.html" }
+    { "source": "/guide", "destination": "/guide/index.html" },
+    { "source": "/((?!(?:assets|payments|campaigns|pwa|guide)/|(?:sw\\.js|offline\\.html|manifest\\.webmanifest)$).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

@@ -292,6 +292,13 @@ textarea {
 
 .admin-topbar-btn:hover { background: var(--admin-surface-strong); }
 
+.admin-topbar-actions .admin-manual-link {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
 .admin-topbar-profile {
   width: 38px;
   height: 38px;
