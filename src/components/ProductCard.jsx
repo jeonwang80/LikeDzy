@@ -11,6 +11,7 @@ import { buildProductUrl } from '../utils/productRoutes';
 import { useProductStock } from '../hooks/useProductStock';
 import { hasAvailableProductStock } from '../utils/productStock';
 import { useLanguage } from '../i18n/LanguageContext';
+import './ProductCard.css';
 
 function applyNextImageFallback(image, candidates) {
   image.removeAttribute('srcset');
@@ -64,7 +65,7 @@ export default function ProductCard({
 
   return (
     <article
-      className="alo-product-card"
+      className={`alo-product-card${preparing ? ' is-preparing' : ''}`}
       onClick={openProduct}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) return;
@@ -77,7 +78,7 @@ export default function ProductCard({
       onBlur={() => setIsHovered(false)}
       role="button"
       tabIndex={0}
-      aria-label={`${product.name} 상품 보기`}
+      aria-label={`${product.name} 상품 보기${preparing ? (language === 'ko' ? ' · 상품 준비중' : ' · Coming soon') : ''}`}
     >
       <div
         className="alo-card-media"
@@ -113,6 +114,8 @@ export default function ProductCard({
             }}
           />
         )}
+
+        {preparing && <span className="alo-preparing-notice" aria-hidden="true">{language === 'ko' ? '상품 준비중' : 'Coming soon'}</span>}
 
         <button
           type="button"

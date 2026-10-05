@@ -1,0 +1,72 @@
+/* Unavailable products retain readable labels and detail/wishlist access. */
+.alo-product-card.is-preparing {
+  background: #f1f2f3;
+  border-radius: 4px;
+  filter: grayscale(1);
+}
+
+.alo-product-card.is-preparing .alo-card-media {
+  background: #e7e9eb;
+}
+
+.alo-product-card.is-preparing .alo-card-img {
+  filter: grayscale(1) contrast(0.85) opacity(0.42);
+  transform: none;
+}
+
+.alo-product-card.is-preparing .alo-card-tools-row {
+  background: transparent;
+  padding-inline: 12px;
+}
+
+.alo-product-card.is-preparing .alo-color-swatches {
+  opacity: 0.55;
+}
+
+.alo-product-card.is-preparing > .product-badges,
+.alo-product-card.is-preparing .alo-card-details {
+  padding-inline: 12px;
+}
+
+.alo-product-card.is-preparing .alo-card-details {
+  padding-bottom: 12px;
+}
+
+.alo-product-card.is-preparing .alo-product-title,
+.alo-product-card.is-preparing .alo-product-price,
+.alo-product-card.is-preparing .alo-color-title {
+  color: #60656b;
+}
+
+.alo-product-card.is-preparing .alo-quick-bag-btn,
+.alo-product-card.is-preparing .alo-wishlist-btn {
+  color: #6b7076;
+}
+
+.alo-product-card.is-preparing .alo-quick-bag-btn:hover {
+  color: #fff;
+}
+
+.alo-preparing-notice {
+  position: absolute;
+  z-index: 3;
+  max-width: calc(100% - 24px);
+  padding: 10px 18px;
+  border: 1px solid #d1d4d7;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 94%);
+  color: #4b5056;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  word-break: keep-all;
+  pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .alo-preparing-notice { padding: 8px 12px; font-size: 12px; }
+  .alo-product-card.is-preparing .alo-card-tools-row,
+  .alo-product-card.is-preparing > .product-badges,
+  .alo-product-card.is-preparing .alo-card-details { padding-inline: 8px; }
+}
