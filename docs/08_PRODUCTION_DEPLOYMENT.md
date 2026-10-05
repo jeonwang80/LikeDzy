@@ -1,5 +1,13 @@
 # 운영 배포 기록 — 2026-09-06
 
+## 2026-10-05 상품 준비중 회색 음영
+
+- 소스 커밋 `d14303d`, `origin/master` 푸시 및 Firebase Hosting 배포 완료.
+- Vercel Production `dpl_9BYdw85n6o9uQdefJArqAHQFhNMr`, READY. https://likedzy-jex3pm1f3-jeonwang80-6811s-projects.vercel.app
+- likedzy.com, www.likedzy.com, likedzy-store.web.app HTTP 200 및 진입 번들 `/assets/index-DZOMyVqc.js` 일치 확인.
+- 준비중 카드 전체 회색조·옅은 회색 배경, 사진 대비/불투명도 감소, 중앙 안내를 적용했다. 판매 중 상품의 색상과 상세 보기 동작은 유지한다.
+- 빌드 및 ProductCard ESLint 통과. 실제 운영 목록에서 준비중 카드만 음영 처리되는 것을 확인했다.
+
 ## 2026-10-05 신상품 출시 팝업 및 상품 상태 색상
 
 - 소스 커밋 `b3bde2f`, `origin/master` 푸시 완료. 화이트·올리브·네이비 사진 3장과 30% 할인 안내, 홈 진입 팝업, 관리자 편집 기능을 배포했다.
