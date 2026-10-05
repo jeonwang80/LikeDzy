@@ -133,14 +133,14 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
       activeColor.images || [],
     ]).filter((imageUrl) => images.includes(imageUrl));
 
-    if (activeColorImages.length === 0) {
-      return commonImages.length ? commonImages : [FALLBACK_PRODUCT_IMAGE];
-    }
-
     // With one color, unassigned product-level images also belong to that color.
     if (colorSwatches.length <= 1) {
       const activeImageSet = new Set(activeColorImages);
       return [...activeColorImages, ...images.filter((imageUrl) => !activeImageSet.has(imageUrl))];
+    }
+
+    if (activeColorImages.length === 0) {
+      return commonImages.length ? commonImages : [FALLBACK_PRODUCT_IMAGE];
     }
 
     // With multiple colors, use only images explicitly mapped to the active color.
