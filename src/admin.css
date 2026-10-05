@@ -546,6 +546,21 @@ textarea {
 
 .admin-product-row:hover { background: #fafbf8; }
 
+.admin-product-row.is-sale-paused { background: #f2f3f4; box-shadow: inset 4px 0 #b85b5b; }
+.admin-product-row.is-sale-paused:hover { background: #eaecef; }
+.admin-product-row.is-sale-paused .admin-product-identity img { filter: grayscale(1); opacity: 0.7; }
+.admin-product-row.is-sale-paused .admin-product-identity strong { color: #626770; }
+.admin-product-identity .admin-sale-paused-badge {
+  align-self: flex-start;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #fbe1e1;
+  color: #9b3030;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
 .admin-product-identity {
   min-width: 0;
   display: grid;
@@ -604,6 +619,12 @@ textarea {
 .admin-order-controls button:disabled { opacity: 0.25; cursor: not-allowed; }
 
 .admin-product-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.admin-sale-toggle { min-height: 36px; padding: 0 12px; border: 1px solid; border-radius: 8px; font-size: 0.7rem; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.admin-sale-toggle.pause { background: #fff0f0; border-color: #e5b4b4; color: #a42d2d; }
+.admin-sale-toggle.pause:hover { background: #fbe0e0; border-color: #ce8c8c; }
+.admin-sale-toggle.resume { background: #e4f4e9; border-color: #98c6a7; color: #20643b; }
+.admin-sale-toggle.resume:hover { background: #cce9d6; border-color: #70ad86; }
+.admin-sale-toggle:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 .admin-product-actions .admin-btn-primary,
 .admin-product-actions .admin-btn-secondary { min-height: 36px; padding: 0 12px; }
 .admin-more-btn { min-height: 36px; padding: 0 8px; border: 0; background: none; color: var(--admin-danger); font-size: 0.7rem; font-weight: 700; cursor: pointer; }

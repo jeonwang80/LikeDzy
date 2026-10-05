@@ -74,6 +74,8 @@ export default function AdminInventory() {
       const matchesSearch = !queryText || name.includes(queryText);
       const matchesCategory = categoryFilter === 'ALL' || category === categoryFilter;
       const matchesStatus = statusFilter === 'ALL'
+        || (statusFilter === 'ACTIVE' && product.isActive !== false)
+        || (statusFilter === 'PAUSED' && product.isActive === false)
         || (statusFilter === 'FEATURED' && product.isFeatured)
         || (statusFilter === 'NEW' && product.isNew)
         || (statusFilter === 'LOW_STOCK' && stock <= 5)
@@ -99,13 +101,13 @@ export default function AdminInventory() {
     setIsEditorOpen(true);
   };
 
-  const handleDelete = async (product) => {
+  const handleToggleSale = async (product) => {
     if (!window.confirm(`[${product.name}] 상품의 판매를 ${product.isActive === false ? '재개' : '중지'}할까요? 주문 기록과 파일은 보존됩니다.`)) return;
     try {
       await updateDoc(doc(db, 'products', product.id), { isActive: product.isActive === false });
     } catch (error) {
-      console.error('Error deleting product:', error);
-      alert('상품 삭제 중 오류가 발생했습니다.');
+      console.error('Error updating product sale status:', error);
+      alert('판매 상태 변경 중 오류가 발생했습니다.');
     }
   };
 
@@ -185,8 +187,10 @@ export default function AdminInventory() {
             </option>
           ))}
         </select>
-        <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+        <select className="admin-select" aria-label="상품 상태 필터" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
           <option value="ALL">전체 상태</option>
+          <option value="ACTIVE">판매 활성</option>
+          <option value="PAUSED">판매 중지됨</option>
           <option value="FEATURED">메인 추천</option>
           <option value="NEW">신상품</option>
           <option value="LOW_STOCK">재고 5개 이하</option>
@@ -209,8 +213,9 @@ export default function AdminInventory() {
           const stock = getTotalStock(product);
           const sales = getTotalSales(product);
           const originalIndex = products.findIndex((item) => item.id === product.id);
+          const salePaused = product.isActive === false;
           return (
-            <article className="admin-product-row" key={product.id}>
+            <article className={`admin-product-row${salePaused ? ' is-sale-paused' : ''}`} key={product.id}>
               <div className="admin-product-identity">
                 <img
                   src={getSafeImageUrl(getDisplayImage(product))}
@@ -225,6 +230,7 @@ export default function AdminInventory() {
                     {product.category || product.ko?.category || 'OUTDOOR'} · {product.id.slice(0, 8).toUpperCase()}
                   </span>
                   <strong>{product.name || product.ko?.name || '이름 없는 상품'}</strong>
+                  {salePaused && <span className="admin-sale-paused-badge">판매 중지됨</span>}
                   <small>{formatProductPrice(product, 'ko')}</small>
                 </div>
               </div>
@@ -249,7 +255,7 @@ export default function AdminInventory() {
               <div className="admin-product-actions">
                 <button type="button" className="admin-btn-secondary" onClick={() => setSelectedProduct(product)}>재고</button>
                 <button type="button" className="admin-btn-primary" onClick={() => handleEdit(product)}>편집</button>
-                <button type="button" className="admin-more-btn" onClick={() => handleDelete(product)} aria-label="상품 삭제">{product.isActive === false ? '판매 재개' : '판매 중지'}</button>
+                <button type="button" className={`admin-sale-toggle ${salePaused ? 'resume' : 'pause'}`} onClick={() => handleToggleSale(product)} aria-label={`${product.name || product.ko?.name || '상품'} ${salePaused ? '판매 재개' : '판매 중지'}`}>{salePaused ? '판매 재개' : '판매 중지'}</button>
               </div>
             </article>
           );
