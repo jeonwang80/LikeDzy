@@ -1,5 +1,13 @@
 # 운영 배포 기록 — 2026-09-06
 
+## 2026-10-05 관리자 판매 중지·재개 색상 구분
+
+- 소스 커밋 `98c6ae8`, Firebase Hosting 및 Vercel 운영 배포 완료.
+- Vercel Production `dpl_Bcjhh6VmVP7UcsGPyJkJhdJ9xfRh`, READY. https://likedzy-qoavfq8ww-jeonwang80-6811s-projects.vercel.app
+- likedzy.com, www.likedzy.com, likedzy-store.web.app HTTP 200 및 `/assets/index-DA-RrTCn.js` 일치 확인.
+- 운영 `admin-CEoIaxzd.css`, `AdminInventory-DeJcA5Gn.js` 파일의 SHA-256이 로컬 검증 빌드와 일치한다.
+- 판매 중지 빨강 / 판매 재개 초록, 중지 행 회색 배경·배지·왼쪽 강조선 및 판매 상태 필터를 배포했다. 모바일·PC 화면과 필터는 로컬 에뮬레이터에서 확인했다. 운영 상품의 판매 상태는 변경하지 않았다.
+
 ## 2026-10-05 준비중 중앙 문구 제거
 
 - 소스 커밋 `d01176b`, Firebase Hosting 및 Vercel 운영 배포 완료.
