@@ -907,3 +907,12 @@
     cursor: not-allowed;
   }
 }
+.product-information-section{margin-top:5rem;border-top:1px solid #e5e5e5;padding-top:3rem;min-width:0}
+.product-information-panel{padding:2rem 0;min-width:0}
+@media(max-width:600px){
+  .product-information-section{margin-top:36px;padding-top:20px}
+  .product-information-section .detail-tabs-container{margin-bottom:0}
+  .product-information-section .detail-tab-btn{min-width:0;padding:14px 4px;font-size:13px;line-height:1.4;word-break:keep-all}
+  .product-information-panel{padding:20px 0}
+  .product-information-panel .pf-section{margin-top:0}
+}

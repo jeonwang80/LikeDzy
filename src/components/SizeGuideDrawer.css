@@ -12,5 +12,8 @@
 .sg-note{color:#626262;font-size:12px}.sg-content h3{margin:32px 0 10px;font-size:17px}.sg-diagram{display:block;width:100%;max-width:540px;margin:auto;background:white}.sg-instructions{padding-left:24px}.sg-instructions li{padding-left:7px;margin:14px 0}.sg-instructions li::marker{color:#b32632;font-weight:700}.sg-instructions p{margin:3px 0;color:#555}
 .sg-footer{padding:16px 26px;border-top:1px solid #ddd;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;background:white}.sg-footer p{width:100%;color:#b32632;margin:0}
 .sg-trigger{background:none;border:0;text-decoration:underline;cursor:pointer;color:inherit;font:inherit;padding:4px}
+.sg-type-select{display:flex;align-items:center;gap:14px;margin:18px 0;font-weight:600;flex-wrap:wrap}
+.sg-type-select select{min-width:180px;min-height:44px;padding:8px 12px;border:1px solid #bbb;border-radius:4px;background:#fff;color:#171717;font:inherit;font-size:16px}
+.sg-type-select select:focus-visible{outline:2px solid #171717;outline-offset:2px}
 @media(max-width:600px){.sg-content{padding:18px 16px}.sg-header{padding:16px}.sg-table th,.sg-table td{padding:9px 7px}.sg-footer{padding:14px 16px}}
 @media(prefers-reduced-motion:reduce){.sg-drawer{animation:none}}

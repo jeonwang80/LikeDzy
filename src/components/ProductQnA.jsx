@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import FeedbackDialog from './FeedbackDialog';
 import { collection, query, where, orderBy, onSnapshot, addDoc, doc, deleteDoc, limit, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -21,8 +21,8 @@ export default function ProductQnA({ productId }) {
   useEffect(() => {
     if (!productId) return;
     const results = new Map();
-    const queries = [query(collection(db, 'qnaV2'), where('productId', '==', productId), where('isSecret', '==', false), orderBy('createdAt', 'desc'), limit(pageSize))];
-    if (currentUser) queries.push(query(collection(db, 'qnaV2'), where('productId', '==', productId), where('userId', '==', currentUser.uid), orderBy('createdAt', 'desc'), limit(pageSize)));
+    const queries = [query(collection(db, 'qnaV2'), where('productId', '==', productId), ...(isAdmin ? [] : [where('isSecret', '==', false)]), orderBy('createdAt', 'desc'), limit(pageSize))];
+    if (currentUser && !isAdmin) queries.push(query(collection(db, 'qnaV2'), where('productId', '==', productId), where('userId', '==', currentUser.uid), orderBy('createdAt', 'desc'), limit(pageSize)));
     const unsubscribes = queries.map((q, index) => onSnapshot(q, (snapshot) => {
       results.set(index, snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data(), createdAt: toSafeDate(entry.data().createdAt) })));
       const unique = new Map([...results.values()].flat().map((entry) => [entry.id, entry]));
@@ -32,7 +32,7 @@ export default function ProductQnA({ productId }) {
       setLoading(false);
     }, () => { setErrorMsg('문의 목록을 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.'); setLoading(false); }));
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
-  }, [productId, currentUser, pageSize]);
+  }, [productId, currentUser, isAdmin, pageSize]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -76,117 +76,31 @@ export default function ProductQnA({ productId }) {
     }
   };
 
-  return (
-    <div style={{ marginTop: '3rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h3 style={{ fontSize: '1.25rem', margin: 0 }}>상품 Q&A ({visibleQnas.length})</h3>
-        <button onClick={() => currentUser ? setShowModal(true) : window.location.assign('#/login')} style={{ padding: '0.5rem 1rem', background: '#1e293b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-          문의하기
-        </button>
-      </div>
-
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>로그인 후 작성할 수 있습니다. 비밀 문의는 작성한 계정과 관리자만 볼 수 있으며, 기존 문의는 고객센터에서 확인해 드립니다.</p>
-      {errorMsg && <p role="alert">{errorMsg}</p>}
-      {loading ? (
-        <p style={{ color: '#94a3b8' }}>문의 내역을 불러오는 중...</p>
-      ) : visibleQnas.length === 0 ? (
-        <p style={{ color: '#94a3b8', padding: '2rem 0', textAlign: 'center', background: 'var(--card-bg)', borderRadius: '8px' }}>등록된 문의가 없습니다.</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {visibleQnas.map(qna => {
-            return (
-              <div key={qna.id} style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', alignItems: 'flex-start' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ 
-                      padding: '0.2rem 0.5rem', 
-                      borderRadius: '4px', 
-                      fontSize: '0.75rem', 
-                      fontWeight: 'bold',
-                      background: qna.status === '답변 완료' ? '#16a34a' : '#475569',
-                      color: 'white'
-                    }}>
-                      {qna.status || '답변 대기'}
-                    </span>
-                    {qna.isSecret && <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>🔒 비밀글</span>}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                      {qna.createdAt ? qna.createdAt.toLocaleDateString() : ''}
-                    </span>
-                    {(isAdmin || currentUser?.uid === qna.userId) && <button
-                      onClick={() => handleDeleteClick(qna)}
-                      style={{ border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)' }}
-                    >
-                      삭제
-                    </button>}
-                  </div>
-                </div>
-                
-                  <>
-                    <p style={{ margin: '1rem 0', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{qna.content}</p>
-                    
-                    {qna.reply && (
-                      <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(59, 130, 246, 0.1)', borderLeft: '3px solid #3b82f6', borderRadius: '0 4px 4px 0' }}>
-                        <div style={{ fontWeight: 'bold', color: '#3b82f6', marginBottom: '0.5rem', fontSize: '0.9rem' }}>↳ 관리자 답변</div>
-                        <p style={{ margin: 0, lineHeight: '1.5', color: '#e2e8f0', whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>{qna.reply}</p>
-                      </div>
-                    )}
-                  </>
-                
-                <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 'bold', marginTop: '1rem' }}>
-                  작성자: {qna.author}
-                </div>
-              </div>
-            );
-          })}
+  return <section className="pf-section">
+    <div className="pf-heading"><h3>상품 Q&A ({visibleQnas.length})</h3><button className="pf-button" onClick={() => currentUser ? setShowModal(true) : window.location.assign('#/login')}>문의하기</button></div>
+    <p className="pf-hint">비밀 문의와 답변은 작성자와 관리자만 볼 수 있습니다. 이전 비밀번호 방식의 문의는 고객센터로 문의해 주세요.</p>
+    {errorMsg && <p className="pf-error" role="alert">{errorMsg}</p>}
+    {loading ? <p className="pf-empty">문의 내역을 불러오는 중...</p> : !visibleQnas.length ? <p className="pf-empty">등록된 문의가 없습니다.</p> : <div className="pf-list">
+      {visibleQnas.map(qna => <article key={qna.id} className="pf-card">
+        <div className="pf-card-header">
+          <div className="pf-badges"><span className={`pf-status ${qna.reply ? 'pf-status-answered' : ''}`}>{qna.reply ? '답변 완료' : '답변 대기'}</span>{qna.isSecret && <span className="pf-secret">비밀글</span>}</div>
+          <div className="pf-card-meta"><time>{qna.createdAt?.toLocaleDateString()}</time>{(isAdmin || currentUser?.uid === qna.userId) && <button className="pf-delete" onClick={() => handleDeleteClick(qna)}>삭제</button>}</div>
         </div>
-      )}
-      {hasMore && <button type="button" className="btn-secondary" onClick={() => setPageSize((size) => size + 20)}>문의 더 보기</button>}
-
-      {showModal && createPortal(
-        <div className="admin-modal-overlay" style={{ zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="admin-modal-content" style={{ maxWidth: '500px', width: '90%', background: 'var(--bg-color)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>상품 문의하기</h2>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-color)', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
-            </div>
-            
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>닉네임</label>
-                  <input required maxLength={40} value={form.author} onChange={e => setForm({...form, author: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '4px' }} placeholder="공개할 닉네임" />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>문의 내용</label>
-                <textarea required maxLength={3000} value={form.content} onChange={e => setForm({...form, content: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '4px', minHeight: '100px', fontFamily: 'inherit' }} placeholder="공개 문의에 전화번호나 주소를 입력하지 마세요." />
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <input 
-                  type="checkbox" 
-                  id="isSecret" 
-                  checked={form.isSecret} 
-                  onChange={e => setForm({...form, isSecret: e.target.checked})} 
-                  style={{ width: '1rem', height: '1rem' }}
-                />
-                <label htmlFor="isSecret" style={{ fontSize: '0.9rem', cursor: 'pointer' }}>비밀글로 작성하기 (작성자와 관리자만 볼 수 있습니다)</label>
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{ flex: 1, padding: '1rem', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>취소</button>
-                <button type="submit" disabled={isSubmitting} style={{ flex: 2, padding: '1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  {isSubmitting ? '등록 중...' : '문의 등록하기'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
-    </div>
-  );
+        <p className="pf-content">{qna.content}</p>
+        {qna.reply && <div className="pf-reply"><strong>관리자 답변</strong><p>{qna.reply}</p></div>}
+        <p className="pf-author">작성자: {qna.author}</p>
+      </article>)}
+    </div>}
+    {hasMore && <button type="button" className="pf-button pf-button-secondary pf-more" onClick={() => setPageSize(size => size + 20)}>문의 더 보기</button>}
+    {showModal && <FeedbackDialog title="상품 문의하기" onClose={() => setShowModal(false)} busy={isSubmitting}>
+      <form className="pf-form" onSubmit={handleSubmit}>
+        <div className="pf-form-body">
+          <div className="pf-field"><label htmlFor="qna-author">닉네임</label><input id="qna-author" required maxLength={40} value={form.author} onChange={e => setForm({...form, author: e.target.value})} placeholder="공개할 닉네임" disabled={isSubmitting}/></div>
+          <div className="pf-field"><label htmlFor="qna-content">문의 내용</label><textarea id="qna-content" required maxLength={3000} value={form.content} onChange={e => setForm({...form, content: e.target.value})} placeholder="궁금한 내용을 입력해 주세요." disabled={isSubmitting}/><small className="pf-hint">공개 문의에는 전화번호나 주소를 입력하지 마세요.</small></div>
+          <label className="pf-check"><input type="checkbox" checked={form.isSecret} onChange={e => setForm({...form, isSecret: e.target.checked})} disabled={isSubmitting}/><span>비밀글로 작성<small>작성자와 관리자만 볼 수 있습니다.</small></span></label>
+        </div>
+        <div className="pf-form-actions"><button type="button" className="pf-button pf-button-secondary" disabled={isSubmitting} onClick={() => setShowModal(false)}>취소</button><button type="submit" className="pf-button" disabled={isSubmitting}>{isSubmitting ? '등록 중...' : '문의 등록하기'}</button></div>
+      </form>
+    </FeedbackDialog>}
+  </section>;
 }

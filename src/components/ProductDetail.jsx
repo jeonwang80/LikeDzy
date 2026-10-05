@@ -364,7 +364,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
         </div>
 
         {/* Bottom Section: Tabs for Details, Reviews, QnA */}
-        <div style={{ marginTop: '5rem', borderTop: '1px solid #E5E5E5', paddingTop: '3rem' }}>
+        <div className="product-information-section">
           <div className="detail-tabs-container">
             <button 
               onClick={() => setActiveTab('details')}
@@ -386,7 +386,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
             </button>
           </div>
 
-          <div style={{ padding: '2rem 0' }}>
+          <div className="product-information-panel">
             {activeTab === 'details' && (
               <div className="detail-tab-content">
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem' }}>MATERIAL & PERFORMANCE</h3>
