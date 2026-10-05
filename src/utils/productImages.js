@@ -21,6 +21,7 @@ export function normalizeProductImages(product) {
       ...(Array.isArray(swatch.images) ? { images: swatch.images.filter(belongsHere) } : {}) };
   });
   return { ...product, imageUrls,
+    ...(Array.isArray(product.imageBackgrounds) ? { imageBackgrounds: product.imageBackgrounds.filter(item => allowed.has(item.imageUrl)) } : {}),
     ...(Array.isArray(product.commonImageUrls) ? { commonImageUrls } : {}),
     ...(product.imageUrl !== undefined ? { imageUrl: allowed.has(product.imageUrl) ? product.imageUrl : '' } : {}),
     ...(Array.isArray(product.images) ? { images: product.images.filter((url) => allowed.has(url)) } : {}),

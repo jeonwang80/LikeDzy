@@ -1,3 +1,4 @@
+import { getImageBackground } from '../utils/imageBackground';
 import ProductBadges from './ProductBadges';
 import { hasAvailableProductStock } from '../utils/productStock';
 import { normalizeProductImages } from '../utils/productImages';
@@ -235,6 +236,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
               <div 
                 key={`${imgUrl}-${idx}`}
                 className="alo-detail-img-frame"
+                style={{ backgroundColor: getImageBackground(product, imgUrl) }}
                 onClick={() => setZoomImage(imgUrl)}
               >
                 <img 

@@ -1,3 +1,5 @@
+import ImageBackgroundControl from '../components/ImageBackgroundControl';
+import { getImageBackground } from '../utils/imageBackground';
 import ProductBadges from '../components/ProductBadges';
 import { assignProductImage, normalizeProductImages, removeProductImage } from '../utils/productImages';
 import SizeGuideDrawer from '../components/SizeGuideDrawer';
@@ -23,6 +25,9 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
   const product = useMemo(() => normalizeProductImages(originalProduct), [originalProduct]);
   const { categories: categoryMasters, loading: categoryMastersLoading } = useCategoryMasters({ activeOnly: true });
   const [loading, setLoading] = useState(false);
+  const [backgroundJobs, setBackgroundJobs] = useState(0);
+  const changeBackgroundJobs = delta => setBackgroundJobs(count => count + delta);
+  const setImageBackground = (imageUrl, value) => setFormData(prev => ({ ...prev, imageBackgrounds: [...(prev.imageBackgrounds || []).filter(item => item.imageUrl !== imageUrl), ...(value ? [value] : [])] }));
   const [guideOpen, setGuideOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState('idle');
   const [savedProductId, setSavedProductId] = useState(product?.id || '');
@@ -331,6 +336,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (backgroundJobs) { alert('배경색 추출이 끝난 후 저장해 주세요.'); return; }
     const guideError = validateGuide(formData.measurementGuide);
     if (guideError) { alert(guideError); return; }
     setLoading(true);
@@ -442,6 +448,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
         colorSwatches: processedSwatches,
         imageUrls: finalImageUrls,
         imageVariants: finalImageVariants,
+        imageBackgrounds: (formData.imageBackgrounds || []).map(item => ({ ...item, imageUrl: resolveUploadedImageUrl(item.imageUrl) })).filter(item => finalImageUrls.includes(item.imageUrl)),
         videoUrl: finalVideoUrl, 
         updatedAt: new Date() 
       };
@@ -673,11 +680,12 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                     <div key={`existing-${idx}`} className="visual-image-card" style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', borderRadius: '10px', overflow: 'hidden', border: isPrimary ? '2px solid #10b981' : isHover ? '2px solid #2563eb' : '1px solid #cbd5e1' }}>
                       
                       {/* Image Frame */}
-                      <div style={{ position: 'relative', width: '100%', height: '300px' }}>
+                      <ImageBackgroundControl imageUrl={imgUrl} value={formData.imageBackgrounds?.find(item => item.imageUrl === imgUrl)} onChange={value => setImageBackground(imgUrl, value)} onBusyChange={changeBackgroundJobs}/>
+                      <div style={{ position: 'relative', width: '100%', height: '300px', backgroundColor: getImageBackground(formData, imgUrl) || '#fafafa' }}>
                         <img 
                           src={imgUrl} 
                           alt={`Gallery ${idx + 1}`} 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                         />
                         
                         {/* Photo Sequence Number Tag */}
@@ -787,11 +795,12 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
 
                   return (
                     <div key={`new-${idx}`} className="visual-image-card" style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', borderRadius: '10px', overflow: 'hidden', border: '2px dashed #0284c7' }}>
-                      <div style={{ position: 'relative', width: '100%', height: '300px' }}>
+                      <ImageBackgroundControl imageUrl={url} value={formData.imageBackgrounds?.find(item => item.imageUrl === url)} onChange={value => setImageBackground(url, value)} onBusyChange={changeBackgroundJobs}/>
+                      <div style={{ position: 'relative', width: '100%', height: '300px', backgroundColor: getImageBackground(formData, url) || '#fafafa' }}>
                         <img 
                           src={url} 
                           alt={`New ${idx + 1}`} 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                         />
                         <span className="alo-model-tag" style={{ background: '#0284c7', color: '#fff', padding: '4px 10px', fontSize: '0.75rem', fontWeight: 800 }}>
                           사진 #{totalIdx + 1} (신규 대기)

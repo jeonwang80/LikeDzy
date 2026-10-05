@@ -1,3 +1,4 @@
+import { getImageBackground } from '../utils/imageBackground';
 import ProductBadges from './ProductBadges';
 import React, { useState } from 'react';
 import { Heart } from 'lucide-react';
@@ -82,6 +83,7 @@ export default function ProductCard({
     >
       <div
         className="alo-card-media"
+        style={{ backgroundColor: preparing ? undefined : getImageBackground(product, showHover ? cardHover : cardPrimary) }}
         onMouseEnter={requestHover}
         onMouseLeave={() => setIsHovered(false)}
       >
