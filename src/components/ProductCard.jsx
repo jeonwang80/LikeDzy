@@ -115,8 +115,6 @@ export default function ProductCard({
           />
         )}
 
-        {preparing && <span className="alo-preparing-notice" aria-hidden="true">{language === 'ko' ? '상품 준비중' : 'Coming soon'}</span>}
-
         <button
           type="button"
           className={`alo-wishlist-btn ${isWishlisted ? 'active' : ''}`}
