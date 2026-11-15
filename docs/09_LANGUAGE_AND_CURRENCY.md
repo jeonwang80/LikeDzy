@@ -50,3 +50,8 @@ Functions를 먼저 반영한 뒤 프런트엔드를 배포해야 한다. 기존
 - 주문 서버는 검증 키/증명이 없으면 신규 주문을 거부한다. Vercel 서버 환경 변수와 Firebase Secret Manager에 **동일한 `COUNTRY_TOKEN_SECRET`** (무작위 32바이트 이상)을 설정해야 한다. 브라우저용 VITE 변수나 저장소에 넣으면 안 된다. Firebase `createBankTransferOrder`만 해당 secret을 바인딩한다.
 - 배포 순서: 동일 secret을 두 플랫폼에 설정 → Vercel 프런트/API 배포 → Firebase `createBankTransferOrder` 배포 → 실국가 및 허용/거부 주문 확인. 프런트와 함수가 모두 반영되기 전에는 서버 제한이 완전히 활성화되지 않는다. 배포 후 과거 탭은 새로고침해야 한다. 키가 없는 상태로 함수부터 배포하지 않는다.
 - 한국/헝가리 체크는 해당 국가 접속자의 상품 접근 허용 설정이다. 배송·통화 정책은 별개이므로 현재 베트남 배송/VND 주문 정책을 바꾸지 않는다. 원본 Firestore 상품 읽기 권한을 비공개로 변경하는 기능은 아니다.
+# 주문 국가 분류 (2026-11-15)
+
+주문 관리에 IP 접속 국가(`salesCountry`)와 배송 국가(`country`)를 구분하여 표시하고 국가/상태 복합 필터를 추가했다. 과거 IP 미기록 주문은 전체 국가 조회에 포함한다. 운영 반영 전에 orders 복합 색인 4개의 생성 완료를 확인해야 한다. 글로벌 개편 권고는 [18_GLOBAL_MARKETS_REVIEW.md](18_GLOBAL_MARKETS_REVIEW.md)를 참고한다.
+
+로고의 IP 국가 코드는 로고 오른쪽 하단에 배치한다. 판매 전환 중심의 시장 운영 설계는 [19_MARKET_COMMERCE_DESIGN.md](19_MARKET_COMMERCE_DESIGN.md)를 참고한다. 설계안의 시장 선택·가격·결제 개편은 이번 배포 범위가 아니다.

@@ -114,9 +114,9 @@
 }
 
 /* Keep the country indicator separate from the original logo proportions. */
-.storefront-header .header-logo { display: flex; align-items: center; gap: 6px; width: auto; overflow: visible; }
+.storefront-header .header-logo { position: relative; display: flex; align-items: center; width: auto; margin-right: 8px; overflow: visible; }
 .storefront-header .header-logo img { width: 126px; flex: 0 0 126px; }
-.header-visitor-country { font: 600 10px/1.2 system-ui, sans-serif; letter-spacing: .06em; color: #66716c; min-width: 20px; }
+.header-visitor-country { position: absolute; right: -7px; bottom: -3px; z-index: 1; padding: 2px 3px; border-radius: 2px; background: #fff; font: 700 10px/1.2 system-ui, sans-serif; letter-spacing: .04em; color: #66716c; }
 @media (max-width: 768px) { .storefront-header .header-logo img { width: 104px; flex-basis: 104px; } .header-visitor-country { font-size: 9px; min-width: 16px; } }
 
 @media (max-width: 768px) { .header.storefront-header { gap: 12px; } }

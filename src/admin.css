@@ -983,17 +983,17 @@ textarea {
 .order-status-filters button.active strong { background: rgba(255, 255, 255, 0.16); color: #fff; }
 .order-table-card { padding: 0; overflow: hidden; }
 .order-table-scroll { overflow-x: auto; }
-.order-management-table { width: 100%; min-width: 1420px; border-collapse: collapse; table-layout: fixed; }
+.order-management-table { width: 100%; min-width: 1580px; border-collapse: collapse; table-layout: fixed; }
 .order-management-table th { padding: 11px 12px; border-bottom: 1px solid var(--admin-line-strong); background: var(--admin-surface-strong); color: var(--admin-muted); font-size: 0.68rem; font-weight: 900; letter-spacing: 0.03em; text-align: left; white-space: nowrap; }
 .order-management-table th:nth-child(1) { width: 145px; }
 .order-management-table th:nth-child(2) { width: 175px; }
-.order-management-table th:nth-child(3) { width: 160px; }
-.order-management-table th:nth-child(4) { width: 260px; }
-.order-management-table th:nth-child(5) { width: 130px; }
-.order-management-table th:nth-child(6) { width: 145px; }
-.order-management-table th:nth-child(7) { width: 150px; }
-.order-management-table th:nth-child(8) { width: 145px; }
-.order-management-table th:nth-child(9) { width: 70px; }
+.order-management-table th:nth-child(4) { width: 160px; }
+.order-management-table th:nth-child(5) { width: 260px; }
+.order-management-table th:nth-child(6) { width: 130px; }
+.order-management-table th:nth-child(7) { width: 145px; }
+.order-management-table th:nth-child(8) { width: 150px; }
+.order-management-table th:nth-child(9) { width: 145px; }
+.order-management-table th:nth-child(10) { width: 70px; }
 .order-management-table th.number { text-align: right; }
 .order-management-table td { height: 70px; padding: 10px 12px; border-bottom: 1px solid var(--admin-line); color: var(--admin-ink); font-size: 0.76rem; vertical-align: middle; }
 .order-management-table tbody tr { cursor: pointer; transition: background 0.16s ease; }
@@ -1359,3 +1359,9 @@ textarea {
 .admin-sales-countries input { width: 15px; height: 15px; accent-color: var(--admin-forest); }
 .admin-sales-countries small { display: block; color: var(--admin-danger); margin-top: 5px; }
 .admin-sales-countries:disabled { opacity: .6; }
+
+.order-management-table th:nth-child(3) { width: 160px; }
+.order-country-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 18px; padding: 16px; background: var(--admin-surface); border: 1px solid var(--admin-line); border-radius: 12px; }
+.order-country-filters label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 700; }
+.order-country-filters small { flex-basis: 100%; color: var(--admin-muted); line-height: 1.6; }
+.order-country-summary small { display: block; color: var(--admin-muted); line-height: 1.6; }

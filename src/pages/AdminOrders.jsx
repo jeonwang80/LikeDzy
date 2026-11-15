@@ -1,3 +1,4 @@
+import { orderCountryLabel, orderCountryFilters } from '../utils/orderCountry';
 import { formatMoney } from '../utils/market';
 import React, { useEffect, useState } from 'react';
 import { collection, doc, limit, onSnapshot, orderBy, query, startAfter, where } from 'firebase/firestore';
@@ -12,6 +13,8 @@ export default function AdminOrders() {
   const [loadedQuery, setLoadedQuery] = useState(null);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('전체');
+  const [countryBasis, setCountryBasis] = useState('access');
+  const [countryFilter, setCountryFilter] = useState('ALL');
   const [cursors, setCursors] = useState([null]);
   const [lastDoc, setLastDoc] = useState(null);
   const [selectedId, setSelectedId] = useState('');
@@ -22,15 +25,15 @@ export default function AdminOrders() {
   const [receipt, setReceipt] = useState({ status: '발급 완료', reference: '' });
   const [refund, setRefund] = useState({ amount: '', reference: '' });
   const cursor = cursors[cursors.length - 1];
-  const loading = !loadedQuery || loadedQuery.statusFilter !== statusFilter || loadedQuery.cursor !== cursor;
+  const loading = !loadedQuery || loadedQuery.statusFilter !== statusFilter || loadedQuery.cursor !== cursor || loadedQuery.countryBasis !== countryBasis || loadedQuery.countryFilter !== countryFilter;
 
   useEffect(() => {
-    const constraints = [...(statusFilter === '전체' ? [] : [where('status', '==', statusFilter)]), orderBy('createdAt', 'desc'), ...(cursor ? [startAfter(cursor)] : []), limit(PAGE_SIZE)];
+    const constraints = [...orderCountryFilters(countryBasis, countryFilter).map(parts => where(...parts)), ...(statusFilter === '전체' ? [] : [where('status', '==', statusFilter)]), orderBy('createdAt', 'desc'), ...(cursor ? [startAfter(cursor)] : []), limit(PAGE_SIZE)];
     return onSnapshot(query(collection(db, 'orders'), ...constraints), (snapshot) => {
       setOrders(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
-      setLastDoc(snapshot.docs.at(-1) || null); setError(''); setLoadedQuery({ statusFilter, cursor });
-    }, () => { setError('주문 목록을 불러오지 못했습니다. 권한·연결·색인 배포 상태를 확인해 주세요.'); setOrders([]); setLoadedQuery({ statusFilter, cursor }); });
-  }, [statusFilter, cursor]);
+      setLastDoc(snapshot.docs.at(-1) || null); setError(''); setLoadedQuery({ statusFilter, cursor, countryBasis, countryFilter });
+    }, () => { setError('주문 목록을 불러오지 못했습니다. 권한·연결·색인 배포 상태를 확인해 주세요.'); setOrders([]); setLoadedQuery({ statusFilter, cursor, countryBasis, countryFilter }); });
+  }, [statusFilter, cursor, countryBasis, countryFilter]);
   useEffect(() => {
     if (!selectedId) return undefined;
     return onSnapshot(doc(db, 'orders', selectedId), (snapshot) => setSelectedOrder(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null),
@@ -75,12 +78,18 @@ export default function AdminOrders() {
   const oldOrder = selectedOrder && selectedOrder.schemaVersion !== 2;
   return <div className="admin-page orders-admin-page">
     <div className="admin-page-header admin-orders-compact-header"><div><span className="admin-page-eyebrow">ORDER OPERATIONS</span><h1>주문 관리</h1><p>최신 발생일자순 · 페이지당 50건 · 입금과 환불은 실제 은행 처리 확인 후 기록하세요.</p></div><button className="admin-btn-secondary" onClick={() => setCursors([null])}>최신 주문으로</button></div>
+    <div className="order-country-filters">
+      <label>국가 기준 <select className="admin-select" value={countryBasis} onChange={event => { setCountryBasis(event.target.value); setCursors([null]); }}><option value="access">구매 당시 접속 국가 (IP)</option><option value="shipping">배송 국가</option></select></label>
+      <label>국가 <select className="admin-select" value={countryFilter} onChange={event => { setCountryFilter(event.target.value); setCursors([null]); }}><option value="ALL">전체 국가 · 미기록 포함</option>{['KR', 'VN', 'HU'].map(code => <option key={code} value={code}>{orderCountryLabel(code)}</option>)}</select></label>
+      <small>과거 주문의 접속 국가는 추정하지 않습니다. 미기록 주문은 전체 국가에서 확인하세요.</small>
+    </div>
     <nav className="order-status-filters" aria-label="주문 상태 필터">{['전체', ...ORDER_STATUSES].map((status) => <button key={status} className={statusFilter === status ? 'active' : ''} onClick={() => { setStatusFilter(status); setCursors([null]); }}>{status}</button>)}</nav>
     {error && <p className="checkout-error" role="alert">{error}</p>}
     {loading ? <p role="status">주문 목록을 불러오는 중…</p> : !orders.length ? <div className="admin-card orders-empty">해당 페이지의 주문이 없습니다.</div> : <section className="admin-card order-table-card"><div className="order-table-scroll"><table className="order-management-table">
-      <thead><tr><th>발생일자</th><th>주문번호</th><th>주문자</th><th>상품·옵션</th><th>결제금액</th><th>입금·증빙</th><th>배송</th><th>상태</th><th>상세</th></tr></thead>
+      <thead><tr><th>발생일자</th><th>주문번호</th><th>국가 정보</th><th>주문자</th><th>상품·옵션</th><th>결제금액</th><th>입금·증빙</th><th>배송</th><th>상태</th><th>상세</th></tr></thead>
       <tbody>{orders.map((order) => <tr key={order.id} onClick={() => open(order)}>
         <td>{formatKoreanDateTime(order.createdAt)}</td><td><strong>{order.orderNumber || order.id}</strong>{order.isTestOrder && <span>TEST</span>}</td>
+        <td className="order-country-cell"><strong>접속 {orderCountryLabel(order.salesCountry)}</strong><span>배송 {orderCountryLabel(order.country)}</span></td>
         <td><strong>{order.name || '-'}</strong><span>{order.phone || '-'}</span></td>
         <td><strong>{order.items?.[0]?.productName || '기존 상품'}</strong><span>{order.items?.[0]?.colorName} / {order.items?.[0]?.optionName} · {(order.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}개{order.items?.length > 1 ? ` · 외 ${order.items.length - 1}종` : ''}</span></td>
         <td>{formatMoney(order.totalAmountNumber, order.currency || 'KRW')}</td><td><strong>{order.depositName || order.name || '-'}</strong><span>{order.cashReceiptStatus || '미신청'}</span></td>
@@ -95,6 +104,7 @@ export default function AdminOrders() {
         <div className="order-detail-body">
           {error && <p className="checkout-error" role="alert">{error}</p>}
           {oldOrder && <p role="alert">이전 구조의 주문입니다. 색상별 재고·입금 이력을 대조하기 전에는 상태를 변경할 수 없습니다.</p>}
+          <section className="order-detail-section order-country-summary"><h3>국가 정보</h3><p>구매 당시 접속 국가 (IP): <strong>{orderCountryLabel(selectedOrder.salesCountry)}</strong></p><p>배송 국가: <strong>{orderCountryLabel(selectedOrder.country)}</strong></p><p>주문 통화: {selectedOrder.currency || '미기록'}</p>{!selectedOrder.salesCountry && <small>국가 기록 도입 전 주문은 당시 접속 국가를 확인할 수 없습니다. 배송지·전화번호·통화로 추정하지 않습니다.</small>}</section>
           <section className="order-detail-state-panel"><strong>{formatMoney(selectedOrder.totalAmountNumber, selectedOrder.currency || 'KRW')}</strong>{statusSelect(selectedOrder)}</section>
           <section className="order-detail-section"><h3>상품</h3><ul className="order-detail-items">{(selectedOrder.items || []).map((item, index) => <li key={index}><div><strong>{item.productName}</strong><span>{item.colorName} / {item.optionName} · {item.quantity}개</span></div><b>{formatMoney(item.lineAmount, selectedOrder.currency || 'KRW')}</b></li>)}</ul><p>상품 {formatMoney(selectedOrder.subtotal, selectedOrder.currency || 'KRW')} · 배송비 {formatMoney(selectedOrder.shippingFee, selectedOrder.currency || 'KRW')}{selectedOrder.discountAmount > 0 && ` · 쿠폰 ${selectedOrder.couponCode} −${formatMoney(selectedOrder.discountAmount, selectedOrder.currency || 'KRW')}`}</p></section>
           <section className="order-detail-section order-detail-info-grid"><div><h3>입금</h3><p>입금자 {selectedOrder.depositName || selectedOrder.name}</p><p>{selectedOrder.phone}</p><p>기한 {formatKoreanDateTime(selectedOrder.depositDeadlineAt)}</p><p>입금확인 {formatKoreanDateTime(selectedOrder.paidAt)}</p></div><div><h3>배송지</h3><p>{selectedOrder.recipientName} · {selectedOrder.recipientPhone}</p><p>{selectedOrder.address}</p><p>{selectedOrder.notes || '-'}</p></div></section>
