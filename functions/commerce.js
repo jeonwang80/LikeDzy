@@ -263,8 +263,8 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       const snapshot = await transaction.get(inventoryRef);
       const current = snapshot.exists ? snapshot.data() : {productId,colorName,optionName,stock:0,reserved:0,sold:0,version:0};
       if (current.version !== expectedVersion) fail('aborted', '재고가 변경되었습니다. 최신 수량을 확인하고 다시 처리하세요.');
-      if (type !== 'migrate' && current.allocationVersion !== 1 && snapshot.exists) fail('failed-precondition', '기존 재고를 메인 창고로 먼저 이관해 주세요.');
-      if (type === 'migrate' && current.allocationVersion === 1) fail('failed-precondition', '이미 메인·국가 재고로 전환되었습니다.');
+      if (type !== 'migrate' && current.allocationVersion !== 1 && snapshot.exists) fail('failed-precondition', '기존 재고를 공장재고로 먼저 이관해 주세요.');
+      if (type === 'migrate' && current.allocationVersion === 1) fail('failed-precondition', '이미 공장재고·국가 재고로 전환되었습니다.');
       const transferRef = transferId ? ref('warehouseTransfers', transferId) : null;
       const transferSnapshot = transferRef ? await transaction.get(transferRef) : null;
       const receiptRef = type === 'receipt' ? ref('warehouseReceipts', hash(`${variantId}:${reference}`)) : receiptId ? ref('warehouseReceipts',receiptId) : null;
