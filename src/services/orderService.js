@@ -38,3 +38,5 @@ export const saveOrderReceipt = (orderId, payload, expectedStatus) => call('upda
 export const completeOrderRefund = (orderId, payload, expectedStatus) => call('updateOrder', {
   orderId, action: 'refund', payload, expectedStatus,
 });
+
+export const processWarehouse = data => call('processWarehouse', data);

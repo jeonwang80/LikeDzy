@@ -1,3 +1,4 @@
+import { countryAvailability } from '../utils/countryAvailability';
 import { useEffect, useState } from 'react';
 import { collection, doc, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -36,7 +37,7 @@ export function useCheckoutCatalog(cart, currency, language, replaceCart, onPric
     const failure = () => { failed = true; if (active) setState({ key, checked: false, error: language === 'ko' ? '상품 정보를 불러오지 못했습니다. 연결을 확인하고 새로고침해 주세요.' : 'Could not load item availability. Please check your connection and reload.' }); };
     const unsubscribe = ids.flatMap((id) => [
       onSnapshot(doc(db, 'products', id), (snapshot) => { products.set(id, snapshot.exists() ? snapshot.data() : null); publish(); }, failure),
-      onSnapshot(query(collection(db, 'stockAvailability'), where('productId', '==', id), limit(200)), (snapshot) => { stocks.set(id, snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id }))); publish(); }, failure),
+      onSnapshot(query(collection(db, 'stockAvailability'), where('productId', '==', id), limit(200)), (snapshot) => { stocks.set(id, snapshot.docs.map((entry) => countryAvailability({ ...entry.data(), id: entry.id }, currency === 'VND' ? 'VN' : currency === 'KRW' ? 'KR' : 'HU'))); publish(); }, failure),
     ]);
     return () => { active = false; unsubscribe.forEach((stop) => stop()); };
   }, [country, cart, currency, language, replaceCart, onPriceChange, key]);

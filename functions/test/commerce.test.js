@@ -454,3 +454,82 @@ test('configured VN shipping is charged, threshold waives it, and stale totals a
   assert.equal(f.db.read(`orders/${free.id}`).shippingFee, 0);
   assert.equal(f.db.read(`orders/${paid.id}`).shippingFee, 30000);
 });
+
+const warehouseRequest = (f, type, extra = {}) => ({type,productId:'shirt',colorName:'Black',optionName:'M',quantity:1,requestId:secret(),reference:secret(),note:'TEST WAREHOUSE',expectedVersion:f.inventory().version,...extra});
+test('warehouse migration preserves old reservations, moves only free stock to MAIN, and audits every change', async () => {
+  const f = await vietnamFixture();
+  const order = await f.service.createBankTransferOrder(f.order({currency:'VND',expectedTotal:700000}),guest);
+  const migration=warehouseRequest(f,'migrate');
+  await f.service.processWarehouse(migration,admin);
+  assert.equal(f.inventory().mainStock,2); assert.equal(f.inventory().stock,0);
+  assert.equal(f.inventory().countries.VN.reserved,1);
+  await f.action(order.id,STATUS.WAITING,STATUS.CANCELLED);
+  assert.equal(f.inventory().countries.VN.stock,1); assert.equal(f.inventory().mainStock,2);
+  await rejectsCode(f.service.setVariantStock({productId:'shirt',colorName:'Black',optionName:'M',stock:50,expectedVersion:f.inventory().version,requestId:secret()},admin),'failed-precondition');
+  assert.ok([...f.db.data.entries()].filter(([key])=>key.startsWith('inventoryMovements/')).every(([,value])=>value.before&&value.after&&value.actorUid&&value.createdAt));
+});
+test('warehouse production receipt and transfer are idempotent; only confirmed partial arrivals become sellable', async () => {
+  const f=await vietnamFixture(); await f.service.processWarehouse(warehouseRequest(f,'migrate'),admin);
+  const receipt=warehouseRequest(f,'receipt',{quantity:10,reference:'PRODUCTION-1'});
+  const result=await f.service.processWarehouse(receipt,admin);
+  await f.service.processWarehouse(receipt,admin); assert.equal(f.inventory().mainStock,13);
+  await rejectsCode(f.service.processWarehouse(warehouseRequest(f,'receipt',{quantity:10,reference:'PRODUCTION-1'}),admin),'already-exists');
+  await rejectsCode(f.service.processWarehouse(warehouseRequest(f,'dispatch',{quantity:14,country:'VN'}),admin),'failed-precondition');
+  const transfer=await f.service.processWarehouse(warehouseRequest(f,'dispatch',{quantity:5,country:'VN'}),admin);
+  assert.equal(f.inventory().mainStock,8); assert.equal(f.inventory().countries.VN.stock,0); assert.equal(f.inventory().inTransit.VN,5);
+  await rejectsCode(f.service.createBankTransferOrder(f.order({currency:'VND',expectedTotal:700000}),guest),'failed-precondition');
+  const arrival=warehouseRequest(f,'receive',{quantity:2,transferId:transfer.transactionId});
+  await f.service.processWarehouse(arrival,admin); await f.service.processWarehouse(arrival,admin);
+  assert.equal(f.inventory().countries.VN.stock,2);assert.equal(f.inventory().inTransit.VN,3);
+  await rejectsCode(f.service.processWarehouse(warehouseRequest(f,'receive',{quantity:4,transferId:transfer.transactionId}),admin),'failed-precondition');
+  const order=await f.service.createBankTransferOrder(f.order({currency:'VND',expectedTotal:700000}),guest);
+  assert.equal(f.db.read(`orders/${order.id}`).inventoryCountry,'VN'); assert.equal(f.inventory().countries.VN.stock,1);
+  await f.action(order.id,STATUS.WAITING,STATUS.PAID);
+  assert.equal(f.inventory().countries.VN.sold,1);
+  await f.service.processWarehouse(warehouseRequest(f,'transit_loss',{quantity:1,transferId:transfer.transactionId}),admin);
+  await f.service.processWarehouse(warehouseRequest(f,'return_main',{quantity:2,transferId:transfer.transactionId}),admin);
+  assert.equal(f.inventory().inTransit.VN,0); assert.equal(f.db.read(`warehouseTransfers/${transfer.transactionId}`).status,'closed');
+  assert.ok(result.transactionId);
+});
+test('HU transit/stock cannot fulfill VN orders and production reversal never deletes history', async () => {
+  const f=await vietnamFixture();await f.service.processWarehouse(warehouseRequest(f,'migrate'),admin);
+  await f.service.processWarehouse(warehouseRequest(f,'receipt',{quantity:10,reference:'BATCH-A'}),admin);
+  const receipt=[...f.db.data.keys()].find(key=>key.startsWith('warehouseReceipts/')).split('/')[1];
+  await f.service.processWarehouse(warehouseRequest(f,'receipt_reversal',{quantity:2,receiptId:receipt}),admin);
+  assert.equal(f.db.read(`warehouseReceipts/${receipt}`).reversed,2);
+  const transfer=await f.service.processWarehouse(warehouseRequest(f,'dispatch',{quantity:3,country:'HU'}),admin);
+  await f.service.processWarehouse(warehouseRequest(f,'receive',{quantity:3,transferId:transfer.transactionId}),admin);
+  assert.equal(f.inventory().countries.HU.stock,3);
+  await rejectsCode(f.service.createBankTransferOrder(f.order({currency:'VND',expectedTotal:700000}),guest),'failed-precondition');
+  assert.equal(f.db.read(`stockAvailability/${f.variant.variantId}`).available,0);
+  assert.equal(f.db.read(`stockAvailability/${f.variant.variantId}`).availableByCountry.HU,3);
+  await rejectsCode(f.service.processWarehouse(warehouseRequest(f,'receipt',{quantity:1}),guest),'permission-denied');
+  await rejectsCode(f.service.processWarehouse(warehouseRequest(f,'receipt',{quantity:1,expectedVersion:0}),admin),'aborted');
+});
+test('concurrent country dispatches cannot overdraw MAIN',async()=>{
+  const f=await vietnamFixture();await f.service.processWarehouse(warehouseRequest(f,'migrate'),admin);
+  const outcomes=await Promise.allSettled(['KR','HU'].map(country=>f.service.processWarehouse(warehouseRequest(f,'dispatch',{country,quantity:3}),admin)));
+  assert.equal(outcomes.filter(r=>r.status==='fulfilled').length,1);assert.equal(f.inventory().mainStock,0);
+});
+
+test('migrated paid order records shipment without double depletion and restores returned stock to VN', async () => {
+  const f = await vietnamFixture();
+  const order = await f.service.createBankTransferOrder(f.order({currency:'VND',expectedTotal:700000}), guest);
+  await f.action(order.id, STATUS.WAITING, STATUS.PAID);
+  await f.service.processWarehouse(warehouseRequest(f,'migrate'), admin);
+  await f.action(order.id, STATUS.PAID, STATUS.PREPARING);
+  await f.service.updateOrder({orderId:order.id,expectedStatus:STATUS.PREPARING,action:'shipment',payload:{courier:'TEST',trackingNumber:'TEST1234'}},admin);
+  await f.action(order.id, STATUS.PREPARING, STATUS.SHIPPED);
+  assert.equal(f.inventory().mainStock,2);
+  assert.equal(f.inventory().countries.VN.sold,1);
+  const event = [...f.db.data.values()].find(v=>v.type==='sale_shipment');
+  assert.equal(event.trackingNumber,'TEST1234');
+  assert.equal(event.country,'VN');
+  assert.deepEqual(event.before,event.after);
+  await f.action(order.id, STATUS.SHIPPED, STATUS.RETURN_REQUESTED);
+  await f.action(order.id, STATUS.RETURN_REQUESTED, STATUS.RETURN_RECEIVED,{restock:true,note:'검수 완료'});
+  assert.equal(f.inventory().countries.VN.stock,1);
+  assert.equal(f.inventory().countries.VN.sold,0);
+  assert.equal(f.inventory().countries.HU.stock,0);
+  assert.equal(f.inventory().mainStock,2);
+});

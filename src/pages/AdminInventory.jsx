@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { collection, doc, limit, query, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductEditor from './ProductEditor';
-import InventoryModal from '../components/VariantInventory';
+import InventoryModal from '../components/WarehouseInventory';
 import { FALLBACK_PRODUCT_IMAGE, formatProductPrice, getSafeImageUrl } from '../utils/productPresentation';
 import { formatCategoryPath, useCategoryMasters } from '../hooks/useCategoryMasters';
 import { getCurrentInventoryStock, getInventoryAxes } from '../utils/inventorySummary';
@@ -181,7 +181,7 @@ export default function AdminInventory() {
           <span>재고 확인</span><strong>{metrics.lowStock}</strong><small>5개 이하 상품</small>
         </button>
         <div>
-          <span>총 재고</span><strong>{metrics.totalStock}</strong><small>현재 색상·사이즈 합계</small>
+          <span>판매 가능 재고</span><strong>{metrics.totalStock}</strong><small>현재 색상·사이즈 합계</small>
         </div>
       </section>
 

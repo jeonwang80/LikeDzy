@@ -36,3 +36,9 @@ test('country settings isolate drafts and honor legacy free delivery until confi
   assert.equal(calculateShippingFee(700000,active),0);
   assert.throws(()=>normalizeCountryCommerce({shippingFee:-1}),/정수/);
 });
+
+test('public country availability never exposes another country or MAIN as sellable', async()=>{
+ const {countryAvailability}=await import('../../src/utils/countryAvailability.js');
+ const row={allocationVersion:1,available:30,availableByCountry:{VN:0,HU:10,KR:2}};
+ assert.equal(countryAvailability(row,'VN').available,0);assert.equal(countryAvailability(row,'HU').available,10);assert.equal(countryAvailability(row,'XX').available,0);
+});

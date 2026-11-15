@@ -51,6 +51,7 @@ exports.issueWelcomeCoupons = functions.auth.user().onCreate(async (user) => {
   functions.logger.info('New member coupon issuance', { uid: user.uid, issued: result.issued });
 });
 exports.getOrder = callable(commerce.getOrder);
+exports.processWarehouse = callable(commerce.processWarehouse);
 exports.setVariantStock = callable(commerce.setVariantStock);
 exports.updateOrder = callable(commerce.updateOrder);
 exports.expireBankTransferOrders = functions.region("us-central1")

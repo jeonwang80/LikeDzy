@@ -1,3 +1,4 @@
+const allocatedStock = require('./allocationStock');
 const crypto = require("node:crypto");
 const startupVietnam = require('./manual-vietnam-settings.json');
 const { couponTime, campaignStatus, readCouponWallet, MAX_HELD_COUPONS } = require('./couponWallet');
@@ -167,18 +168,28 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     });
     if (!allowed) fail("resource-exhausted", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.");
   }
+  function stockChange(record, operation) {
+    try { return allocatedStock.operate(record, operation); }
+    catch (error) { fail('failed-precondition', error.message); }
+  }
+  function stockSnapshot(record) {
+    if (!record) return { stock: 0, reserved: 0, sold: 0 };
+    return { stock: record.stock, reserved: record.reserved, sold: record.sold,
+      ...(record.allocationVersion === 1 ? { mainStock: record.mainStock, countries: record.countries, inTransit: record.inTransit || {} } : {}) };
+  }
   function publishStock(transaction, inventoryRef, inventory, movement) {
     const next = { ...inventory, version: inventory.version + 1, updatedAt: serverTimestamp() };
     for (const field of ["stock", "reserved", "sold"]) integer(next[field], `재고 ${field}`);
     transaction.set(inventoryRef, next);
     transaction.set(ref("stockAvailability", inventoryRef.id), {
       productId: next.productId, colorName: next.colorName, optionName: next.optionName,
-      available: next.stock, updatedAt: serverTimestamp(),
+      available: next.allocationVersion === 1 ? 0 : next.stock,
+      ...(next.allocationVersion === 1 ? { allocationVersion: 1, availableByCountry: Object.fromEntries(allocatedStock.COUNTRIES.map(country => [country, next.countries[country].stock])) } : {}), updatedAt: serverTimestamp(),
     });
     transaction.set(db.collection("inventoryMovements").doc(), {
-      variantId: inventoryRef.id, productId: next.productId, ...movement,
+      variantId: inventoryRef.id, productId: next.productId, colorName: next.colorName, optionName: next.optionName, ...movement,
       stockAfter: next.stock, reservedAfter: next.reserved, soldAfter: next.sold,
-      version: next.version, createdAt: serverTimestamp(),
+      version: next.version, after: stockSnapshot(next), createdAt: serverTimestamp(),
     });
     return next;
   }
@@ -207,12 +218,90 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       const inventoryRef = ref("inventory", variantId);
       const snapshot = await transaction.get(inventoryRef);
       const current = snapshot.exists ? snapshot.data() : { productId, colorName, optionName, stock: 0, reserved: 0, sold: 0, version: 0 };
+      if (current.allocationVersion === 1) fail('failed-precondition', '전환된 재고는 생산 입고·국가 출고·도착 입고 전표로 관리합니다.');
       if (current.version !== expectedVersion) fail("aborted", "주문 또는 다른 관리자가 재고를 변경했습니다. 최신 재고를 확인한 뒤 다시 저장해 주세요.");
       const next = publishStock(transaction, inventoryRef, { ...current, stock }, {
-        type: "adjustment", stockDelta: stock - current.stock, reservedDelta: 0, soldDelta: 0, actorUid: context.auth.uid,
+        type: "adjustment", before: stockSnapshot(current), stockDelta: stock - current.stock, reservedDelta: 0, soldDelta: 0, actorUid: context.auth.uid,
       });
       const result = { variantId, stock: next.stock, available: next.stock, reserved: next.reserved, sold: next.sold, version: next.version };
       transaction.set(requestRef, { requestHash, result, createdAt: serverTimestamp() });
+      return result;
+    });
+  }
+
+  async function processWarehouse(data, context) {
+    await requireAdmin(context);
+    const type = text(data?.type, 30);
+    if (!['migrate', 'receipt', 'dispatch', 'receive', 'transit_loss', 'return_main', 'receipt_reversal'].includes(type)) fail('invalid-argument', '재고 처리 유형을 확인해 주세요.');
+    const productId = identifier(data.productId, '상품');
+    const colorName = text(data.colorName, 80) || '기본';
+    const optionName = text(data.optionName, 80) || '기본';
+    const variantId = variantIdFor(productId, colorName, optionName);
+    const quantity = type === 'migrate' ? 0 : integer(data.quantity, '처리 수량', 1, 1000000);
+    const requestId = identifier(data.requestId, '처리 요청');
+    if (requestId.length < 16) fail('invalid-argument', '요청 식별자를 다시 생성해 주세요.');
+    const reference = text(data.reference, 100);
+    const note = text(data.note, 500);
+    if (!reference || !note) fail('invalid-argument', '전표번호와 처리 사유를 입력해 주세요.');
+    const country = type === 'dispatch' ? text(data.country, 2) : '';
+    if (type === 'dispatch' && !allocatedStock.COUNTRIES.includes(country)) fail('invalid-argument', '도착 국가를 선택해 주세요.');
+    const transferId = ['receive', 'transit_loss', 'return_main'].includes(type) ? identifier(data.transferId, '출고 전표') : '';
+    const receiptId = type === 'receipt_reversal' ? identifier(data.receiptId, '입고 전표') : '';
+    const expectedVersion = integer(data.expectedVersion, '재고 버전');
+    const requestHash = hash(JSON.stringify({type, productId, colorName, optionName, quantity, reference, note, country, transferId, receiptId, expectedVersion}));
+    const requestRef = ref('inventoryRequests', hash(`${context.auth.uid}:warehouse:${requestId}`));
+    const inventoryRef = ref('inventory', variantId);
+    return db.runTransaction(async transaction => {
+      const previous = await transaction.get(requestRef);
+      if (previous.exists) {
+        if (previous.data().requestHash !== requestHash) fail('already-exists', '같은 요청에 다른 내용이 전달되었습니다.');
+        return previous.data().result;
+      }
+      const product = await transaction.get(ref('products', productId));
+      if (!product.exists) fail('not-found', '상품을 찾을 수 없습니다.');
+      if (type === 'receipt') assertVariant(product.data(), {colorName, optionName});
+      const snapshot = await transaction.get(inventoryRef);
+      const current = snapshot.exists ? snapshot.data() : {productId,colorName,optionName,stock:0,reserved:0,sold:0,version:0};
+      if (current.version !== expectedVersion) fail('aborted', '재고가 변경되었습니다. 최신 수량을 확인하고 다시 처리하세요.');
+      if (type !== 'migrate' && current.allocationVersion !== 1 && snapshot.exists) fail('failed-precondition', '기존 재고를 메인 창고로 먼저 이관해 주세요.');
+      if (type === 'migrate' && current.allocationVersion === 1) fail('failed-precondition', '이미 메인·국가 재고로 전환되었습니다.');
+      const transferRef = transferId ? ref('warehouseTransfers', transferId) : null;
+      const transferSnapshot = transferRef ? await transaction.get(transferRef) : null;
+      const receiptRef = type === 'receipt' ? ref('warehouseReceipts', hash(`${variantId}:${reference}`)) : receiptId ? ref('warehouseReceipts',receiptId) : null;
+      const receiptSnapshot = receiptRef ? await transaction.get(receiptRef) : null;
+      if (type === 'receipt' && receiptSnapshot.exists) fail('already-exists', '이 입고번호의 동일 색상·사이즈가 이미 입고되었습니다. 원전표를 확인하세요.');
+      let destination = country;
+      let transfer;
+      if (transferRef) {
+        if (!transferSnapshot.exists || transferSnapshot.data().variantId !== variantId) fail('failed-precondition', '출고 전표와 상품이 일치하지 않습니다.');
+        transfer = transferSnapshot.data(); destination = transfer.country;
+        if (quantity > transfer.quantity - transfer.received - transfer.lost - transfer.returned) fail('failed-precondition', '출고 전표의 미처리 수량을 초과했습니다.');
+      }
+      if (type === 'receipt_reversal' && (!receiptSnapshot.exists || receiptSnapshot.data().variantId !== variantId || quantity > receiptSnapshot.data().quantity - receiptSnapshot.data().reversed)) fail('failed-precondition', '원입고 전표의 정정 가능 수량을 확인해 주세요.');
+      let next;
+      try { next = allocatedStock.initialize(current, 'MAIN'); }
+      catch (error) { fail('failed-precondition', error.message); }
+      if (type !== 'migrate') next = stockChange(next, { type, country: destination, quantity });
+      const nextVersion = publishStock(transaction, inventoryRef, next, {
+        type, quantity, country: destination || 'MAIN', reference, note, actorUid: context.auth.uid,
+        actorEmail: text(context.auth.token?.email, 200), requestId: requestRef.id,
+        transferId: type === 'dispatch' ? requestRef.id : transferId,
+        receiptId: receiptRef?.id || '', before: stockSnapshot(current),
+        colorName, optionName, productName: text(product.data().name,200),
+        stockDelta: next.stock-current.stock, reservedDelta: next.reserved-current.reserved, soldDelta: next.sold-current.sold,
+      });
+      const common = {productId,variantId,colorName,optionName,quantity,reference,note,actorUid:context.auth.uid,createdAt:serverTimestamp()};
+      if (type === 'receipt') transaction.create(receiptRef,{...common,reversed:0});
+      if (type === 'receipt_reversal') transaction.update(receiptRef,{reversed:receiptSnapshot.data().reversed+quantity,updatedAt:serverTimestamp()});
+      if (type === 'dispatch') transaction.create(ref('warehouseTransfers',requestRef.id),{...common,country,received:0,lost:0,returned:0,status:'in_transit',updatedAt:serverTimestamp()});
+      if (transferRef) {
+        const received=transfer.received+(type==='receive'?quantity:0);
+        const lost=transfer.lost+(type==='transit_loss'?quantity:0);
+        const returned=transfer.returned+(type==='return_main'?quantity:0);
+        transaction.update(transferRef,{received,lost,returned,status:received+lost+returned===transfer.quantity?'closed':'in_transit',updatedAt:serverTimestamp()});
+      }
+      const result = {variantId,version:nextVersion.version,transactionId:requestRef.id};
+      transaction.create(requestRef,{requestHash,result,createdAt:serverTimestamp()});
       return result;
     });
   }
@@ -356,7 +445,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         if (!snapshot.exists) fail("failed-precondition", "선택한 색상·사이즈의 재고가 아직 등록되지 않았습니다.");
         const value = snapshot.data();
         if (value.productId !== item.productId || value.colorName !== item.colorName || value.optionName !== item.optionName) fail("failed-precondition", "상품 재고 정보가 일치하지 않습니다.");
-        if (!Number.isSafeInteger(value.stock) || value.stock < item.quantity) fail("failed-precondition", `${products.get(item.productId).name || "상품"} ${item.colorName}/${item.optionName} 재고가 부족합니다.`);
+        if (!Number.isSafeInteger(value.allocationVersion === 1 ? value.countries?.[customer.country]?.stock : value.stock) || (value.allocationVersion === 1 ? value.countries[customer.country].stock : value.stock) < item.quantity) fail("failed-precondition", `${products.get(item.productId).name || "상품"} ${item.colorName}/${item.optionName} 재고가 부족합니다.`);
         inventory.set(item.variantId, value);
       }
       const orderItems = cart.map((item) => {
@@ -374,7 +463,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       const hours = integer(Number(settings.depositDeadlineHours ?? 48), "입금 기한", 1, 720);
       const orderNumber = `LD${new Date(currentTime).toISOString().slice(0, 10).replace(/-/g, "")}-${orderRef.id.slice(0, 12).toUpperCase()}`;
       const order = {
-        schemaVersion: 2, currency, salesCountry, orderNumber, userId: actorUid, items: orderItems, subtotal, shippingFee, discountAmount, couponCode: code, totalAmountNumber,
+        schemaVersion: 2, inventoryCountry: customer.country, currency, salesCountry, orderNumber, userId: actorUid, items: orderItems, subtotal, shippingFee, discountAmount, couponCode: code, totalAmountNumber,
         totalAmount: currency === 'VND' ? `${totalAmountNumber.toLocaleString('en-US')} ₫` : `₩${totalAmountNumber.toLocaleString("ko-KR")}`, paymentMethod: "bank_transfer", isTestOrder, manualBankTransfer: currency === 'VND' && settings.manualBankTransfer === true,
         status: STATUS.WAITING, inventoryState: "reserved", name: customer.buyerName, phone: customer.buyerPhone,
         depositName: customer.depositorName, recipientName: customer.recipientName, recipientPhone: customer.recipientPhone,
@@ -392,8 +481,8 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       };
       for (const item of cart) {
         const current = inventory.get(item.variantId);
-        publishStock(transaction, ref("inventory", item.variantId), { ...current, stock: current.stock - item.quantity, reserved: current.reserved + item.quantity }, {
-          type: "reserve", orderId: orderRef.id, orderNumber, stockDelta: -item.quantity, reservedDelta: item.quantity, soldDelta: 0,
+        publishStock(transaction, ref("inventory", item.variantId), current.allocationVersion === 1 ? stockChange(current, { type: 'reserve', country: customer.country, quantity: item.quantity }) : { ...current, stock: current.stock - item.quantity, reserved: current.reserved + item.quantity }, {
+          type: "reserve", country: customer.country, actorUid: actorUid || "guest", before: stockSnapshot(current), orderId: orderRef.id, orderNumber, stockDelta: -item.quantity, reservedDelta: item.quantity, soldDelta: 0,
         });
       }
       transaction.create(orderRef, order);
@@ -480,7 +569,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         }
         if (next === STATUS.SHIPPED) {
           if (!order.courier || !order.trackingNumber) fail("failed-precondition", "택배사와 송장번호를 먼저 저장해 주세요.");
-          updates.shippedAt = serverTimestamp();
+          updates.shippedAt = serverTimestamp(); movement = "sale_shipment";
         }
         if (next === STATUS.DELIVERED) updates.deliveredAt = serverTimestamp();
         if (next === STATUS.RETURN_RECEIVED) {
@@ -531,9 +620,9 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         if (movement === "release") { reservedDelta = -item.quantity; stockDelta = item.quantity; }
         if (movement === "refund") { soldDelta = -item.quantity; stockDelta = item.quantity; }
         if (movement === "dispose") soldDelta = -item.quantity;
-        publishStock(transaction, item.ref, {
-          ...item.value, stock: item.value.stock + stockDelta, reserved: item.value.reserved + reservedDelta, sold: item.value.sold + soldDelta,
-        }, { type: expiry ? "expired" : movement, orderId, orderNumber: order.orderNumber, actorUid, stockDelta, reservedDelta, soldDelta });
+        const inventoryCountry = order.inventoryCountry || 'VN';
+        const next = item.value.allocationVersion === 1 && movement !== 'sale_shipment' ? stockChange(item.value, { type: movement, country: inventoryCountry, quantity: item.quantity }) : { ...item.value, stock: item.value.stock + stockDelta, reserved: item.value.reserved + reservedDelta, sold: item.value.sold + soldDelta };
+        publishStock(transaction, item.ref, next, { type: expiry ? "expired" : movement, country: inventoryCountry, before: stockSnapshot(item.value), quantity: item.quantity, courier: order.courier || "", trackingNumber: order.trackingNumber || "", note: text(payload.note), orderId, orderNumber: order.orderNumber, actorUid, stockDelta, reservedDelta, soldDelta });
       }
       if (couponRelease) {
         transaction.update(couponRelease.couponRef, { usedCount: Math.max(0, couponRelease.usedCount - 1), updatedAt: serverTimestamp() });
@@ -544,6 +633,8 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       transaction.create(db.collection("orderEvents").doc(), {
         orderId, userId: order.userId || null, actorUid, type: expiry ? "expired" : action,
         fromStatus: order.status, toStatus: updates.status || order.status, note: text(payload.note), createdAt: serverTimestamp(),
+        inventoryCountry: order.inventoryCountry || 'VN',
+        ...(action === 'shipment' ? { beforeShipment: { courier: order.courier || '', trackingNumber: order.trackingNumber || '' }, afterShipment: { courier: updates.courier, trackingNumber: updates.trackingNumber } } : {}),
       });
       return { id: orderId, status: updates.status || order.status, inventoryState: updates.inventoryState || order.inventoryState };
     });
@@ -568,7 +659,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     }
     return { examined: results.length, expired: results.filter((result) => !result.skipped && !result.failed).length, failed: results.filter((result) => result.failed).map((result) => result.id) };
   }
-  return { setVariantStock, createBankTransferOrder, quoteCoupon, listMyCoupons, issueWelcomeCoupons, getOrder, updateOrder, expireOrder, expireBankTransferOrders, isAdmin };
+  return { processWarehouse, setVariantStock, createBankTransferOrder, quoteCoupon, listMyCoupons, issueWelcomeCoupons, getOrder, updateOrder, expireOrder, expireBankTransferOrders, isAdmin };
 }
 
 module.exports = { CommerceError, createCommerceService, variantIdFor, STATUS };

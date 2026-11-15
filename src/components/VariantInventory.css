@@ -12,3 +12,15 @@
 .inventory-grid-help{font-size:13px;color:#626b64;line-height:1.7}.inventory-grid-help summary{cursor:pointer}.inventory-change-count{margin-right:auto;font-size:14px}
 .inventory-grid-drawer .admin-drawer-footer{flex-wrap:wrap;gap:10px;align-items:center}
 @media(max-width:600px){.inventory-grid-content{padding:14px}.inventory-matrix th,.inventory-matrix td{padding:8px}.inventory-matrix th:first-child{min-width:110px;max-width:130px}.inventory-change-count{width:100%}}
+.warehouse-drawer { width: min(1380px, 98vw) !important; }
+.warehouse-totals { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px; }
+.warehouse-totals span { background:#edf2ed; border:1px solid #dce1da; padding:12px 18px; border-radius:8px; font-weight:700; }
+.warehouse-warning { padding:14px; background:#fff7dd; color:#614b15; border-radius:8px; line-height:1.7; }
+.warehouse-form { padding:20px; border:1px solid #dce1da; border-radius:10px; margin:24px 0; }
+.warehouse-form fieldset { border:0; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
+.warehouse-form label { display:flex; flex-direction:column; gap:8px; font-size:14px; }
+.warehouse-form input,.warehouse-form select { padding:10px; width:100%; min-width:0; box-sizing:border-box; border:1px solid #bdc8bf; border-radius:5px; background:white; color:#172019; }
+.warehouse-form p { grid-column:1/-1; line-height:1.6; font-size:13px; }
+.warehouse-history { padding:14px 0; border-bottom:1px solid #dce1da; font-size:13px; }
+.warehouse-history summary { cursor:pointer; line-height:1.7; }
+.warehouse-history pre { overflow:auto; background:#f2f5f0; padding:12px; max-height:260px; }
