@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { isCommerceReady } from '../utils/commerce';
-import { marketSettings } from '../utils/market';
+import { marketSettings, vietnamSettings } from '../utils/market';
 import { countryCommerceSettings, normalizeCountryCommerce, COMMERCE_COUNTRIES } from '../utils/countryCommerce';
 
 const fields = [
@@ -37,6 +37,7 @@ export default function AdminCommerceSettings() {
     setSaving(true);
     try {
       const patch = country === 'KR' ? normalized : { [country === 'VN' ? 'vietnam' : 'hungary']: normalized };
+      if (country !== 'VN' && Object.keys(source).length === 0) patch.vietnam = { ...vietnamSettings(source) };
       await setDoc(doc(db, 'settings', 'commerce'), { ...patch, updatedAt: serverTimestamp() }, { merge: true });
       setSource(current => ({ ...current, ...patch }));
       setDrafts(current => { const next = { ...current }; delete next[country]; return next; });
