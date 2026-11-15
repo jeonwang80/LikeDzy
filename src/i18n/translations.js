@@ -1,4 +1,12 @@
 export const translations = {
+  hu: {
+    nav: { shop: 'Vásárlás', collection: 'Kollekció', about: 'Márka' },
+    hero: { title: 'MOVE BEYOND THE MAP', subtitle: 'Technikai outdoor ruházat minden mozdulathoz, a város határain túl.' },
+    home: { viewCollection: 'Teljes kollekció megtekintése' },
+    collection: { title: 'ALL-TERRAIN KOLLEKCIÓ', subtitle: 'Outdoor ruházat mozgáshoz és változó körülményekhez.', all: 'ÖSSZES', products: 'termék', sort: 'RENDEZÉS', sortDisplay: 'Alapértelmezett sorrend', sortNewest: 'Legújabb', sortLow: 'Ár: növekvő', sortHigh: 'Ár: csökkenő', sortName: 'Név: A–Z' },
+    story: { title: 'WE LIKE\nDRIVING\nTHE ZENITH\nIN YOU', content: 'Örömmel látjuk, ahogy egyre magasabbra jutsz,\nközelebb a saját csúcsodhoz.\n\nHiszünk az utadban, és szurkolunk neked.', signature: 'DRIVE THE ZENITH IN YOU.' },
+    footer: { company: 'LikeDzy Technical Outdoor', rights: '© 2026 LikeDzy. Minden jog fenntartva.' },
+  },
   ko: {
     nav: {
       shop: '쇼핑',

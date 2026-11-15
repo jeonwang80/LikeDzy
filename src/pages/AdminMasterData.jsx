@@ -1,3 +1,4 @@
+import { EDITOR_LANGUAGES, languageLabel } from '../i18n/languages';
 import { useMemo, useState } from 'react';
 import {
   addDoc,
@@ -13,7 +14,7 @@ import { db } from '../firebase';
 import { useCategoryMasters } from '../hooks/useCategoryMasters';
 
 const LEVELS = [1, 2, 3];
-const NAME_FIELDS = ['Ko', 'En', 'Vi'];
+const NAME_FIELDS = ['Ko', 'En', 'Vi', 'Hu'];
 
 const normalizeCode = (value) => value.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
@@ -32,14 +33,17 @@ const createEmptyRow = (sortOrder = 100) => ({
   level1NameKo: '',
   level1NameEn: '',
   level1NameVi: '',
+  level1NameHu: '',
   level2Code: '',
   level2NameKo: '',
   level2NameEn: '',
   level2NameVi: '',
+  level2NameHu: '',
   level3Code: '',
   level3NameKo: '',
   level3NameEn: '',
   level3NameVi: '',
+  level3NameHu: '',
   active: true,
   sortOrder,
   dirty: false,
@@ -52,14 +56,17 @@ const categoryToRow = (category) => ({
   level1NameKo: category.level1NameKo || category.level1Name || '',
   level1NameEn: category.level1NameEn || '',
   level1NameVi: category.level1NameVi || '',
+  level1NameHu: category.level1NameHu || '',
   level2Code: category.level2Code || '',
   level2NameKo: category.level2NameKo || category.level2Name || '',
   level2NameEn: category.level2NameEn || '',
   level2NameVi: category.level2NameVi || '',
+  level2NameHu: category.level2NameHu || '',
   level3Code: category.level3Code || '',
   level3NameKo: category.level3NameKo || category.level3Name || '',
   level3NameEn: category.level3NameEn || '',
   level3NameVi: category.level3NameVi || '',
+  level3NameHu: category.level3NameHu || '',
   active: category.active !== false,
   sortOrder: category.sortOrder ?? 100,
   dirty: false,
@@ -89,6 +96,7 @@ const buildPayload = (row) => {
     payload[koField] = (row[koField] || '').trim();
     payload[enField] = (row[enField] || '').trim();
     payload[viField] = (row[viField] || '').trim();
+    payload[`level${level}NameHu`] = (row[`level${level}NameHu`] || '').trim();
     payload[`level${level}Name`] = payload[koField] || payload[enField] || payload[codeField];
   });
 
@@ -101,6 +109,8 @@ export default function AdminMasterData() {
   const [newRows, setNewRows] = useState(() => [createEmptyRow(100)]);
   const [searchTerm, setSearchTerm] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editingLanguage, setEditingLanguage] = useState('ko');
+  const editingSuffix = EDITOR_LANGUAGES.find(item => item.code === editingLanguage).suffix;
 
   const rows = useMemo(() => ([
     ...categories.map((category) => rowEdits[category.id] || categoryToRow(category)),
@@ -276,6 +286,10 @@ export default function AdminMasterData() {
           </div>
         </div>
 
+        <div className="category-language-tabs" role="group" aria-label="카테고리 편집 언어">
+          {EDITOR_LANGUAGES.map(item => <button key={item.code} type="button" aria-pressed={editingLanguage === item.code} onClick={() => setEditingLanguage(item.code)}>{item.label}</button>)}
+          <small>선택한 언어의 명칭만 표시합니다. 코드·사용 여부는 공통이며 모든 언어의 변경사항을 함께 저장합니다.</small>
+        </div>
         {loading ? (
           <div className="admin-empty-state">카테고리 기준정보를 불러오고 있습니다.</div>
         ) : error ? (
@@ -288,9 +302,7 @@ export default function AdminMasterData() {
                 <col className="combined-code" />
                 {LEVELS.flatMap((level) => [
                   <col className="level-code" key={`${level}-code-width`} />,
-                  <col className="level-name" key={`${level}-ko-width`} />,
-                  <col className="level-name" key={`${level}-en-width`} />,
-                  <col className="level-name" key={`${level}-vi-width`} />,
+                  <col className="level-name" key={`${level}-name-width`} />,
                 ])}
                 <col className="active" />
                 <col className="manage" />
@@ -299,18 +311,16 @@ export default function AdminMasterData() {
                 <tr className="admin-category-sheet-groups">
                   <th rowSpan="2">순서</th>
                   <th rowSpan="2">통합 코드</th>
-                  <th colSpan="4">1차 분류</th>
-                  <th colSpan="4">2차 분류</th>
-                  <th colSpan="4">3차 분류</th>
+                  <th colSpan="2">1차 분류</th>
+                  <th colSpan="2">2차 분류</th>
+                  <th colSpan="2">3차 분류</th>
                   <th rowSpan="2">사용</th>
                   <th rowSpan="2">관리</th>
                 </tr>
                 <tr>
                   {LEVELS.flatMap((level) => [
                     <th key={`${level}-code`}>CODE *</th>,
-                    <th key={`${level}-ko`}>한국어 *</th>,
-                    <th key={`${level}-en`}>ENGLISH</th>,
-                    <th key={`${level}-vi`}>TIẾNG VIỆT</th>,
+                    <th key={`${level}-name`}>{languageLabel(editingLanguage)}{editingLanguage === 'ko' ? ' *' : ''}</th>,
                   ])}
                 </tr>
               </thead>
@@ -325,12 +335,12 @@ export default function AdminMasterData() {
                       <td className="code" key={`${row.rowKey}-${level}-code`}>
                         <input value={row[`level${level}Code`]} onChange={(event) => updateRow(row.rowKey, `level${level}Code`, event.target.value)} placeholder={level === 1 ? 'MAN' : level === 2 ? 'TOP' : 'FW'} maxLength="12" aria-label={`${level}차 코드`} />
                       </td>,
-                      ...NAME_FIELDS.map((language) => (
+                      ...[editingSuffix].map((language) => (
                         <td key={`${row.rowKey}-${level}-${language}`}>
                           <input
                             value={row[`level${level}Name${language}`]}
                             onChange={(event) => updateRow(row.rowKey, `level${level}Name${language}`, event.target.value)}
-                            placeholder={language === 'Ko' ? '한글 명칭' : language === 'En' ? 'English name' : 'Tên tiếng Việt'}
+                            placeholder={language === 'Ko' ? '한글 명칭' : language === 'En' ? 'English name' : language === 'Hu' ? 'Magyar név' : 'Tên tiếng Việt'}
                             maxLength="60"
                             aria-label={`${level}차 ${language} 명칭`}
                           />

@@ -112,3 +112,12 @@
   .mobile-category-groups .mobile-group-title { color: var(--colors-ink); font-size: 0.82rem; font-weight: 800; }
   .mobile-category-scroll > a { border-bottom: 1px solid var(--colors-hairline-soft); }
 }
+
+/* Keep the country indicator separate from the original logo proportions. */
+.storefront-header .header-logo { display: flex; align-items: center; gap: 6px; width: auto; overflow: visible; }
+.storefront-header .header-logo img { width: 126px; flex: 0 0 126px; }
+.header-visitor-country { font: 600 10px/1.2 system-ui, sans-serif; letter-spacing: .06em; color: #66716c; min-width: 20px; }
+@media (max-width: 768px) { .storefront-header .header-logo img { width: 104px; flex-basis: 104px; } .header-visitor-country { font-size: 9px; min-width: 16px; } }
+
+@media (max-width: 768px) { .header.storefront-header { gap: 12px; } }
+@media (max-width: 360px) { .storefront-header .header-logo img { width: 88px; flex-basis: 88px; } .header.storefront-header { padding-inline: 3%; gap: 8px; } }

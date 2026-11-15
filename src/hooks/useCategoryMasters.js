@@ -2,10 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../firebase';
 
+const HUNGARIAN_CATEGORY_NAMES = { MAN: 'Férfi', WOMAN: 'Női', ACCESSORIES: 'Kiegészítők', ACC: 'Kiegészítők', TOP: 'Felsők', BOTTOM: 'Alsók', OUTERWEAR: 'Kabátok', CAPHAT: 'Sapkák és kalapok', CAP: 'Sapkák', SHORT: 'Rövidnadrágok', LONG: 'Hosszúnadrágok', SS: 'Tavasz / Nyár', FW: 'Ősz / Tél' };
+
 export function getCategoryName(category, level, language = 'ko') {
   if (!category) return '';
-  const languageSuffix = language === 'en' ? 'En' : language === 'vi' ? 'Vi' : 'Ko';
+  const languageSuffix = language === 'hu' ? 'Hu' : language === 'en' ? 'En' : language === 'vi' ? 'Vi' : 'Ko';
   return category[`level${level}Name${languageSuffix}`]
+    || (language === 'hu' && HUNGARIAN_CATEGORY_NAMES[String(category[`level${level}Code`] || '').toUpperCase().replace('ACCESORRIES', 'ACCESSORIES')])
+    || (language !== 'ko' && category[`level${level}NameEn`])
     || category[`level${level}NameKo`]
     || category[`level${level}Name`]
     || category[`level${level}Code`]

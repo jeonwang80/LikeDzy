@@ -1,0 +1,18 @@
+export const hungarian = {
+  '주문 조회': 'Rendelés követése', '이용약관': 'Általános szerződési feltételek', '개인정보 처리방침': 'Adatvédelmi tájékoztató',
+  '홈': 'Kezdőlap', '내정보': 'Fiókom', '장바구니': 'Kosár', '장바구니 닫기': 'Kosár bezárása',
+  '장바구니가 비어있습니다.': 'A kosarad üres.', '마음에 드는 아웃도어 아이템을 담아보세요.': 'Fedezd fel outdoor termékeinket.',
+  '삭제': 'Törlés', '수량 조절': 'Mennyiség', '수량 줄이기': 'Mennyiség csökkentése', '수량 늘리기': 'Mennyiség növelése',
+  '무료배송 적용': 'Ingyenes szállítás', '배송비': 'Szállítási díj', '예상 결제금액': 'Becsült végösszeg', '주문서 작성': 'Pénztár',
+  '주문번호': 'Rendelésszám', '입금할 금액': 'Átutalandó összeg', '입금기한': 'Fizetési határidő', '입금 계좌': 'Bankszámla',
+  '예금주': 'Számlatulajdonos', '계좌 복사': 'Számlaszám másolása', '주문이 접수되었습니다.': 'Rendelésedet fogadtuk.',
+  '입금이 확인되면 상품 준비를 시작합니다.': 'A fizetés visszaigazolása után előkészítjük a rendelésedet.',
+  '쇼핑 계속하기': 'Vásárlás folytatása', '이전': 'Előző', '다음': 'Következő', '페이지': 'Oldal',
+  '비회원 주문 조회': 'Vendégrendelés követése', '주문 내역을 불러오는 중...': 'Rendelések betöltése…',
+  '아직 주문하신 내역이 없습니다.': 'Még nincs rendelésed.', '결제 금액': 'Fizetendő összeg',
+  '쇼핑 안내': 'Vásárlási információk', '교환·반품 안내': 'Csere és visszaküldés', '고객센터': 'Ügyfélszolgálat',
+  '쿠폰 사용은 로그인이 필요합니다.': 'A kupon használatához jelentkezz be.', '쿠폰 할인이 적용되었습니다.': 'Kupon érvényesítve.',
+  '쿠폰을 사용할 수 없습니다.': 'Ez a kupon nem használható.', '쿠폰 할인': 'Kuponkedvezmény', '쿠폰 코드': 'Kuponkód',
+  '적용': 'Alkalmazás', '가입 쿠폰 사용': 'Üdvözlőkupon használata', '로그인': 'Bejelentkezés', '로그아웃': 'Kijelentkezés',
+  '상품 준비중': 'Hamarosan elérhető', '사이즈 가이드': 'Mérettáblázat', '리뷰': 'Értékelések', '상품 문의': 'Termékkérdések',
+};

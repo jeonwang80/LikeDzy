@@ -1,3 +1,4 @@
+import { localizedProduct } from '../utils/localizedProduct';
 import { getImageBackground } from '../utils/imageBackground';
 import ProductBadges from './ProductBadges';
 import { hasAvailableProductStock } from '../utils/productStock';
@@ -156,7 +157,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
   });
 
   // Language specific fields
-  const langData = product[language] || product.ko || {};
+  const langData = localizedProduct(product, language);
   const name = langData.name || product.name || '';
   const fabric = langData.fabric || product.fabric || '';
   const description = sanitizeProductHtml(langData.description || product.description || '');
@@ -169,10 +170,10 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
   const youtubeEmbedUrl = getYouTubeEmbedUrl(product.youtubeUrl);
   const addToBagDisabled = stockLoading || !!stockError || !sizes[selectedSizeIdx]?.variantId
     || sizes[selectedSizeIdx]?.stock <= 0 || product.isActive === false;
-  const preparingLabel = language === 'ko' ? '상품 준비중' : 'Coming soon';
+  const preparingLabel = language === 'hu' ? 'Hamarosan elérhető' : language === 'ko' ? '상품 준비중' : 'Coming soon';
   const addToBagLabel = stockLoading ? (language === 'ko' ? '재고 확인 중…' : 'Checking stock…')
     : stockError ? (language === 'ko' ? '재고 확인 불가' : 'Stock unavailable')
-      : addToBagDisabled ? preparingLabel : 'ADD TO BAG';
+      : addToBagDisabled ? preparingLabel : language === 'hu' ? 'KOSÁRBA' : 'ADD TO BAG';
 
   const toggleWishlist = () => {
     try {
@@ -314,7 +315,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
             <div className="alo-detail-option-group">
               <div className="alo-option-label" style={{ justifyContent: 'space-between' }}>
                 <span><strong>Size:</strong> {sizes[selectedSizeIdx]?.name}</span>
-                {product.measurementGuide?.rows?.length > 0 && <button type="button" className="alo-size-guide-link sg-trigger" onClick={() => setGuideOpen(true)}>{language === 'ko' ? '사이즈 가이드' : 'Size Guide'}</button>}
+                {product.measurementGuide?.rows?.length > 0 && <button type="button" className="alo-size-guide-link sg-trigger" onClick={() => setGuideOpen(true)}>{language === 'hu' ? 'Mérettáblázat' : language === 'ko' ? '사이즈 가이드' : 'Size Guide'}</button>}
               </div>
               <div className="alo-size-pill-grid">
                 {sizes.map((sz, idx) => (

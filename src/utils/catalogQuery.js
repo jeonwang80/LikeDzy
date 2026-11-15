@@ -39,7 +39,7 @@ export function buildCatalogFields(product = {}, categoryMasters = []) {
 
 export function getCatalogOrdering(sortBy = 'display', language = 'ko') {
   if (sortBy === 'newest') return [['createdAt', 'desc']];
-  if (sortBy === 'name') return [[`sortName${language === 'en' ? 'En' : language === 'vi' ? 'Vi' : 'Ko'}`, 'asc']];
+  if (sortBy === 'name') return [[`sortName${['en', 'hu'].includes(language) ? 'En' : language === 'vi' ? 'Vi' : 'Ko'}`, 'asc']];
   if (sortBy === 'price-asc' || sortBy === 'price-desc') {
     return [[`price${currencyForLanguage(language)}`, sortBy === 'price-desc' ? 'desc' : 'asc']];
   }

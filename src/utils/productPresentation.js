@@ -1,3 +1,4 @@
+import { localizedProduct } from './localizedProduct.js';
 import { normalizeProductImages } from './productImages.js';
 import { currencyForLanguage, formatMoney, productPrice } from './market.js';
 export const FALLBACK_PRODUCT_IMAGE = '/images/product-placeholder.svg';
@@ -16,7 +17,7 @@ const isLegacyModelImage = (url) =>
 export function formatProductPrice(product, language = 'ko') {
   const currency = currencyForLanguage(language);
   const price = productPrice(product, currency);
-  return price === null ? (language === 'ko' ? '가격 준비중' : 'Price unavailable') : formatMoney(price, currency);
+  return price === null ? (language === 'hu' ? 'Az ár még nem elérhető' : language === 'ko' ? '가격 준비중' : 'Price unavailable') : formatMoney(price, currency);
 }
 
 export function normalizeProductBadge(value) {
@@ -52,7 +53,7 @@ export function getProductBadges(product) {
 
 export function presentProduct(originalProduct, language = 'ko') {
   const product = normalizeProductImages(originalProduct);
-  const localized = product?.[language] || product?.ko || {};
+  const localized = localizedProduct(product, language);
   const images = Array.isArray(product?.imageUrls)
     ? product.imageUrls
     : product?.images?.length

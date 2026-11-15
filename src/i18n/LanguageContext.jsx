@@ -6,9 +6,9 @@ const LanguageContext = createContext();
 
 export const LanguageProvider = ({ children }) => {
   const [language, updateLanguage] = useState(() => {
-    try { return ['en', 'vi'].includes(localStorage.getItem('likedzy-language')) ? 'en' : 'ko'; } catch { return 'ko'; }
+    try { return localStorage.getItem('likedzy-language') === 'hu' ? 'hu' : ['en', 'vi'].includes(localStorage.getItem('likedzy-language')) ? 'en' : 'ko'; } catch { return 'ko'; }
   });
-  const setLanguage = (value) => updateLanguage(value === 'ko' ? 'ko' : 'en');
+  const setLanguage = (value) => updateLanguage(['ko', 'en', 'hu'].includes(value) ? value : 'en');
   useEffect(() => {
     document.documentElement.lang = language;
     try { localStorage.setItem('likedzy-language', language); } catch { /* Persistence is optional. */ }
@@ -16,7 +16,7 @@ export const LanguageProvider = ({ children }) => {
 
   const t = (key) => {
     const keys = key.split('.');
-    let value = translations[language];
+    let value = translations[language] || translations.en;
     for (const k of keys) {
       if (value === undefined) return key;
       value = value[k];

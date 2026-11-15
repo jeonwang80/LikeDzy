@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { getCategoryName, useCategoryMasters } from '../hooks/useCategoryMasters';
 import './Header.css';
+import { useVisitorCountry } from '../hooks/useVisitorCountry';
 
 const buildCategoryTree = (categories, language) => {
   const level1Map = new Map();
@@ -43,6 +44,7 @@ const buildCategoryTree = (categories, language) => {
 
 export default function Header({ onNavigateHome }) {
   const { t, language, setLanguage } = useLanguage();
+  const visitorCountry = useVisitorCountry();
   const { cart, setIsCartOpen } = useCart();
   const { currentUser, isAdmin } = useAuth();
   const { categories } = useCategoryMasters({ activeOnly: true });
@@ -117,6 +119,7 @@ export default function Header({ onNavigateHome }) {
           onClick={handleLogoClick}
           aria-label="LikeDzy 홈으로 이동"
         >
+          <span className="header-visitor-country" title={visitorCountry ? `IP country: ${visitorCountry}` : 'IP country unavailable'} aria-label={visitorCountry ? `IP country: ${visitorCountry}` : 'IP country unavailable'}>{visitorCountry || '--'}</span>
           <img src="/likedzy-logo.png" alt="" aria-hidden="true" />
         </button>
 
@@ -143,15 +146,16 @@ export default function Header({ onNavigateHome }) {
           <select className="header-language-select" value={language} onChange={(event) => setLanguage(event.target.value)} aria-label={language === 'ko' ? '언어 선택' : 'Choose language'}>
             <option value="ko">한국어</option>
             <option value="en">English</option>
+            <option value="hu">Magyar</option>
           </select>
 
           {currentUser ? (
             <div className="header-account-links">
               {isAdmin && <Link to="/admin" className="header-admin-link">ADMIN</Link>}
-              <Link to="/mypage" className="header-account-link">{language === 'ko' ? '마이페이지' : 'My account'}</Link>
+              <Link to="/mypage" className="header-account-link">{language === 'hu' ? 'Fiókom' : language === 'ko' ? '마이페이지' : 'My account'}</Link>
             </div>
           ) : (
-            <Link to="/login" className="header-account-link">{language === 'ko' ? '로그인' : 'Sign in'}</Link>
+            <Link to="/login" className="header-account-link">{language === 'hu' ? 'Bejelentkezés' : language === 'ko' ? '로그인' : 'Sign in'}</Link>
           )}
 
           <button type="button" className="header-cart-btn" onClick={() => setIsCartOpen(true)} aria-label={`장바구니 ${cartItemCount}개`}>
@@ -190,7 +194,7 @@ export default function Header({ onNavigateHome }) {
           >
             <div className="category-mega-heading">
               <div><span>EXPLORE</span><strong>{activeMegaCategory.name}</strong></div>
-              <Link to={getCategoryUrl(activeMegaCategory.code)} onClick={handleCategoryLinkClick}>{language === 'ko' ? '전체 상품 보기' : 'View all products'} <span>→</span></Link>
+              <Link to={getCategoryUrl(activeMegaCategory.code)} onClick={handleCategoryLinkClick}>{language === 'hu' ? 'Összes termék' : language === 'ko' ? '전체 상품 보기' : 'View all products'} <span>→</span></Link>
             </div>
             <div className="category-mega-grid">
               {activeMegaCategory.groups.map((group) => (
@@ -221,7 +225,7 @@ export default function Header({ onNavigateHome }) {
                     </button>
                     {expanded && (
                       <div className="mobile-category-groups">
-                        <Link to={getCategoryUrl(category.code)} className="mobile-view-all" onClick={handleCategoryLinkClick}>{language === 'ko' ? '전체 상품' : 'All products'}</Link>
+                        <Link to={getCategoryUrl(category.code)} className="mobile-view-all" onClick={handleCategoryLinkClick}>{language === 'hu' ? 'Összes termék' : language === 'ko' ? '전체 상품' : 'All products'}</Link>
                         {category.groups.map((group) => (
                           <div key={group.code}>
                             <Link to={getCategoryUrl(group.code)} className="mobile-group-title" onClick={handleCategoryLinkClick}>{group.name}</Link>

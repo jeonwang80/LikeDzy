@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useLanguage } from './LanguageContext';
+import { hungarian } from './hungarianCopy';
 
 const english = {
   "장바구니": "Your bag",
@@ -205,5 +206,5 @@ const english = {
 
 export function useStoreCopy() {
   const { language } = useLanguage();
-  return useCallback((text) => language === 'ko' ? text : (english[text] || text), [language]);
+  return useCallback((text) => language === 'ko' ? text : ((language === 'hu' && hungarian[text]) || english[text] || text), [language]);
 }

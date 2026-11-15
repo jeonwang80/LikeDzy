@@ -1,3 +1,4 @@
+import { EDITOR_LANGUAGES, languageLabel } from '../i18n/languages';
 import ImageBackgroundControl from '../components/ImageBackgroundControl';
 import { getImageBackground } from '../utils/imageBackground';
 import ProductBadges from '../components/ProductBadges';
@@ -32,7 +33,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
   const [saveStatus, setSaveStatus] = useState('idle');
   const [savedProductId, setSavedProductId] = useState(product?.id || '');
   const [editorMode, setEditorMode] = useState('form'); // 'visual' | 'form'
-  const [activeLang, setActiveLang] = useState('ko'); // 'ko' | 'en' | 'vi'
+  const [activeLang, setActiveLang] = useState('ko'); // 'ko' | 'en' | 'vi' | 'hu'
   const [activeTab, setActiveTab] = useState('details'); // 'details' | 'reviews' | 'qna'
 
   const [imageFiles, setImageFiles] = useState([]);
@@ -51,6 +52,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
   const quillRefKo = useRef(null);
   const quillRefEn = useRef(null);
   const quillRefVi = useRef(null);
+  const quillRefHu = useRef(null);
 
   const imageHandler = (quillRef) => {
     const input = document.createElement('input');
@@ -87,6 +89,9 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
   }), []);
   const modulesVi = useMemo(() => ({
     toolbar: { container: [[{ 'header': [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'], [{ 'color': [] }, { 'background': [] }], [{ 'align': [] }], ['image', 'video']], handlers: { image: () => imageHandler(quillRefVi) } }
+  }), []);
+  const modulesHu = useMemo(() => ({
+    toolbar: { container: [[{ 'header': [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'], [{ 'color': [] }, { 'background': [] }], [{ 'align': [] }], ['image', 'video']], handlers: { image: () => imageHandler(quillRefHu) } }
   }), []);
 
 
@@ -131,6 +136,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
           perk1: product.perk1 || defaultPerk1,
           perk2: product.perk2 || defaultPerk2
         },
+        hu: product.hu || { name: '', category: product.category || '', description: '', fabric: '', sizeGuide: '', perk1: '', perk2: '' },
         vi: product.vi || { 
           name: product.name || '', 
           category: product.category || '', 
@@ -151,6 +157,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
       videoUrl: '',
       ko: { name: '', category: '', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
       en: { name: '', category: '', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
+      hu: { name: '', category: '', description: '', fabric: '', sizeGuide: '', perk1: '', perk2: '' },
       vi: { name: '', category: '', description: '', fabric: '', sizeGuide: '', perk1: defaultPerk1, perk2: defaultPerk2 },
       imageUrls: [],
       colorSwatches: [
@@ -496,7 +503,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
     }
   };
 
-  const currentLangData = formData[activeLang] || formData.ko;
+  const currentLangData = formData[activeLang] || {};
   const categoryOptions = useMemo(() => {
     const masterOptions = categoryMasters.map((category) => ({
       value: category.code,
@@ -524,6 +531,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
       ko: { ...previous.ko, category: categoryCode },
       en: { ...previous.en, category: categoryCode },
       vi: { ...previous.vi, category: categoryCode },
+      hu: { ...previous.hu, category: categoryCode },
     }));
   };
   const allPhotos = [...(formData.imageUrls || []), ...previewUrls];
@@ -581,27 +589,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
 
           {/* Language Tabs */}
           <div className="live-builder-lang-switcher">
-            <button 
-              type="button" 
-              className={`live-builder-lang-btn ${activeLang === 'ko' ? 'active' : ''}`}
-              onClick={() => setActiveLang('ko')}
-            >
-              한국어
-            </button>
-            <button 
-              type="button" 
-              className={`live-builder-lang-btn ${activeLang === 'en' ? 'active' : ''}`}
-              onClick={() => setActiveLang('en')}
-            >
-              English
-            </button>
-            <button 
-              type="button" 
-              className={`live-builder-lang-btn ${activeLang === 'vi' ? 'active' : ''}`}
-              onClick={() => setActiveLang('vi')}
-            >
-              Tiếng Việt
-            </button>
+            {EDITOR_LANGUAGES.map(item => <button type="button" key={item.code} className={`live-builder-lang-btn ${activeLang === item.code ? 'active' : ''}`} onClick={() => setActiveLang(item.code)}>{item.label}</button>)}
           </div>
 
           {/* Currency Pill */}
@@ -655,7 +643,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
               fontSize: '0.85rem'
             }}>
               <span><strong>색상별 이미지 그룹핑 모드:</strong> 각 사진 카드 하단에서 [적용 색상]을 선택하고, 색상별 [대표 1(기본)], [대표 2(호버)]를 지정하세요.</span>
-              <span style={{ fontWeight: 'bold' }}>현재 편집 언어: {activeLang === 'ko' ? '한국어' : activeLang === 'en' ? 'English' : 'Tiếng Việt'}</span>
+              <span style={{ fontWeight: 'bold' }}>현재 편집 언어: {languageLabel(activeLang)}</span>
             </div>
 
             {/* Alo Yoga 2-Column Main Layout */}
@@ -1327,6 +1315,16 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                             placeholder="Viết mô tả chi tiết bằng tiếng Việt..." 
                           />
                         )}
+                        {activeLang === 'hu' && (
+                          <ReactQuill
+                            ref={quillRefHu}
+                            theme="snow"
+                            modules={modulesHu}
+                            value={formData.hu?.description || ''}
+                            onChange={val => handleChange('hu', 'description', val)}
+                            placeholder="Magyar termékleírás..."
+                          />
+                        )}
                       </div>
                     </div>
 
@@ -1372,7 +1370,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                   <header><span>01</span><div><h3>기본 정보</h3><p>상품명, 카테고리와 판매 가격을 설정합니다.</p></div></header>
                   <div className="admin-form-field-grid">
                     <label className="admin-form-field span-2">
-                      <span>상품명 ({activeLang === 'ko' ? '한국어' : activeLang === 'en' ? 'English' : 'Tiếng Việt'})</span>
+                      <span>상품명 ({languageLabel(activeLang)})</span>
                       <input className="admin-input" value={currentLangData.name || ''} onChange={(event) => handleChange(activeLang, 'name', event.target.value)} placeholder="상품명을 입력하세요" />
                     </label>
                     <label className="admin-form-field">
@@ -1422,6 +1420,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                       {activeLang === 'ko' && <ReactQuill ref={quillRefKo} theme="snow" modules={modulesKo} value={formData.ko?.description || ''} onChange={(value) => handleChange('ko', 'description', value)} />}
                       {activeLang === 'en' && <ReactQuill ref={quillRefEn} theme="snow" modules={modulesEn} value={formData.en?.description || ''} onChange={(value) => handleChange('en', 'description', value)} />}
                       {activeLang === 'vi' && <ReactQuill ref={quillRefVi} theme="snow" modules={modulesVi} value={formData.vi?.description || ''} onChange={(value) => handleChange('vi', 'description', value)} />}
+                      {activeLang === 'hu' && <ReactQuill ref={quillRefHu} theme="snow" modules={modulesHu} value={formData.hu?.description || ''} onChange={(value) => handleChange('hu', 'description', value)} />}
                     </div>
                   </div>
                 </section>
