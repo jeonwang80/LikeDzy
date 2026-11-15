@@ -90,7 +90,6 @@ export const isCommerceReady = (settings) => settings?.currency === 'VND' && set
 );
 
 export const calculateShippingFee = (subtotal, settings) => {
-  if (settings?.currency === 'VND') return 0;
   const normalized = normalizeCommerceSettings(settings);
   if (normalized.freeShippingThreshold > 0 && subtotal >= normalized.freeShippingThreshold) return 0;
   return normalized.shippingFee;

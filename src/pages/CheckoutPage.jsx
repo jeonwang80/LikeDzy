@@ -340,7 +340,7 @@ export default function CheckoutPage() {
 
             <fieldset className="checkout-section">
               <legend><span>02</span>{copy("배송지 정보")}</legend>
-              <p className="checkout-destination">{language === 'ko' ? '베트남 배송 · 무료배송' : 'Delivery in Vietnam · Free shipping'}</p>
+              <p className="checkout-destination">{language === 'ko' ? '베트남 배송' : 'Delivery in Vietnam'} · {shippingFee === 0 ? copy('무료배송 적용') : money(shippingFee)}</p>
               <label className="checkout-check-row">
                 <input type="checkbox" checked={form.sameRecipient} onChange={(event) => updateForm('sameRecipient', event.target.checked)} />{copy("주문자 정보와 동일")}</label>
               {!form.sameRecipient && (

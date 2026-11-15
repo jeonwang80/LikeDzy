@@ -18,3 +18,21 @@ test('both customer languages use Vietnam prices while historical KRW amounts st
   assert.equal(marketSettings({ orderEnabled: true },'VND').orderEnabled, false);
   assert.equal(formatMoney(42000, 'KRW'), '₩42,000');
 });
+
+test('country settings isolate drafts and honor legacy free delivery until configured', async () => {
+  const { countryCommerceSettings, normalizeCountryCommerce } = await import('../../src/utils/countryCommerce.js');
+  const { marketSettings } = await import('../../src/utils/market.js');
+  const { calculateShippingFee } = await import('../../src/utils/commerce.js');
+  const source = { bankName: 'KR bank', vietnam: { bankName: 'VN bank', shippingFee: 30000 }, hungary: { bankName: 'HU bank' } };
+  assert.equal(countryCommerceSettings(source,'KR').bankName,'KR bank');
+  assert.equal(countryCommerceSettings(source,'VN').bankName,'VN bank');
+  assert.equal(countryCommerceSettings(source,'HU').bankName,'HU bank');
+  assert.equal(countryCommerceSettings(source,'VN').shippingFee,0);
+  assert.equal(countryCommerceSettings(source,'HU').orderEnabled,false);
+  assert.equal(countryCommerceSettings(source,'KR').vietnam,undefined);
+  source.vietnam = { ...source.vietnam, shippingPolicyConfigured: true, freeShippingThreshold: 700000 };
+  const active = marketSettings(source,'VND');
+  assert.equal(calculateShippingFee(600000,active),30000);
+  assert.equal(calculateShippingFee(700000,active),0);
+  assert.throws(()=>normalizeCountryCommerce({shippingFee:-1}),/정수/);
+});

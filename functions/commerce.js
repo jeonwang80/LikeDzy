@@ -332,7 +332,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         ...baseSettings, ...vietnam, currency: 'VND', manualBankTransfer: vietnam.manualBankTransfer === true, orderEnabled: vietnam.orderEnabled === true, policyConfirmed: vietnam.policyConfirmed === true,
         bankName: vietnam.bankName || '', accountNumber: vietnam.accountNumber || '', accountHolder: vietnam.accountHolder || '',
         termsText: vietnam.termsText || '', privacyText: vietnam.privacyText || '', returnsText: vietnam.returnsText || '',
-        shippingFee: 0, freeShippingThreshold: 0, defaultCarrier: vietnam.defaultCarrier || '',
+        shippingFee: vietnam.shippingPolicyConfigured === true ? (vietnam.shippingFee ?? 0) : 0, freeShippingThreshold: vietnam.shippingPolicyConfigured === true ? (vietnam.freeShippingThreshold ?? 0) : 0, defaultCarrier: vietnam.defaultCarrier || '',
       };
       const ready = liveReady(savedSettings);
       const isTestOrder = currency === 'KRW' && !ready && adminUser;

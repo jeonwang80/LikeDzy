@@ -19,10 +19,10 @@ export function marketSettings(settings, currency = 'KRW') {
   return { ...settings, ...vietnam, currency,
     orderEnabled: vietnam.orderEnabled === true, policyConfirmed: vietnam.policyConfirmed === true,
     manualBankTransfer: vietnam.manualBankTransfer === true,
-    shippingFee: 0, freeShippingThreshold: 0,
+    shippingFee: vietnam.shippingPolicyConfigured === true ? (vietnam.shippingFee ?? 0) : 0, freeShippingThreshold: vietnam.shippingPolicyConfigured === true ? (vietnam.freeShippingThreshold ?? 0) : 0,
     bankName: vietnam.bankName || '', accountNumber: vietnam.accountNumber || '', accountHolder: vietnam.accountHolder || '',
     termsText: vietnam.termsText || '', privacyText: vietnam.privacyText || '', returnsText: vietnam.returnsText || '',
-    remoteAreaNotice: '', defaultCarrier: vietnam.defaultCarrier || '',
+    remoteAreaNotice: vietnam.remoteAreaNotice || '', defaultCarrier: vietnam.defaultCarrier || '',
   };
 }
 

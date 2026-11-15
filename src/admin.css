@@ -1365,3 +1365,6 @@ textarea {
 .order-country-filters label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 700; }
 .order-country-filters small { flex-basis: 100%; color: var(--admin-muted); line-height: 1.6; }
 .order-country-summary small { display: block; color: var(--admin-muted); line-height: 1.6; }
+.commerce-country-tabs { display: flex; flex-wrap: wrap; gap: 10px; padding: 24px 24px 0; }
+.commerce-country-notice { padding: 0 24px; color: var(--admin-muted); line-height: 1.7; }
+.commerce-country-fields { min-width: 0; border: 0; padding: 0; margin: 0; }

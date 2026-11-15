@@ -441,3 +441,16 @@ for (const autoIssue of [true, false]) {
     assert.equal(f.db.read(entry[0]).orderId, '');
   });
 }
+
+test('configured VN shipping is charged, threshold waives it, and stale totals are rejected', async () => {
+  const f = await vietnamFixture();
+  const s = f.db.read('settings/commerce');
+  f.db.data.set('settings/commerce', { ...s, vietnam: { ...s.vietnam, shippingPolicyConfigured: true } });
+  await rejectsCode(f.service.createBankTransferOrder(f.order({ currency: 'VND', expectedTotal: 700000 }), guest), 'aborted');
+  const paid = await f.service.createBankTransferOrder(f.order({ currency: 'VND', expectedTotal: 730000 }), guest);
+  assert.equal(f.db.read(`orders/${paid.id}`).shippingFee, 30000);
+  f.db.data.set('settings/commerce', { ...s, vietnam: { ...s.vietnam, shippingPolicyConfigured: true, freeShippingThreshold: 700000 } });
+  const free = await f.service.createBankTransferOrder(f.order({ currency: 'VND', expectedTotal: 700000 }), guest);
+  assert.equal(f.db.read(`orders/${free.id}`).shippingFee, 0);
+  assert.equal(f.db.read(`orders/${paid.id}`).shippingFee, 30000);
+});
