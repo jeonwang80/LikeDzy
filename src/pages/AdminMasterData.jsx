@@ -1,4 +1,4 @@
-import { EDITOR_LANGUAGES, languageLabel } from '../i18n/languages';
+import { EDITOR_LANGUAGES } from '../i18n/languages';
 import { useMemo, useState } from 'react';
 import {
   addDoc,
@@ -109,8 +109,6 @@ export default function AdminMasterData() {
   const [newRows, setNewRows] = useState(() => [createEmptyRow(100)]);
   const [searchTerm, setSearchTerm] = useState('');
   const [saving, setSaving] = useState(false);
-  const [editingLanguage, setEditingLanguage] = useState('ko');
-  const editingSuffix = EDITOR_LANGUAGES.find(item => item.code === editingLanguage).suffix;
 
   const rows = useMemo(() => ([
     ...categories.map((category) => rowEdits[category.id] || categoryToRow(category)),
@@ -286,9 +284,8 @@ export default function AdminMasterData() {
           </div>
         </div>
 
-        <div className="category-language-tabs" role="group" aria-label="카테고리 편집 언어">
-          {EDITOR_LANGUAGES.map(item => <button key={item.code} type="button" aria-pressed={editingLanguage === item.code} onClick={() => setEditingLanguage(item.code)}>{item.label}</button>)}
-          <small>선택한 언어의 명칭만 표시합니다. 코드·사용 여부는 공통이며 모든 언어의 변경사항을 함께 저장합니다.</small>
+        <div className="category-language-guide">
+          코드마다 한국어 · English · Tiếng Việt · Magyar 명칭을 세로 4줄로 표시합니다. 코드·사용 여부는 공통이며 네 언어를 함께 저장합니다.
         </div>
         {loading ? (
           <div className="admin-empty-state">카테고리 기준정보를 불러오고 있습니다.</div>
@@ -320,7 +317,7 @@ export default function AdminMasterData() {
                 <tr>
                   {LEVELS.flatMap((level) => [
                     <th key={`${level}-code`}>CODE *</th>,
-                    <th key={`${level}-name`}>{languageLabel(editingLanguage)}{editingLanguage === 'ko' ? ' *' : ''}</th>,
+                    <th key={`${level}-name`}>다국어 명칭 · 한국어 필수</th>,
                   ])}
                 </tr>
               </thead>
@@ -335,17 +332,21 @@ export default function AdminMasterData() {
                       <td className="code" key={`${row.rowKey}-${level}-code`}>
                         <input value={row[`level${level}Code`]} onChange={(event) => updateRow(row.rowKey, `level${level}Code`, event.target.value)} placeholder={level === 1 ? 'MAN' : level === 2 ? 'TOP' : 'FW'} maxLength="12" aria-label={`${level}차 코드`} />
                       </td>,
-                      ...[editingSuffix].map((language) => (
-                        <td key={`${row.rowKey}-${level}-${language}`}>
+                      <td className="admin-category-names-cell" key={`${row.rowKey}-${level}-names`}>
+                        {EDITOR_LANGUAGES.map(({ code, suffix: language, label }) => (
+                        <label className="admin-category-language-line" key={code}>
+                          <span lang={code}>{label}{language === 'Ko' ? ' *' : ''}</span>
                           <input
+                            lang={code}
                             value={row[`level${level}Name${language}`]}
                             onChange={(event) => updateRow(row.rowKey, `level${level}Name${language}`, event.target.value)}
                             placeholder={language === 'Ko' ? '한글 명칭' : language === 'En' ? 'English name' : language === 'Hu' ? 'Magyar név' : 'Tên tiếng Việt'}
                             maxLength="60"
                             aria-label={`${level}차 ${language} 명칭`}
                           />
-                        </td>
-                      )),
+                        </label>
+                        ))}
+                      </td>,
                     ])}
                     <td className="admin-category-active-cell">
                       <input type="checkbox" checked={row.active} onChange={(event) => updateRow(row.rowKey, 'active', event.target.checked)} aria-label="사용 여부" />
@@ -362,7 +363,7 @@ export default function AdminMasterData() {
         )}
 
         <div className="admin-category-sheet-footer">
-          <span>{visibleRows.length} ROWS · {dirtyRows.length} UNSAVED</span>
+          <span>{visibleRows.length} CODES · {dirtyRows.length} UNSAVED</span>
           <button type="button" className="admin-inline-link" onClick={resetChanges}>변경 취소</button>
         </div>
       </section>
