@@ -6,16 +6,18 @@ import { randomKey } from '../utils/checkoutSession';
 import { getInventoryAxes } from '../utils/inventorySummary';
 import { formatKoreanDateTime } from '../utils/commerce';
 import './VariantInventory.css';
+import WarehouseBatch from './WarehouseBatch';
 const COUNTRIES = { KR:'한국', VN:'베트남', HU:'헝가리' };
 const TYPES = { migrate:'기존 재고 → 공장재고 이관', receipt:'공장재고 입고', dispatch:'국가 창고 출고', receive:'도착 국가 입고', transit_loss:'운송 손실 확정', return_main:'운송 물량 공장재고 반송 입고', receipt_reversal:'생산 입고 정정(차감)' };
 const HISTORY = { ...TYPES, reserve:'주문 예약', confirm:'입금·판매 확정', release:'주문 취소 복원', expired:'예약 만료 복원', refund:'검수 반품 복원', dispose:'반품 폐기', adjustment:'기존 재고 조정', sale_shipment:'고객 배송 출고' };
 const keyOf = (color,size) => JSON.stringify([color,size]);
 export default function WarehouseInventory({product,onClose}) {
+  const [batch,setBatch]=useState(null);
   const [records,setRecords]=useState([]); const [movements,setMovements]=useState([]); const [transfers,setTransfers]=useState([]); const [receipts,setReceipts]=useState([]);
   const [loaded,setLoaded]=useState({}); const [errors,setErrors]=useState({}); const [count,setCount]=useState(50);
   const [busy,setBusy]=useState(false); const [message,setMessage]=useState('');
   const axes=useMemo(()=>getInventoryAxes(product),[product]);
-  const [draft,setDraft]=useState({type:'receipt',colorName:axes.colors[0],optionName:axes.sizes[0],country:'VN',quantity:'',reference:'',note:'',transferId:'',receiptId:'',requestId:randomKey(),expectedVersion:null});
+  const [draft,setDraft]=useState({type:'transit_loss',colorName:axes.colors[0],optionName:axes.sizes[0],country:'VN',quantity:'',reference:'',note:'',transferId:'',receiptId:'',requestId:randomKey(),expectedVersion:null});
   useEffect(()=>{
     const subscriptions = [['inventory',setRecords],['inventoryMovements',setMovements],['warehouseTransfers',setTransfers],['warehouseReceipts',setReceipts]].map(([name,set]) =>
       onSnapshot(query(collection(db,name), where('productId','==',product.id), ...(name==='inventory' ? [] : [orderBy('createdAt','desc')]), limit(name==='inventory' ? 1000 : count)), snapshot => {
@@ -51,16 +53,17 @@ export default function WarehouseInventory({product,onClose}) {
     <header className="admin-drawer-header"><div><span>WAREHOUSE INVENTORY</span><h2>입고 · 국가 출고 · 판매 이력</h2><p>{product.name}</p></div><button className="admin-icon-btn" disabled={busy} onClick={onClose} aria-label="닫기">×</button></header>
     <div className="inventory-grid-content">
       <p className="inventory-grid-hint">생산 입고 → 공장재고 → 국가 출고(운송 중) → 도착 입고 → 판매. 공장재고·운송 중 수량은 판매할 수 없습니다.</p>
+      <div className="warehouse-actions">{[['receipt','공장입고'],['dispatch','국가출고'],['receive','도착입고']].map(([type,label])=><button className="admin-btn-primary" key={type} disabled={busy||loading||readError} onClick={()=>setBatch(type)}>{label}</button>)}</div>
       <div className="warehouse-totals"><span>공장재고 {totals.main}</span><span>운송 중 {totals.transit}</span><span>판매 가능 {totals.available}</span><span>주문 예약 {totals.reserved}</span></div>
-      {currentRecords.some(r=>r.allocationVersion!==1)&&<p className="warehouse-warning">기존 재고가 있습니다. 각 색상·사이즈에서 ‘공장재고 이관’을 먼저 처리하세요. 판매 가능 수량만 공장재고으로 이동하며 예약·기존 판매 이력은 베트남에 보존합니다.</p>}
+      {currentRecords.some(r=>r.allocationVersion!==1)&&<p className="warehouse-warning">기존 재고가 있습니다. 각 색상·사이즈에서 ‘공장재고 이관’을 먼저 처리하세요. 판매 가능 수량만 공장재고로 이동하며 예약·기존 판매 이력은 베트남에 보존합니다.</p>}
       {historicalRecords.length>0&&<p className="inventory-grid-hint">과거 옵션 {historicalRecords.length}건은 이력으로 보존하며 현재 재고 합계와 처리 대상에서 제외합니다.</p>}
       {readError&&<p role="alert">일부 데이터를 조회하지 못했습니다. 처리 버튼을 잠갔습니다. {Object.entries(errors).filter(([,e])=>e).map(([name])=>name).join(', ')}</p>}
       {message&&<p role="status">{message}</p>}
-      <div className="inventory-table-scroll"><table className="inventory-matrix"><thead><tr><th>색상 / 사이즈</th><th>공장재고</th><th>운송 중</th>{Object.values(COUNTRIES).map(c=><th key={c}>{c}<small>가능 / 예약 / 판매확정</small></th>)}<th>처리</th></tr></thead><tbody>{[...new Map([...axes.colors.flatMap(c=>axes.sizes.map(s=>[keyOf(c,s),{colorName:c,optionName:s}])),...currentRecords.map(r=>[keyOf(r.colorName,r.optionName),r])]).values()].map(row=>{const r=byKey.get(keyOf(row.colorName,row.optionName));return <tr key={keyOf(row.colorName,row.optionName)}><th>{row.colorName} / {row.optionName}{r&&r.allocationVersion!==1&&<small>미전환: 가능 {r.stock} / 예약 {r.reserved}</small>}</th><td>{r?.mainStock||0}</td><td>{Object.values(r?.inTransit||{}).reduce((a,b)=>a+b,0)}</td>{Object.keys(COUNTRIES).map(c=><td key={c}>{r?.countries?.[c]?.stock||0} / {r?.countries?.[c]?.reserved||0} / {r?.countries?.[c]?.sold||0}</td>)}<td><button disabled={busy} onClick={()=>update({colorName:row.colorName,optionName:row.optionName,type:r&&r.allocationVersion!==1?'migrate':'receipt',transferId:'',receiptId:''})}>{r&&r.allocationVersion!==1?'공장재고 이관':'선택'}</button></td></tr>;})}</tbody></table></div>
-      <form className="warehouse-form" onSubmit={submit}><h3>재고 전표 처리</h3><fieldset disabled={busy||loading||readError}>
-        <label>처리 종류<select value={draft.type} onChange={e=>update({type:e.target.value,transferId:'',receiptId:''})}>{Object.entries(TYPES).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
-        <label>색상<input readOnly value={draft.colorName}/></label><label>사이즈<input readOnly value={draft.optionName}/></label>
-        <p>위 재고 표에서 색상·사이즈를 선택하세요. 도착 입고·손실·반송은 원출고 전표를 선택하면 자동 지정됩니다.</p>
+      <div className="inventory-table-scroll"><table className="inventory-matrix"><thead><tr><th>색상 / 사이즈</th><th>공장재고</th><th>운송 중</th>{Object.values(COUNTRIES).map(c=><th key={c}>{c}<small>가능 / 예약 / 판매확정</small></th>)}</tr></thead><tbody>{[...new Map([...axes.colors.flatMap(c=>axes.sizes.map(s=>[keyOf(c,s),{colorName:c,optionName:s}])),...currentRecords.map(r=>[keyOf(r.colorName,r.optionName),r])]).values()].map(row=>{const r=byKey.get(keyOf(row.colorName,row.optionName));return <tr key={keyOf(row.colorName,row.optionName)}><th>{row.colorName} / {row.optionName}{r&&r.allocationVersion!==1&&<small>미전환: 가능 {r.stock} / 예약 {r.reserved}</small>}</th><td>{r?.mainStock||0}</td><td>{Object.values(r?.inTransit||{}).reduce((a,b)=>a+b,0)}</td>{Object.keys(COUNTRIES).map(c=><td key={c}>{r?.countries?.[c]?.stock||0} / {r?.countries?.[c]?.reserved||0} / {r?.countries?.[c]?.sold||0}</td>)}</tr>;})}</tbody></table></div>
+      <details className="warehouse-exceptions"><summary>예외 처리 · 손실 / 반송 / 정정</summary><form className="warehouse-form" onSubmit={submit}><h3>예외 전표 처리</h3><fieldset disabled={busy||loading||readError}>
+        <label>처리 종류<select value={draft.type} onChange={e=>update({type:e.target.value,transferId:'',receiptId:''})}>{Object.entries(TYPES).filter(([k])=>!['receipt','dispatch','receive'].includes(k)).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
+        <label>색상<select value={draft.colorName} onChange={e=>update({colorName:e.target.value})}>{axes.colors.map(c=><option key={c}>{c}</option>)}</select></label><label>사이즈<select value={draft.optionName} onChange={e=>update({optionName:e.target.value})}>{axes.sizes.map(s=><option key={s}>{s}</option>)}</select></label>
+        <p>예외 처리할 색상·사이즈를 선택하세요. 손실·반송은 원출고 전표를 선택하면 자동 지정됩니다.</p>
         {draft.type==='dispatch'&&<label>도착 국가<select value={draft.country} onChange={e=>update({country:e.target.value})}>{Object.entries(COUNTRIES).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>}
         {transport&&<label>원출고 전표<select required value={draft.transferId} onChange={e=>chooseTransfer(e.target.value)}><option value="">전표 선택</option>{transfers.filter(t=>t.status==='in_transit'&&currentKeys.has(keyOf(t.colorName,t.optionName))).map(t=><option key={t.id} value={t.id}>{t.reference} · {COUNTRIES[t.country]} · {t.colorName}/{t.optionName} · 잔여 {t.quantity-t.received-t.lost-t.returned}</option>)}</select></label>}
         {draft.type==='receipt_reversal'&&<label>원입고 전표<select required value={draft.receiptId} onChange={e=>chooseReceipt(e.target.value)}><option value="">전표 선택</option>{receipts.filter(r=>r.quantity>r.reversed&&currentKeys.has(keyOf(r.colorName,r.optionName))).map(r=><option key={r.id} value={r.id}>{r.reference} · {r.colorName}/{r.optionName} · 정정 잔여 {r.quantity-r.reversed}</option>)}</select></label>}
@@ -69,11 +72,11 @@ export default function WarehouseInventory({product,onClose}) {
         <label>처리 사유·메모<input required maxLength="500" value={draft.note} onChange={e=>update({note:e.target.value})}/></label>
         {draft.expectedVersion!==null&&draft.expectedVersion!==(selected?.version||0)&&<p>처리 결과가 불확실하면 먼저 이력을 확인하세요. 동일 요청 재시도는 중복 처리되지 않습니다. 실패가 확실하면 <button type="button" onClick={()=>update({})}>최신 재고로 다시 입력</button>하세요.</p>}
         <button className="admin-btn-primary" type="submit">{busy?'처리 중…':TYPES[draft.type]}</button>
-      </fieldset></form>
+      </fieldset></form></details>
       <h3>국가 출고 전표</h3><div className="inventory-table-scroll"><table className="inventory-matrix"><thead><tr><th>출고번호 / 일시</th><th>옵션 / 도착</th><th>출고</th><th>입고</th><th>손실</th><th>반송</th><th>운송 잔여</th></tr></thead><tbody>{transfers.map(t=><tr key={t.id}><th>{t.reference}<small>{formatKoreanDateTime(t.createdAt)}</small></th><td>{t.colorName}/{t.optionName}<small>{COUNTRIES[t.country]}</small></td><td>{t.quantity}</td><td>{t.received}</td><td>{t.lost}</td><td>{t.returned}</td><td>{t.quantity-t.received-t.lost-t.returned}</td></tr>)}</tbody></table></div>
       <h3>전체 처리 이력</h3><p>처리 시각 기준 최신순. 원본 이력은 수정·삭제하지 않습니다. 판매 확정은 입금 확인 기준이며 실제 배송 완료와는 별개입니다.</p>
       {movements.map(m=><details className="warehouse-history" key={m.id}><summary>{formatKoreanDateTime(m.createdAt)} · {HISTORY[m.type]||m.type} · {m.colorName||records.find(r=>r.id===m.variantId)?.colorName||'기존 옵션'} / {m.optionName||records.find(r=>r.id===m.variantId)?.optionName||'—'} · {m.quantity??Math.max(Math.abs(m.stockDelta||0),Math.abs(m.reservedDelta||0),Math.abs(m.soldDelta||0))}개 · {COUNTRIES[m.country]||(m.country==='MAIN'?'공장재고':m.country)||'기존 기록'}</summary><p>전표: {m.reference||m.orderNumber||m.orderId||m.id} · 처리자: {m.actorEmail||m.actorUid||'기존 기록 없음'} · 버전 {m.version}</p><p>{m.note||''} {m.courier||''} {m.trackingNumber||''}</p><p>원입고: {m.receiptId||'—'} / 원출고: {m.transferId||'—'}</p><pre>{JSON.stringify({before:m.before||'과거 기록 없음',after:m.after||{stock:m.stockAfter,reserved:m.reservedAfter,sold:m.soldAfter}},null,2)}</pre></details>)}
       <button type="button" className="admin-btn-secondary" onClick={()=>setCount(v=>v+50)} disabled={busy||[movements,transfers,receipts].every(list=>list.length<count)}>이전 이력·전표 더 불러오기 ({count}건씩 조회 중)</button>
     </div><footer className="admin-drawer-footer"><button type="button" className="admin-btn-secondary" disabled={busy} onClick={onClose}>닫기</button></footer>
-  </section></div>;
+  </section>{batch&&<WarehouseBatch type={batch} product={product} axes={axes} records={records} onClose={()=>setBatch(null)} onComplete={text=>{setMessage(text);setBatch(null);}}/>}</div>;
 }

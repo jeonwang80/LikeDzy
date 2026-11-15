@@ -533,3 +533,25 @@ test('migrated paid order records shipment without double depletion and restores
   assert.equal(f.inventory().countries.HU.stock,0);
   assert.equal(f.inventory().mainStock,2);
 });
+
+test('warehouse batch commits all rows once; invalid later row writes nothing', async()=>{
+  const f=await fixture();await f.service.processWarehouse(warehouseRequest(f,'migrate'),admin);
+  const request={type:'receipt',productId:'shirt',reference:'BULK-1',requestId:secret(),items:[{colorName:'Black',optionName:'M',quantity:2,expectedVersion:f.inventory().version},{colorName:'Navy',optionName:'L',quantity:5,expectedVersion:0}]};
+  const result=await f.service.processWarehouseBatch(request,admin);
+  assert.equal(result.count,2);assert.equal(result.quantity,7);
+  await f.service.processWarehouseBatch(request,admin);
+  assert.equal(f.inventory().mainStock,5);
+  const navy=variantIdFor('shirt','Navy','L');assert.equal(f.db.read('inventory/'+navy).mainStock,5);
+  const moves=f.db.count('inventoryMovements');
+  const dispatch={type:'dispatch',productId:'shirt',country:'HU',reference:'SHIP-1',requestId:secret(),items:[{colorName:'Black',optionName:'M',quantity:2,expectedVersion:f.inventory().version},{colorName:'Navy',optionName:'L',quantity:6,expectedVersion:1}]};
+  await rejectsCode(f.service.processWarehouseBatch(dispatch,admin),'failed-precondition');
+  assert.equal(f.inventory().mainStock,5);assert.equal(f.db.count('inventoryMovements'),moves);assert.equal(f.db.count('warehouseTransfers'),0);
+  dispatch.items[1].quantity=3;
+  const sent=await f.service.processWarehouseBatch(dispatch,admin);
+  const arrival={type:'receive',productId:'shirt',country:'HU',reference:'ARRIVAL-1',requestId:secret(),items:dispatch.items.map((item,index)=>({...item,expectedVersion:sent.results[index].version,transferId:sent.results[index].transactionId}))};
+  await f.service.processWarehouseBatch(arrival,admin);await f.service.processWarehouseBatch(arrival,admin);
+  assert.equal(f.inventory().countries.HU.stock,2);assert.equal(f.db.read('inventory/'+navy).countries.HU.stock,3);
+  assert.equal(f.inventory().inTransit.HU,0);
+  await rejectsCode(f.service.processWarehouseBatch({...request,requestId:secret(),items:[request.items[0],request.items[0]]},admin),'invalid-argument');
+  await rejectsCode(f.service.processWarehouseBatch(request,guest),'permission-denied');
+});

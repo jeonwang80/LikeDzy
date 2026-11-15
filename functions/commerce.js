@@ -229,7 +229,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     });
   }
 
-  async function processWarehouse(data, context) {
+  async function processWarehouse(data, context, runTransaction = db.runTransaction.bind(db)) {
     await requireAdmin(context);
     const type = text(data?.type, 30);
     if (!['migrate', 'receipt', 'dispatch', 'receive', 'transit_loss', 'return_main', 'receipt_reversal'].includes(type)) fail('invalid-argument', '재고 처리 유형을 확인해 주세요.');
@@ -251,7 +251,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     const requestHash = hash(JSON.stringify({type, productId, colorName, optionName, quantity, reference, note, country, transferId, receiptId, expectedVersion}));
     const requestRef = ref('inventoryRequests', hash(`${context.auth.uid}:warehouse:${requestId}`));
     const inventoryRef = ref('inventory', variantId);
-    return db.runTransaction(async transaction => {
+    return runTransaction(async transaction => {
       const previous = await transaction.get(requestRef);
       if (previous.exists) {
         if (previous.data().requestHash !== requestHash) fail('already-exists', '같은 요청에 다른 내용이 전달되었습니다.');
@@ -302,6 +302,47 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       }
       const result = {variantId,version:nextVersion.version,transactionId:requestRef.id};
       transaction.create(requestRef,{requestHash,result,createdAt:serverTimestamp()});
+      return result;
+    });
+  }
+
+
+  async function processWarehouseBatch(data, context) {
+    await requireAdmin(context);
+    const type = text(data?.type,30);
+    if (!['receipt','dispatch','receive'].includes(type)) fail('invalid-argument','일괄 처리 유형을 확인하세요.');
+    const productId = identifier(data.productId,'상품');
+    const requestId = identifier(data.requestId,'요청');
+    if (requestId.length < 16 || !Array.isArray(data.items) || !data.items.length || data.items.length > 80) fail('invalid-argument','1~80개 행을 입력하세요.');
+    const seen = new Set();
+    const items = data.items.map(item => {
+      const colorName = text(item.colorName,80) || '기본';
+      const optionName = text(item.optionName,80) || '기본';
+      const variantId = variantIdFor(productId,colorName,optionName);
+      if (seen.has(variantId)) fail('invalid-argument','동일 옵션은 한 번만 입력하세요.');
+      seen.add(variantId);
+      return {type,productId,colorName,optionName,quantity:integer(item.quantity,'수량',1),expectedVersion:integer(item.expectedVersion,'버전'),
+        country:text(data.country,2),reference:text(data.reference,100),note:text(data.note,500)||'리스트 일괄 처리',
+        transferId:type==='receive'?identifier(item.transferId,'원출고'):undefined,
+        requestId:hash(requestId+variantId)};
+    });
+    const batchRef = ref('inventoryRequests',hash(context.auth.uid+':warehouse-batch:'+requestId));
+    const requestHash = hash(JSON.stringify(items));
+    return db.runTransaction(async transaction => {
+      const prior = await transaction.get(batchRef);
+      if (prior.exists) {
+        if (prior.data().requestHash!==requestHash) fail('already-exists','동일 요청의 내용이 변경되었습니다.');
+        return prior.data().result;
+      }
+      // Validate every row before any writes. Unique SKU rows do not share balances.
+      const writes = [];
+      const buffered = {get:reference=>transaction.get(reference)};
+      for (const method of ['set','create','update']) buffered[method]=(...args)=>writes.push([method,args]);
+      const results = [];
+      for (const item of items) results.push(await processWarehouse(item,context,fn=>fn(buffered)));
+      for (const [method,args] of writes) transaction[method](...args);
+      const result = {count:items.length,quantity:items.reduce((sum,item)=>sum+item.quantity,0),results};
+      transaction.create(batchRef,{requestHash,result,createdAt:serverTimestamp()});
       return result;
     });
   }
@@ -659,7 +700,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     }
     return { examined: results.length, expired: results.filter((result) => !result.skipped && !result.failed).length, failed: results.filter((result) => result.failed).map((result) => result.id) };
   }
-  return { processWarehouse, setVariantStock, createBankTransferOrder, quoteCoupon, listMyCoupons, issueWelcomeCoupons, getOrder, updateOrder, expireOrder, expireBankTransferOrders, isAdmin };
+  return { processWarehouseBatch, processWarehouse, setVariantStock, createBankTransferOrder, quoteCoupon, listMyCoupons, issueWelcomeCoupons, getOrder, updateOrder, expireOrder, expireBankTransferOrders, isAdmin };
 }
 
 module.exports = { CommerceError, createCommerceService, variantIdFor, STATUS };

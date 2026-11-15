@@ -24,3 +24,18 @@
 .warehouse-history { padding:14px 0; border-bottom:1px solid #dce1da; font-size:13px; }
 .warehouse-history summary { cursor:pointer; line-height:1.7; }
 .warehouse-history pre { overflow:auto; background:#f2f5f0; padding:12px; max-height:260px; }
+.warehouse-actions{display:flex;gap:12px;margin:0 0 20px;flex-wrap:wrap}
+.warehouse-exceptions{margin:24px 0;border:1px solid #d8ded7;border-radius:12px;padding:16px}
+.warehouse-exceptions>summary{cursor:pointer;font-weight:700}
+.warehouse-batch-overlay{position:fixed;inset:0;z-index:2100;background:rgba(18,26,21,.55);display:flex;align-items:center;justify-content:center;padding:20px}
+.warehouse-batch-dialog{background:white;width:min(1100px,100%);max-height:94vh;overflow:auto;border-radius:16px;box-shadow:0 24px 90px #0004;padding:24px}
+.warehouse-batch-dialog header,.warehouse-batch-dialog footer{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.warehouse-batch-dialog fieldset{border:0;margin:0;padding:0;min-width:0}
+.warehouse-batch-fields{display:flex;gap:16px;flex-wrap:wrap;margin:24px 0}
+.warehouse-batch-fields label{display:flex;flex:1;flex-direction:column;gap:8px;min-width:180px}
+.warehouse-batch-dialog input,.warehouse-batch-dialog select{padding:10px;border:1px solid #cbd3cc;border-radius:6px;min-width:0;max-width:100%;font:inherit}
+.warehouse-batch-table{max-height:52vh;overflow:auto}
+.warehouse-batch-table thead{position:sticky;top:0;z-index:1;background:#eef2ed}
+.warehouse-batch-table input{width:110px;background:#f7faf6}
+.warehouse-batch-dialog footer{position:sticky;bottom:-24px;background:#fff;padding:18px 0;margin-top:16px;border-top:1px solid #dde2dc}
+@media(max-width:600px){.warehouse-batch-overlay{padding:8px}.warehouse-batch-dialog{padding:14px}.warehouse-batch-dialog footer{flex-wrap:wrap}.warehouse-batch-table{max-height:45vh}}

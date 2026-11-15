@@ -40,3 +40,5 @@ export const completeOrderRefund = (orderId, payload, expectedStatus) => call('u
 });
 
 export const processWarehouse = data => call('processWarehouse', data);
+
+export const processWarehouseBatch = data => call('processWarehouseBatch', data);
