@@ -314,6 +314,8 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     const productId = identifier(data.productId,'상품');
     const requestId = identifier(data.requestId,'요청');
     if (requestId.length < 16 || !Array.isArray(data.items) || !data.items.length || data.items.length > 80) fail('invalid-argument','1~80개 행을 입력하세요.');
+    const documentCountry = type === 'receipt' ? 'VN' : text(data.country,2);
+    if (!allocatedStock.COUNTRIES.includes(documentCountry)) fail('invalid-argument','처리 국가를 확인하세요.');
     const seen = new Set();
     const items = data.items.map(item => {
       const colorName = text(item.colorName,80) || '기본';
@@ -334,14 +336,27 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         if (prior.data().requestHash!==requestHash) fail('already-exists','동일 요청의 내용이 변경되었습니다.');
         return prior.data().result;
       }
+      const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(now())).map(p=>[p.type,p.value]));
+      const prefix = [documentCountry, {receipt:'FIN',dispatch:'OUT',receive:'IN'}[type], parts.year+parts.month+parts.day, parts.hour+parts.minute].join('-');
+      const counterRef = ref('warehouseDocumentCounters',prefix);
+      const counter = await transaction.get(counterRef);
+      const sequence = integer(counter.exists ? counter.data().sequence : 0,'전표 순번',0,999999999) + 1;
+      const reference = prefix + '-' + String(sequence).padStart(3,'0');
+      if (type === 'receive') {
+        for (const item of items) {
+          const transfer = await transaction.get(ref('warehouseTransfers',item.transferId));
+          if (!transfer.exists || transfer.data().country !== documentCountry) fail('failed-precondition','선택 국가와 원출고 국가가 다릅니다.');
+        }
+      }
       // Validate every row before any writes. Unique SKU rows do not share balances.
       const writes = [];
       const buffered = {get:reference=>transaction.get(reference)};
       for (const method of ['set','create','update']) buffered[method]=(...args)=>writes.push([method,args]);
       const results = [];
-      for (const item of items) results.push(await processWarehouse(item,context,fn=>fn(buffered)));
+      for (const item of items) results.push(await processWarehouse({...item,reference},context,fn=>fn(buffered)));
       for (const [method,args] of writes) transaction[method](...args);
-      const result = {count:items.length,quantity:items.reduce((sum,item)=>sum+item.quantity,0),results};
+      transaction.set(counterRef,{sequence,updatedAt:serverTimestamp()});
+      const result = {reference,count:items.length,quantity:items.reduce((sum,item)=>sum+item.quantity,0),results};
       transaction.create(batchRef,{requestHash,result,createdAt:serverTimestamp()});
       return result;
     });

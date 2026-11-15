@@ -555,3 +555,22 @@ test('warehouse batch commits all rows once; invalid later row writes nothing', 
   await rejectsCode(f.service.processWarehouseBatch({...request,requestId:secret(),items:[request.items[0],request.items[0]]},admin),'invalid-argument');
   await rejectsCode(f.service.processWarehouseBatch(request,guest),'permission-denied');
 });
+
+test('warehouse references use server KST minute and atomic sequence; retries retain issued number',async()=>{
+  const f=await fixture();await f.service.processWarehouse(warehouseRequest(f,'migrate'),admin);
+  const request={type:'receipt',productId:'shirt',requestId:secret(),items:[{colorName:'Black',optionName:'M',quantity:1,expectedVersion:f.inventory().version}]};
+  const other={...request,requestId:secret(),items:[{colorName:'Navy',optionName:'L',quantity:1,expectedVersion:0}]};
+  const results=await Promise.all([f.service.processWarehouseBatch(request,admin),f.service.processWarehouseBatch(other,admin)]);
+  assert.deepEqual(results.map(r=>r.reference).sort(),['VN-FIN-20260905-0900-001','VN-FIN-20260905-0900-002']);
+  f.advance(86400000);
+  assert.equal((await f.service.processWarehouseBatch(request,admin)).reference,results[0].reference);
+  const dispatch={type:'dispatch',productId:'shirt',country:'HU',requestId:secret(),items:[{colorName:'Black',optionName:'M',quantity:999,expectedVersion:f.inventory().version}]};
+  await rejectsCode(f.service.processWarehouseBatch(dispatch,admin),'failed-precondition');
+  assert.equal(f.db.read('warehouseDocumentCounters/HU-OUT-20260906-0900'),undefined);
+  dispatch.items[0].quantity=1;
+  const sent=await f.service.processWarehouseBatch(dispatch,admin);
+  assert.equal(sent.reference,'HU-OUT-20260906-0900-001');
+  const transfer=f.db.read('warehouseTransfers/'+sent.results[0].transactionId);
+  assert.equal(transfer.reference,sent.reference);
+  await rejectsCode(f.service.processWarehouseBatch({type:'receive',productId:'shirt',country:'VN',requestId:secret(),items:[{...dispatch.items[0],expectedVersion:f.inventory().version,transferId:sent.results[0].transactionId}]},admin),'failed-precondition');
+});

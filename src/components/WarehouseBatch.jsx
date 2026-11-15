@@ -9,7 +9,6 @@ export default function WarehouseBatch({type,product,axes,records,onClose,onComp
   const [country,setCountry]=useState('VN');
   const [quantities,setQuantities]=useState({});
   const [chosen,setChosen]=useState({});
-  const [reference,setReference]=useState('');
   const [note,setNote]=useState('');
   const [transfers,setTransfers]=useState([]);
   const [ready,setReady]=useState(type!=='receive');
@@ -41,11 +40,11 @@ export default function WarehouseBatch({type,product,axes,records,onClose,onComp
       if(entered.length>80){setError('한 번에 최대 80개 행까지 처리할 수 있습니다.');return;}
       for(const row of rows){const value=quantities[row.key];if(value&&!/^\d+$/.test(value)){setError('수량은 0 이상의 정수로 입력하세요.');return;}}
       if(type!=='receipt'&&entered.some(r=>Number(quantities[r.key])>r.available)){setError('입력 수량이 현재 처리 가능 수량을 초과합니다.');return;}
-      request={type,productId:product.id,country,reference,note,requestId:randomKey(),items:entered.map(r=>({colorName:r.colorName,optionName:r.optionName,quantity:Number(quantities[r.key]),expectedVersion:r.record?.version||0,...(type==='receive'?{transferId:r.transfer.id}:{})}))};
+      request={type,productId:product.id,country,note,requestId:randomKey(),items:entered.map(r=>({colorName:r.colorName,optionName:r.optionName,quantity:Number(quantities[r.key]),expectedVersion:r.record?.version||0,...(type==='receive'?{transferId:r.transfer.id}:{})}))};
       setPending(request);
     }
     setBusy(true);setError('');
-    try{const result=await processWarehouseBatch(request);onComplete(`${names[type]} 완료: ${result.count}개 행 · ${result.quantity}개`);}
+    try{const result=await processWarehouseBatch(request);onComplete(`${names[type]} 완료 · ${result.reference || ''}: ${result.count}개 행 · ${result.quantity}개`);}
     catch(e){setError(e.message||'응답을 확인하지 못했습니다. 동일 요청으로 다시 시도하세요.');}
     finally{setBusy(false);}
   }
@@ -53,7 +52,7 @@ export default function WarehouseBatch({type,product,axes,records,onClose,onComp
     <header><div><h2>{names[type]}</h2><p>{product.name} · 전체 옵션에서 필요한 수량만 입력하세요. 빈칸과 0은 처리하지 않습니다.</p></div><button type="button" disabled={busy} onClick={onClose} aria-label="팝업 닫기">×</button></header>
     <form onSubmit={submit}><fieldset disabled={busy||!!pending}>
       <div className="warehouse-batch-fields">{type!=='receipt'&&<label>국가<select value={country} onChange={e=>{setCountry(e.target.value);setQuantities({});setChosen({});}}>{Object.entries(countries).map(([key,name])=><option key={key} value={key}>{name}</option>)}</select></label>}
-      <label>전표번호<input required maxLength={100} value={reference} onChange={e=>setReference(e.target.value)} placeholder={type==='receipt'?'생산 입고번호':'출고 / 입고 확인번호'}/></label>
+      <label>전표번호 · 자동 발급<input readOnly value={(type==='receipt'?'VN':country)+'-'+({receipt:'FIN',dispatch:'OUT',receive:'IN'}[type])+'-년월일-시분-순번'}/><small>처리 완료 시 발급 · 한국시간 기준</small></label>
       <label>메모<input maxLength={500} value={note} onChange={e=>setNote(e.target.value)} placeholder="선택 입력"/></label></div>
       <div className="warehouse-batch-table"><table className="inventory-matrix"><thead><tr><th>색상</th><th>사이즈</th><th>{type==='receive'?'입고 가능':'공장재고'}</th>{type==='receive'&&<th>원출고 전표</th>}<th>이번 {names[type]} 수량</th></tr></thead><tbody>{rows.map(row=><tr key={row.key}><th>{row.colorName}</th><td>{row.optionName}</td><td>{row.available}</td>{type==='receive'&&<td>{row.options.length===0?'운송 중 없음':<select aria-label={`${row.colorName} ${row.optionName} 원출고`} value={row.transfer?.id||''} onChange={e=>{setChosen(v=>({...v,[row.key]:e.target.value}));setQuantities(v=>({...v,[row.key]:''}));}}><option value="">출고 전표 선택</option>{row.options.map(t=><option key={t.id} value={t.id}>{t.reference} · 잔여 {t.quantity-t.received-t.lost-t.returned}</option>)}</select>}</td>}<td><input aria-label={`${row.colorName} ${row.optionName} 처리 수량`} type="number" min="0" max={type==='receipt'?1000000:row.available} step="1" placeholder="0" disabled={type!=='receipt'&&row.available===0} value={quantities[row.key]||''} onChange={e=>setQuantities(v=>({...v,[row.key]:e.target.value}))}/></td></tr>)}</tbody></table></div>
     </fieldset>
