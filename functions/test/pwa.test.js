@@ -68,8 +68,8 @@ test('install manifest has valid PNG sizes, safe scope and hosting routes', () =
     assert.equal(`${png.readUInt32BE(16)}x${png.readUInt32BE(20)}`, icon.sizes);
   }
   const config = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json')));
-  const rewrite = new RegExp('^' + config.rewrites[0].source + '$');
-  for (const url of ['/sw.js', '/offline.html', '/manifest.webmanifest', '/pwa/icon-192.png']) assert.equal(rewrite.test(url), false, url);
+  const rewrite = new RegExp('^' + config.rewrites.find(rule => rule.destination === '/index.html').source + '$');
+  for (const url of ['/sw.js', '/offline.html', '/manifest.webmanifest', '/pwa/icon-192.png', '/api/visitor-country']) assert.equal(rewrite.test(url), false, url);
   assert.equal(rewrite.test('/orders/lookup'), true);
 });
 

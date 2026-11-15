@@ -1,4 +1,6 @@
 import '../components/ProductBadges.css';
+import SalesCountryCheckboxes from '../components/SalesCountryCheckboxes';
+import { getSalesCountries } from '../utils/salesCountries';
 import React, { useEffect, useMemo, useState } from 'react';
 import { collection, doc, limit, query, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -38,6 +40,7 @@ export default function AdminInventory() {
   })), [rawProducts, inventory]);
   useEffect(() => onSnapshot(query(collection(db, 'inventory'), limit(1000)), (snapshot) => setInventory(snapshot.docs.map((entry) => entry.data())), () => setInventory([])), []);
   const [loading, setLoading] = useState(true);
+  const [savingCountries, setSavingCountries] = useState({});
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -119,6 +122,17 @@ export default function AdminInventory() {
     } catch (error) {
       console.error(`Error updating ${field}:`, error);
       alert('노출 상태 변경 중 오류가 발생했습니다.');
+    }
+  };
+
+  const saveCountries = async (product, salesCountries) => {
+    setSavingCountries(previous => ({ ...previous, [product.id]: true }));
+    try {
+      await updateDoc(doc(db, 'products', product.id), { salesCountries });
+    } catch {
+      alert('판매 국가 저장에 실패했습니다. 다시 시도해 주세요.');
+    } finally {
+      setSavingCountries(previous => ({ ...previous, [product.id]: false }));
     }
   };
 
@@ -234,6 +248,7 @@ export default function AdminInventory() {
                   <strong>{product.name || product.ko?.name || '이름 없는 상품'}</strong>
                   {salePaused && <span className="admin-sale-paused-badge">판매 중지됨</span>}
                   <small>{formatProductPrice(product, 'ko')}</small>
+                  <SalesCountryCheckboxes value={getSalesCountries(product)} disabled={savingCountries[product.id]} onChange={value => saveCountries(product, value)} />
                 </div>
               </div>
 

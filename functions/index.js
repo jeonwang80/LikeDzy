@@ -5,11 +5,13 @@ const { CommerceError, createCommerceService } = require("./commerce");
 const { getAuth } = require('firebase-admin/auth');
 const { createMemberService } = require('./members');
 const { createCouponGrantService } = require('./couponGrants');
+const { verifyCountryProof } = require('./countryProof');
 
 initializeApp();
 const commerce = createCommerceService({
   db: getFirestore(),
   sellingCurrencies: ['VND'],
+  verifySalesCountry: (token, orderKey) => verifyCountryProof(token, orderKey, process.env.COUNTRY_TOKEN_SECRET),
   timestamp: (date) => Timestamp.fromDate(date),
   serverTimestamp: () => FieldValue.serverTimestamp(),
 });
@@ -31,7 +33,15 @@ function callable(method) {
   });
 }
 
-exports.createBankTransferOrder = callable(commerce.createBankTransferOrder);
+exports.createBankTransferOrder = functions.region('us-central1')
+  .runWith({ maxInstances: 10, timeoutSeconds: 60, memory: '256MB', secrets: ['COUNTRY_TOKEN_SECRET'] })
+  .https.onCall(async (data, context) => {
+    try { return await commerce.createBankTransferOrder(data, context); }
+    catch (error) {
+      if (error instanceof CommerceError) throw new functions.https.HttpsError(error.code, error.message);
+      throw new functions.https.HttpsError('internal', '주문 처리 중 오류가 발생했습니다.');
+    }
+  });
 exports.quoteCoupon = callable(commerce.quoteCoupon);
 exports.listMyCoupons = callable(commerce.listMyCoupons);
 exports.listMembers = callable(createMemberService({ auth: getAuth(), isAdmin: commerce.isAdmin, db: getFirestore() }));

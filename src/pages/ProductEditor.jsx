@@ -1,4 +1,6 @@
 import { EDITOR_LANGUAGES, languageLabel } from '../i18n/languages';
+import SalesCountryCheckboxes from '../components/SalesCountryCheckboxes';
+import { getSalesCountries } from '../utils/salesCountries';
 import ImageBackgroundControl from '../components/ImageBackgroundControl';
 import { getImageBackground } from '../utils/imageBackground';
 import ProductBadges from '../components/ProductBadges';
@@ -103,6 +105,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
     if (product) {
       return {
         ...product,
+        salesCountries: getSalesCountries(product),
         isBestSeller: product.isBestSeller !== undefined ? product.isBestSeller : false,
         isFeatured: product.isFeatured !== undefined ? product.isFeatured : false,
         isNew: product.isNew !== undefined ? product.isNew : false,
@@ -150,6 +153,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
     }
     return {
       isBestSeller: false,
+      salesCountries: ['VN'],
       isFeatured: false,
       isNew: false,
       price: '',
@@ -1453,6 +1457,8 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
 
                 <section className="admin-form-section">
                   <header><span>04</span><div><h3>스토어 노출</h3><p>메인과 상품 카드의 배지를 설정합니다.</p></div></header>
+                  <SalesCountryCheckboxes value={formData.salesCountries} onChange={salesCountries => setFormData(current => ({ ...current, salesCountries }))} />
+                  <p>접속 IP 국가가 선택된 국가일 때만 상품을 표시하고 구매를 허용합니다. 모두 해제하면 모든 국가에서 숨깁니다.</p>
                   <div className="admin-switch-list">
                     <label><span><strong>메인 추천</strong><small>메인 셀렉션 우선 노출</small></span><input type="checkbox" checked={formData.isFeatured || false} onChange={(event) => setFormData((current) => ({ ...current, isFeatured: event.target.checked }))} /></label>
                     <label><span><strong>신상품</strong><small>NEW 배지 표시</small></span><input type="checkbox" checked={formData.isNew || false} onChange={(event) => setFormData((current) => ({ ...current, isNew: event.target.checked }))} /></label>

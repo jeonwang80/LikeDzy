@@ -1351,3 +1351,11 @@ textarea {
 .admin-category-sheet .admin-category-language-line input { height: 36px; }
 .admin-category-sheet tbody td { vertical-align: middle; }
 .admin-category-sheet tbody tr > td { border-bottom-width: 2px; }
+.admin-sales-countries { border: 0; padding: 0; margin: 10px 0 0; min-width: 0; }
+.admin-sales-countries legend { font-size: .65rem; font-weight: 700; color: var(--admin-muted); margin-bottom: 6px; }
+.admin-sales-countries > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.admin-sales-countries label { display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; border: 1px solid var(--admin-line); border-radius: 6px; background: white; cursor: pointer; font-size: .72rem; }
+.admin-sales-countries label:has(input:checked) { background: #eaf3ed; border-color: #9ab9a5; }
+.admin-sales-countries input { width: 15px; height: 15px; accent-color: var(--admin-forest); }
+.admin-sales-countries small { display: block; color: var(--admin-danger); margin-top: 5px; }
+.admin-sales-countries:disabled { opacity: .6; }

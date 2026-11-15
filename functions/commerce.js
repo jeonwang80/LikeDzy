@@ -132,7 +132,7 @@ function liveReady(settings) {
     && ["businessName", "representativeName", "businessNumber", "customerServicePhone", "customerServiceEmail", "businessAddress", "bankName", "accountNumber", "accountHolder", "termsText", "privacyText", "returnsText"].every((field) => Boolean(text(settings[field])));
 }
 
-function createCommerceService({ db, now = () => Date.now(), timestamp = (date) => date, serverTimestamp = () => new Date(), sellingCurrencies = ['VND'] }) {
+function createCommerceService({ db, now = () => Date.now(), timestamp = (date) => date, serverTimestamp = () => new Date(), sellingCurrencies = ['VND'], verifySalesCountry = () => null }) {
   const ref = (collection, id) => db.collection(collection).doc(id);
   async function isAdmin(context) {
     const auth = context?.auth;
@@ -316,6 +316,8 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         return creationResult(orderRef.id, saved.data());
       }
       const settingsSnapshot = await transaction.get(ref("settings", "commerce"));
+      const salesCountry = verifySalesCountry(data.countryProof, idempotencyKey);
+      if (!salesCountry) fail('permission-denied', '접속 국가를 확인할 수 없습니다. 새로고침 후 다시 시도해 주세요.');
       const couponRef = code ? ref('coupons', code) : null;
       const useRef = code ? ref('couponUses', hash(`${code}:${actorUid}`)) : null;
       const couponSnapshot = couponRef ? await transaction.get(couponRef) : null;
@@ -341,6 +343,11 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         const snapshot = await transaction.get(ref("products", productId));
         if (!snapshot.exists) fail("not-found", "판매가 종료된 상품이 포함되어 있습니다.");
         products.set(productId, snapshot.data());
+        const product = snapshot.data();
+        const countries = product.salesCountries === undefined ? ['VN'] : product.salesCountries;
+        if (!Array.isArray(countries) || !countries.includes(salesCountry)) {
+          fail('permission-denied', '현재 접속 국가에서 판매하지 않는 상품입니다.');
+        }
       }
       const inventory = new Map();
       for (const item of cart) {
@@ -367,7 +374,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       const hours = integer(Number(settings.depositDeadlineHours ?? 48), "입금 기한", 1, 720);
       const orderNumber = `LD${new Date(currentTime).toISOString().slice(0, 10).replace(/-/g, "")}-${orderRef.id.slice(0, 12).toUpperCase()}`;
       const order = {
-        schemaVersion: 2, currency, orderNumber, userId: actorUid, items: orderItems, subtotal, shippingFee, discountAmount, couponCode: code, totalAmountNumber,
+        schemaVersion: 2, currency, salesCountry, orderNumber, userId: actorUid, items: orderItems, subtotal, shippingFee, discountAmount, couponCode: code, totalAmountNumber,
         totalAmount: currency === 'VND' ? `${totalAmountNumber.toLocaleString('en-US')} ₫` : `₩${totalAmountNumber.toLocaleString("ko-KR")}`, paymentMethod: "bank_transfer", isTestOrder, manualBankTransfer: currency === 'VND' && settings.manualBankTransfer === true,
         status: STATUS.WAITING, inventoryState: "reserved", name: customer.buyerName, phone: customer.buyerPhone,
         depositName: customer.depositorName, recipientName: customer.recipientName, recipientPhone: customer.recipientPhone,

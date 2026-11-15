@@ -11,7 +11,7 @@ const admin = { auth: { uid: 'admin', token: { admin: true, email_verified: true
 async function fixture(savedSettings) {
   const db = new FakeFirestore({ 'products/shirt': { name: 'TEST SHIRT', prices: { VND: 700000 }, colorSwatches: [{ name: 'Black' }], sizeOptions: [{ name: 'M' }] } });
   if (savedSettings !== undefined) db.data.set('settings/commerce', savedSettings);
-  const service = createCommerceService({ db, now: () => Date.parse('2026-10-04T00:00:00Z') });
+  const service = createCommerceService({ db, verifySalesCountry: () => 'VN', now: () => Date.parse('2026-10-04T00:00:00Z') });
   const variant = await service.setVariantStock({ productId: 'shirt', colorName: 'Black', optionName: 'M', stock: 2, expectedVersion: 0, requestId: secret() }, admin);
   const request = () => ({ currency: 'VND', idempotencyKey: secret(), guestAccessToken: secret(), expectedTotal: 700000,
     cart: [{ productId: 'shirt', colorName: 'Black', optionName: 'M', variantId: variant.variantId, quantity: 1 }],

@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { compactCartItem } from '../utils/checkoutSession';
+import { useVisitorCountry } from '../hooks/useVisitorCountry';
+import { isSoldInCountry } from '../utils/salesCountries';
 
 const CartContext = createContext();
 
@@ -8,6 +10,7 @@ export function useCart() {
 }
 
 export function CartProvider({ children }) {
+  const country = useVisitorCountry();
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem('cart');
@@ -25,6 +28,7 @@ export function CartProvider({ children }) {
   }, [cart]);
 
   const addToCart = (product, selectedOption, quantity = 1) => {
+    if (!isSoldInCountry(product, country) || product.isActive === false) return;
     if (!selectedOption?.variantId || !(selectedOption.stock > 0)) return;
     setCart(prev => {
       const existingIdx = prev.findIndex(item => (

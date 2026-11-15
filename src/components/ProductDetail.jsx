@@ -1,4 +1,6 @@
 import { localizedProduct } from '../utils/localizedProduct';
+import { useVisitorCountry } from '../hooks/useVisitorCountry';
+import { isSoldInCountry } from '../utils/salesCountries';
 import { getImageBackground } from '../utils/imageBackground';
 import ProductBadges from './ProductBadges';
 import { hasAvailableProductStock } from '../utils/productStock';
@@ -56,6 +58,7 @@ const getYouTubeEmbedUrl = (value) => {
 export default function ProductDetail({ product: originalProduct, onBack }) {
   const product = useMemo(() => normalizeProductImages(originalProduct), [originalProduct]);
   const { language } = useLanguage();
+  const country = useVisitorCountry();
   const { addToCart, setIsCartOpen } = useCart();
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [selectedSizeIdx, setSelectedSizeIdx] = useState(0);
@@ -188,6 +191,7 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
   };
 
   const handleAddToCart = () => {
+    if (!isSoldInCountry(product, country)) return false;
     const selectedOpt = sizes[selectedSizeIdx];
     
     if (stockLoading || stockError || !selectedOpt?.variantId || selectedOpt.stock <= 0) {
@@ -207,6 +211,9 @@ export default function ProductDetail({ product: originalProduct, onBack }) {
     return true;
   };
 
+  if (!isSoldInCountry(product, country)) return (
+    <div className="product-detail-alo-page"><p role="status">{language === 'ko' ? '현재 접속 국가에서는 판매하지 않는 상품입니다.' : language === 'hu' ? 'Ez a termék az Ön országában nem kapható.' : 'This product is not available in your current country.'}</p><button type="button" onClick={onBack}>← {language === 'ko' ? '돌아가기' : 'Back'}</button></div>
+  );
   return (
     <div className="product-detail-alo-page fade-in">
       {guideOpen && <SizeGuideDrawer guide={product.measurementGuide} name={product[language]?.name || product.name} language={language} onClose={() => setGuideOpen(false)} />}

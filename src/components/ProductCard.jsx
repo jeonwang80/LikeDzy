@@ -1,4 +1,6 @@
 import { getImageBackground } from '../utils/imageBackground';
+import { useVisitorCountry } from '../hooks/useVisitorCountry';
+import { isSoldInCountry } from '../utils/salesCountries';
 import ProductBadges from './ProductBadges';
 import React, { useState } from 'react';
 import { Heart } from 'lucide-react';
@@ -37,6 +39,7 @@ export default function ProductCard({
   priority = false,
 }) {
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
+  const country = useVisitorCountry();
   const { language } = useLanguage();
   const { variants, loading: stockLoading, error: stockError } = useProductStock(product.id);
   const preparing = !stockLoading && !stockError && !hasAvailableProductStock(product, variants);
@@ -64,6 +67,7 @@ export default function ProductCard({
     if (hasHoverImage) setRequestedHoverUrls((current) => new Set([...current, cardHover]));
   };
 
+  if (!isSoldInCountry(product, country)) return null;
   return (
     <article
       className={`alo-product-card${preparing ? ' is-preparing' : ''}`}
