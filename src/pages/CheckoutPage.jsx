@@ -69,7 +69,8 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const { language } = useLanguage();
   const [form, setForm] = useState(() => ({ ...EMPTY_FORM }));
-  const currency = form.country === 'VN' ? 'VND' : 'KRW';
+  const currency = form.country === 'HU' ? 'EUR' : form.country === 'KR' ? 'KRW' : 'VND';
+  const countryNames = language === 'ko' ? {HU:'헝가리',VN:'베트남',KR:'한국'} : language === 'hu' ? {HU:'Magyarország',VN:'Vietnám',KR:'Dél-Korea'} : language === 'vi' ? {HU:'Hungary',VN:'Việt Nam',KR:'Hàn Quốc'} : {HU:'Hungary',VN:'Vietnam',KR:'South Korea'};
   const money = (value) => formatMoney(value, currency);
   const { isAdmin, currentUser } = useAuth();
   const { cart, clearCart, replaceCart } = useCart();
@@ -91,7 +92,7 @@ export default function CheckoutPage() {
     couponRequest.current += 1;
     setCouponQuote(null); setCouponMessage(''); setCouponLoading(false);
     setForm((current) => ({ ...current, agreeOrder: false }));
-  }, []);
+  }, [setCouponQuote, setCouponMessage, setCouponLoading, setForm]);
   const { checked: catalogChecked, loading: refreshing, error: cartNotice } = useCheckoutCatalog(cart, currency, language, replaceCart, onPriceChange);
 
   useEffect(() => {
@@ -135,7 +136,7 @@ export default function CheckoutPage() {
   ), []);
 
   const subtotal = useMemo(() => cart.some((item) => productPrice(item.product, currency) === null) ? null : cart.reduce(
-    (sum, item) => sum + (productPrice(item.product, currency) || 0) * item.quantity,
+    (sum, item) => Math.round((sum + (productPrice(item.product, currency) || 0) * item.quantity) * 100) / 100,
     0,
   ), [cart, currency]);
   const selectedSettings = marketSettings(settings, currency);
@@ -144,7 +145,7 @@ export default function CheckoutPage() {
   const activeSettings = testMode ? ADMIN_TEST_COMMERCE_SETTINGS : selectedSettings;
   const shippingFee = calculateShippingFee(subtotal, activeSettings);
   const discountAmount = couponQuote?.userId === currentUser?.uid && couponQuote?.currency === currency && couponQuote?.subtotal === subtotal ? couponQuote.discountAmount : 0;
-  const total = subtotal === null || shippingFee === null ? null : subtotal + shippingFee - discountAmount;
+  const total = subtotal === null || shippingFee === null ? null : Math.round((subtotal + shippingFee - discountAmount) * 100) / 100;
   const ready = liveReady || testMode;
 
   const recoverAttempt = async () => {
@@ -158,6 +159,11 @@ export default function CheckoutPage() {
       forgetAttempt(); clearCart(); setRecoveryToken(attempt.guestAccessToken); setOrderResult(result);
     } catch (recoveryError) { setError(recoveryError.message || copy("요청 확인에 실패했습니다. 복구 코드는 유지됩니다.")); }
     finally { setSubmitting(false); }
+  };
+
+  const changeCountry = (country) => {
+    couponRequest.current += 1; setCouponQuote(null); setCouponMessage(''); setCouponLoading(false); setError('');
+    setForm(current => ({ ...current, country, province: '', ward: '', postcode: '', address1: '', address2: '', cashReceiptType: 'none', cashReceiptIdentity: '', agreeOrder: false, agreePrivacy: false }));
   };
 
   const updateForm = (key, value) => setForm((current) => ({ ...current, [key]: value }));
@@ -179,7 +185,7 @@ export default function CheckoutPage() {
   };
 
   const applySavedProfile = () => {
-    if (!savedProfile || savedProfile.country !== 'VN') return;
+    if (!savedProfile || !['VN', 'KR', 'HU'].includes(savedProfile.country)) return;
     couponRequest.current += 1;
     setCouponLoading(false);
     setCouponMessage('');
@@ -313,7 +319,7 @@ export default function CheckoutPage() {
             <p>{copy("입금 확인 후 택배 발송이 시작됩니다.")}</p>
           </div>
 
-          {savedProfile?.address1 && savedProfile.country === 'VN' && <div className="checkout-saved-profile"><span>{profileNotice}</span><button type="button" onClick={applySavedProfile}>{copy('기본 배송지 사용')}</button></div>}
+          {savedProfile?.address1 && ['VN', 'KR', 'HU'].includes(savedProfile.country) && <div className="checkout-saved-profile"><span>{profileNotice}</span><button type="button" onClick={applySavedProfile}>{copy('기본 배송지 사용')}</button></div>}
 
           {!settingsLoading && !ready && (
             <div className="checkout-disabled-notice">{copy("현재 주문 접수를 준비 중입니다. 운영 설정이 완료되면 주문할 수 있습니다.")}</div>
@@ -340,7 +346,8 @@ export default function CheckoutPage() {
 
             <fieldset className="checkout-section">
               <legend><span>02</span>{copy("배송지 정보")}</legend>
-              <p className="checkout-destination">{language === 'ko' ? '베트남 배송' : 'Delivery in Vietnam'} · {shippingFee === 0 ? copy('무료배송 적용') : money(shippingFee)}</p>
+              <label><span>{language === 'ko' ? '배송 국가' : language === 'hu' ? 'Szállítási ország' : 'Delivery country'}</span><select value={form.country} disabled={submitting} onChange={event => changeCountry(event.target.value)}>{['HU','VN','KR'].map(code => <option key={code} value={code}>{countryNames[code]} · {{HU:'EUR',VN:'VND',KR:'KRW'}[code]}</option>)}</select></label>
+              <p className="checkout-destination">{countryNames[form.country]} · {shippingFee === 0 ? copy('무료배송 적용') : money(shippingFee)}</p>
               <label className="checkout-check-row">
                 <input type="checkbox" checked={form.sameRecipient} onChange={(event) => updateForm('sameRecipient', event.target.checked)} />{copy("주문자 정보와 동일")}</label>
               {!form.sameRecipient && (
@@ -374,17 +381,17 @@ export default function CheckoutPage() {
               </> : <>
               <div className="checkout-field-grid checkout-vietnam-region">
                 <label>
-                  <span>{copy("시·성 (Province / City) *")}</span>
-                  <input required autoComplete="address-level1" value={form.province} onChange={(event) => updateForm('province', event.target.value)} placeholder={copy("예: Hồ Chí Minh")}/>
+                  <span>{form.country === 'HU' ? (language === 'ko' ? '도시 *' : 'Város / City *') : copy("시·성 (Province / City) *")}</span>
+                  <input required autoComplete="address-level1" value={form.province} onChange={(event) => updateForm('province', event.target.value)} placeholder={form.country === 'HU' ? 'Budapest' : copy("예: Hồ Chí Minh")}/>
                 </label>
                 <label>
-                  <span>{copy("동·면 (Ward / Commune) *")}</span>
-                  <input required autoComplete="address-level3" value={form.ward} onChange={(event) => updateForm('ward', event.target.value)} placeholder={copy("예: Phường Sài Gòn")}/>
+                  <span>{form.country === 'HU' ? (language === 'ko' ? '구·지역 (선택)' : 'District (optional)') : copy("동·면 (Ward / Commune) *")}</span>
+                  <input required={form.country === 'VN'} autoComplete="address-level3" value={form.ward} onChange={(event) => updateForm('ward', event.target.value)} placeholder={form.country === 'HU' ? 'District' : copy("예: Phường Sài Gòn")}/>
                 </label>
               </div>
               <label>
                 <span>{copy("집 번호·도로명 *")}</span>
-                <input required autoComplete="address-line1" value={form.address1} onChange={(event) => updateForm('address1', event.target.value)} placeholder={copy("예: 123 Nguyễn Huệ")}/>
+                <input required autoComplete="address-line1" value={form.address1} onChange={(event) => updateForm('address1', event.target.value)} placeholder={form.country === 'HU' ? 'Utca, házszám / Street, house number' : copy("예: 123 Nguyễn Huệ")}/>
               </label>
               <div className="checkout-field-grid checkout-vietnam-extra">
                 <label>
@@ -392,8 +399,8 @@ export default function CheckoutPage() {
                   <input autoComplete="address-line2" value={form.address2} onChange={(event) => updateForm('address2', event.target.value)} placeholder={copy("건물명·호수")}/>
                 </label>
                 <label>
-                  <span>{copy("우편번호 (선택)")}</span>
-                  <input inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" value={form.postcode} onChange={(event) => updateForm('postcode', event.target.value)} placeholder={language === 'ko' ? '숫자 5자리' : '5 digits'}/>
+                  <span>{form.country === 'HU' ? (language === 'ko' ? '우편번호 *' : 'Irányítószám / Postal code *') : copy("우편번호 (선택)")}</span>
+                  <input required={form.country === 'HU'} inputMode="numeric" pattern={form.country === 'HU' ? '[0-9]{4}' : '[0-9]{5}'} autoComplete="postal-code" value={form.postcode} onChange={(event) => updateForm('postcode', event.target.value)} placeholder={form.country === 'HU' ? '1234' : '12345'}/>
                 </label>
               </div>
               </>}

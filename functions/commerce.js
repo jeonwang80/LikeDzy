@@ -16,6 +16,12 @@ const integer = (value, name, min = 0, max = 1000000) => {
   if (!Number.isSafeInteger(value) || value < min || value > max) fail("invalid-argument", `${name} 값을 확인해 주세요.`);
   return value;
 };
+const moneyValue = (value, currency, name, min = 0, max = 1000000000) => {
+  const scale = currency === 'EUR' ? 100 : 1;
+  if (!Number.isFinite(value) || Math.abs(value * scale - Math.round(value * scale)) > 1e-7 || value < min || value > max) fail('invalid-argument', `${name} 값을 확인해 주세요.`);
+  return Math.round(value * scale) / scale;
+};
+const roundMoney = value => Math.round(value * 100) / 100;
 const identifier = (value, name) => {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(value)) fail("invalid-argument", `${name} 값을 확인해 주세요.`);
   return value;
@@ -32,15 +38,15 @@ const couponCode = (value) => {
 function calculateCoupon(coupon, { code, currency, subtotal, currentTime }) {
   if (!coupon || coupon.active !== true || coupon.currency !== currency || coupon.code !== code) fail('failed-precondition', '사용할 수 없는 쿠폰입니다.');
   const percent = integer(coupon.percent, '할인율', 1, 90);
-  const minSubtotal = integer(coupon.minSubtotal, '최소 주문액', 0, 1000000000);
-  const maxDiscount = integer(coupon.maxDiscount, '최대 할인액', 1, 1000000000);
+  const minSubtotal = moneyValue(coupon.minSubtotal, currency, '최소 주문액');
+  const maxDiscount = moneyValue(coupon.maxDiscount, currency, '최대 할인액', currency === 'EUR' ? 0.01 : 1);
   const usageLimit = integer(coupon.usageLimit, '총 사용 횟수', 1, 1000000);
   const usedCount = integer(coupon.usedCount || 0, '사용 횟수', 0, 1000000);
   const state = campaignStatus({ ...coupon, usageLimit, usedCount }, currentTime);
   const reasons = { invalid: '쿠폰의 사용 기간 설정을 확인해 주세요.', scheduled: '아직 사용 시작일이 되지 않은 쿠폰입니다.', expired: '사용 기간이 만료된 쿠폰입니다.', exhausted: '쿠폰 행사의 전체 사용 한도가 소진되었습니다.' };
   if (reasons[state]) fail('failed-precondition', reasons[state]);
   if (subtotal < minSubtotal) fail('failed-precondition', '쿠폰 최소 주문 금액에 도달하지 않았습니다.');
-  return Math.min(Math.floor(subtotal * percent / 100), maxDiscount);
+  return Math.min((currency === 'EUR' ? Math.floor(Math.round(subtotal * 100) * percent / 100) / 100 : Math.floor(subtotal * percent / 100)), maxDiscount);
 }
 const sameSecret = (storedHash, value) => {
   if (typeof storedHash !== "string" || !/^[a-f0-9]{64}$/.test(storedHash) || typeof value !== "string") return false;
@@ -69,8 +75,8 @@ function normalizeCustomer(customer = {}, currency = 'KRW') {
   if (customer.agreements?.orderConfirmed !== true || customer.agreements?.privacyAgreed !== true) fail("failed-precondition", "필수 주문 확인이 완료되지 않았습니다.");
   const result = {};
   const explicitCountry = text(customer.country, 8);
-  result.country = explicitCountry || (currency === 'VND' ? 'VN' : 'KR');
-  if (!['KR', 'VN'].includes(result.country) || (result.country === 'VN' ? 'VND' : 'KRW') !== currency) {
+  result.country = explicitCountry || (currency === 'VND' ? 'VN' : currency === 'EUR' ? 'HU' : 'KR');
+  if (!['KR', 'VN', 'HU'].includes(result.country) || ({KR:'KRW',VN:'VND',HU:'EUR'}[result.country]) !== currency) {
     fail('invalid-argument', '배송 국가와 주문 통화를 확인해 주세요.');
   }
   for (const field of ["buyerName", "buyerPhone", "recipientName", "recipientPhone", "postcode", "address1"]) {
@@ -80,17 +86,18 @@ function normalizeCustomer(customer = {}, currency = 'KRW') {
   for (const field of ["buyerPhone", "recipientPhone"]) {
     if (!/^\+?[\d ()-]{8,30}$/.test(result[field]) || result[field].replace(/\D/g, "").length < 8) fail("invalid-argument", "연락처를 확인해 주세요.");
   }
-  if ((result.country === 'KR' || result.postcode) && !/^\d{5}$/.test(result.postcode)) fail("invalid-argument", "우편번호 5자리를 확인해 주세요.");
+  if ((result.country !== 'VN' || result.postcode) && !(result.country === 'HU' ? /^\d{4}$/ : /^\d{5}$/).test(result.postcode)) fail("invalid-argument", "배송 국가의 우편번호를 확인해 주세요.");
   result.province = text(customer.province);
   result.ward = text(customer.ward);
   if (result.country === 'VN' && explicitCountry && (!result.province || !result.ward)) {
     fail('invalid-argument', '베트남 시·성과 동·면을 입력해 주세요.');
   }
+  if (result.country === 'HU' && !result.province) fail('invalid-argument', '배송 도시를 입력해 주세요.');
   result.address2 = text(customer.address2);
   result.depositorName = text(customer.depositorName, 80) || result.buyerName;
   result.notes = text(customer.notes, 300);
   const type = customer.cashReceipt?.type || "none";
-  if (currency === 'VND' && type !== 'none') fail('invalid-argument', 'Korean cash receipts are only available for KRW orders.');
+  if (currency !== 'KRW' && type !== 'none') fail('invalid-argument', 'Korean cash receipts are only available for KRW orders.');
   if (!["none", "personal", "business"].includes(type)) fail("invalid-argument", "현금영수증 종류를 확인해 주세요.");
   const identity = type === "none" ? "" : text(customer.cashReceipt?.identity, 40).replace(/\D/g, "");
   if ((type === "personal" && !/^\d{10,11}$/.test(identity)) || (type === "business" && !/^\d{10}$/.test(identity))) fail("invalid-argument", "현금영수증 발급번호를 확인해 주세요.");
@@ -420,8 +427,8 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     const code = couponCode(data?.couponCode);
     if (!code) fail('invalid-argument', '쿠폰 코드를 입력해 주세요.');
     const currency = data?.currency;
-    if (!['KRW', 'VND'].includes(currency)) fail('invalid-argument', '주문 통화를 확인해 주세요.');
-    const subtotal = integer(data?.subtotal, '상품금액', 1, 1000000000);
+    if (!['KRW', 'VND', 'EUR'].includes(currency)) fail('invalid-argument', '주문 통화를 확인해 주세요.');
+    const subtotal = moneyValue(data?.subtotal, currency, '상품금액', currency === 'EUR' ? 0.01 : 1);
     const [coupon, used, entitlement] = await Promise.all([ref('coupons', code).get(), ref('couponUses', hash(`${code}:${context.auth.uid}`)).get(), ref('userCoupons', hash(`${code}:${context.auth.uid}`)).get()]);
     if (used.exists && used.data().released !== true) {
       const order = used.data().orderId ? await ref('orders', used.data().orderId).get() : null;
@@ -436,17 +443,17 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
     // This separate transaction commits even if later validation/order creation fails.
     await consumeAttempt("create", context, 10);
     const currency = data?.currency ?? 'KRW';
-    if (!['KRW', 'VND'].includes(currency)) fail('invalid-argument', 'Unsupported order currency.');
-    if (!sellingCurrencies.includes(currency)) fail('failed-precondition', '현재 베트남 배송 주문만 접수합니다. 한국 주문은 아직 시작하지 않았습니다.');
+    if (!['KRW', 'VND', 'EUR'].includes(currency)) fail('invalid-argument', 'Unsupported order currency.');
+    if (!sellingCurrencies.includes(currency)) fail('failed-precondition', '해당 통화의 주문 접수가 아직 시작되지 않았습니다.');
     const idempotencyKey = secret(data?.idempotencyKey, "주문 요청");
     const accessToken = secret(data.guestAccessToken, "주문 조회");
     const cart = normalizeCart(data.cart);
     const customer = normalizeCustomer(data.customer, currency);
     const code = couponCode(data.couponCode);
     if (code && !context.auth?.uid) fail('unauthenticated', '쿠폰 사용은 회원 로그인이 필요합니다.');
-    const expectedTotal = integer(data.expectedTotal, "주문 금액", 1, 1000000000);
+    const expectedTotal = moneyValue(data.expectedTotal, currency, "주문 금액", currency === 'EUR' ? 0.01 : 1);
     const actorUid = context.auth?.uid || null;
-    const fingerprint = hash(JSON.stringify({ cart, customer, expectedTotal, actorUid, tokenHash: hash(accessToken), ...(currency === 'VND' ? { currency } : {}), ...(code ? { couponCode: code } : {}) }));
+    const fingerprint = hash(JSON.stringify({ cart, customer, expectedTotal, actorUid, tokenHash: hash(accessToken), ...(currency !== 'KRW' ? { currency } : {}), ...(code ? { couponCode: code } : {}) }));
     const requestId = hash(idempotencyKey);
     const requestRef = ref("orderRequests", requestId);
     const orderRef = ref("orders", requestId);
@@ -473,7 +480,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
       if (couponSnapshot?.exists && couponSnapshot.data().autoIssue === true && (!entitlementSnapshot.exists || entitlementSnapshot.data().userId !== actorUid || entitlementSnapshot.data().redeemedAt)) fail('permission-denied', '발급받은 쿠폰만 사용할 수 있습니다.');
       const baseSettings = settingsSnapshot.exists ? settingsSnapshot.data() : {};
       const vietnam = baseSettings.vietnam || (Object.keys(baseSettings).length === 0 ? startupVietnam : {});
-      const savedSettings = currency === 'KRW' ? baseSettings : {
+      const savedSettings = currency === 'KRW' ? baseSettings : currency === 'EUR' ? { shippingFee: 0, freeShippingThreshold: 0, depositDeadlineHours: 48, ...baseSettings.hungary, currency, orderEnabled: baseSettings.hungary?.orderEnabled === true } : {
         ...baseSettings, ...vietnam, currency: 'VND', manualBankTransfer: vietnam.manualBankTransfer === true, orderEnabled: vietnam.orderEnabled === true, policyConfirmed: vietnam.policyConfirmed === true,
         bankName: vietnam.bankName || '', accountNumber: vietnam.accountNumber || '', accountHolder: vietnam.accountHolder || '',
         termsText: vietnam.termsText || '', privacyText: vietnam.privacyText || '', returnsText: vietnam.returnsText || '',
@@ -500,32 +507,33 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         const snapshot = await transaction.get(ref("inventory", item.variantId));
         if (!snapshot.exists) fail("failed-precondition", "선택한 색상·사이즈의 재고가 아직 등록되지 않았습니다.");
         const value = snapshot.data();
+        if (currency === 'EUR' && value.allocationVersion !== 1) fail('failed-precondition', '헝가리 국가별 재고 등록이 필요합니다.');
         if (value.productId !== item.productId || value.colorName !== item.colorName || value.optionName !== item.optionName) fail("failed-precondition", "상품 재고 정보가 일치하지 않습니다.");
         if (!Number.isSafeInteger(value.allocationVersion === 1 ? value.countries?.[customer.country]?.stock : value.stock) || (value.allocationVersion === 1 ? value.countries[customer.country].stock : value.stock) < item.quantity) fail("failed-precondition", `${products.get(item.productId).name || "상품"} ${item.colorName}/${item.optionName} 재고가 부족합니다.`);
         inventory.set(item.variantId, value);
       }
       const orderItems = cart.map((item) => {
         const product = products.get(item.productId);
-        const unitPrice = integer(Number(product.prices?.[currency] ?? product[`price${currency}`]), "상품 판매가", 1, 100000000);
-        return { ...item, productName: text(currency === 'VND' ? product.en?.name || product.name : product.ko?.name || product.name), unitPrice, lineAmount: unitPrice * item.quantity };
+        const unitPrice = moneyValue(Number(product.prices?.[currency] ?? product[`price${currency}`]), currency, "상품 판매가", currency === 'EUR' ? 0.01 : 1, 100000000);
+        return { ...item, productName: text(currency === 'EUR' ? product.hu?.name || product.en?.name || product.name : currency === 'VND' ? product.en?.name || product.name : product.ko?.name || product.name), unitPrice, lineAmount: roundMoney(unitPrice * item.quantity) };
       });
-      const subtotal = orderItems.reduce((total, item) => total + item.lineAmount, 0);
-      const fee = integer(Number(settings.shippingFee ?? 3000), "배송비");
-      const threshold = integer(Number(settings.freeShippingThreshold ?? 50000), "무료배송 기준", 0, 1000000000);
+      const subtotal = orderItems.reduce((total, item) => roundMoney(total + item.lineAmount), 0);
+      const fee = moneyValue(Number(settings.shippingFee ?? 3000), currency, "배송비");
+      const threshold = moneyValue(Number(settings.freeShippingThreshold ?? 50000), currency, "무료배송 기준");
       const shippingFee = threshold > 0 && subtotal >= threshold ? 0 : fee;
       const discountAmount = code ? calculateCoupon(couponSnapshot?.data(), { code, currency, subtotal, currentTime }) : 0;
-      const totalAmountNumber = subtotal + shippingFee - discountAmount;
+      const totalAmountNumber = roundMoney(subtotal + shippingFee - discountAmount);
       if (expectedTotal !== totalAmountNumber) fail("aborted", "상품 가격 또는 배송비가 변경되었습니다. 장바구니를 갱신한 뒤 다시 주문해 주세요.");
       const hours = integer(Number(settings.depositDeadlineHours ?? 48), "입금 기한", 1, 720);
       const orderNumber = `LD${new Date(currentTime).toISOString().slice(0, 10).replace(/-/g, "")}-${orderRef.id.slice(0, 12).toUpperCase()}`;
       const order = {
         schemaVersion: 2, inventoryCountry: customer.country, currency, salesCountry, orderNumber, userId: actorUid, items: orderItems, subtotal, shippingFee, discountAmount, couponCode: code, totalAmountNumber,
-        totalAmount: currency === 'VND' ? `${totalAmountNumber.toLocaleString('en-US')} ₫` : `₩${totalAmountNumber.toLocaleString("ko-KR")}`, paymentMethod: "bank_transfer", isTestOrder, manualBankTransfer: currency === 'VND' && settings.manualBankTransfer === true,
+        totalAmount: currency === 'EUR' ? `€${totalAmountNumber.toFixed(2)}` : currency === 'VND' ? `${totalAmountNumber.toLocaleString('en-US')} ₫` : `₩${totalAmountNumber.toLocaleString("ko-KR")}`, paymentMethod: "bank_transfer", isTestOrder, manualBankTransfer: currency === 'VND' && settings.manualBankTransfer === true,
         status: STATUS.WAITING, inventoryState: "reserved", name: customer.buyerName, phone: customer.buyerPhone,
         depositName: customer.depositorName, recipientName: customer.recipientName, recipientPhone: customer.recipientPhone,
         country: customer.country, province: customer.province, ward: customer.ward,
         postcode: customer.postcode, address1: customer.address1, address2: customer.address2,
-        address: customer.country === 'VN'
+        address: customer.country === 'HU' ? [customer.postcode, customer.province, customer.address1, customer.address2, 'Hungary'].filter(Boolean).join(', ') : customer.country === 'VN'
           ? [customer.address1, customer.address2, customer.ward, customer.province, customer.postcode, 'Vietnam'].filter(Boolean).join(', ')
           : `[${customer.postcode}] ${customer.address1} ${customer.address2}`.trim(),
         notes: customer.notes,
@@ -645,7 +653,7 @@ function createCommerceService({ db, now = () => Date.now(), timestamp = (date) 
         updates.cashReceiptStatus = status; updates.cashReceiptReference = reference; updates.cashReceiptUpdatedAt = serverTimestamp();
       } else if (action === "refund") {
         if (![STATUS.REFUND_REQUESTED, STATUS.RETURN_RECEIVED].includes(order.status)) fail("failed-precondition", "환불 요청 또는 반품 입고 확인 후 환불할 수 있습니다.");
-        const amount = integer(payload.amount, "환불 금액", 1, 1000000000); const reference = text(payload.reference, 120);
+        const amount = moneyValue(payload.amount, order.currency, "환불 금액", order.currency === 'EUR' ? 0.01 : 1); const reference = text(payload.reference, 120);
         if (amount !== order.totalAmountNumber || !reference) fail("invalid-argument", "실제 전액 환불 금액과 은행 이체 확인번호를 입력해 주세요.");
         updates.status = STATUS.REFUNDED; updates.refundedAt = serverTimestamp(); updates.refund = { amount, reference, actorUid };
         if (order.status === STATUS.REFUND_REQUESTED) { movement = "refund"; updates.inventoryState = "released"; }

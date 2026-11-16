@@ -574,3 +574,38 @@ test('warehouse references use server KST minute and atomic sequence; retries re
   assert.equal(transfer.reference,sent.reference);
   await rejectsCode(f.service.processWarehouseBatch({type:'receive',productId:'shirt',country:'VN',requestId:secret(),items:[{...dispatch.items[0],expectedVersion:f.inventory().version,transferId:sent.results[0].transactionId}]},admin),'failed-precondition');
 });
+
+async function euroFixture() {
+  const f = await fixture(5);
+  f.service = createCommerceService({db:f.db, sellingCurrencies:['KRW','VND','EUR'], verifySalesCountry:()=> 'VN'});
+  f.db.data.set('products/shirt', {...f.db.read('products/shirt'), prices:{KRW:39000, VND:700000, EUR:19.99}, hu:{name:'Ing'}, salesCountries:['VN','HU','KR']});
+  f.db.data.set('settings/commerce', {...settings, hungary:{...settings, shippingFee:4.95, freeShippingThreshold:60}});
+  f.db.data.set(`inventory/${f.variant.variantId}`, {...f.inventory(), allocationVersion:1,mainStock:99,inTransit:{KR:0,VN:0,HU:10},countries:{KR:{stock:1,reserved:0,sold:0},VN:{stock:1,reserved:0,sold:0},HU:{stock:3,reserved:0,sold:0}}});
+  f.euro = changes => f.order({currency:'EUR',customer:{...customer,country:'HU',province:'Budapest',postcode:'1051'},cart:[{...f.order().cart[0],quantity:2}],expectedTotal:44.93,...changes});
+  return f;
+}
+test('EUR checkout reserves destination stock, preserves cents, retries and refunds', async()=>{
+  const f=await euroFixture(); const request=f.euro();
+  const a=await f.service.createBankTransferOrder(request,guest);
+  assert.equal((await f.service.createBankTransferOrder(request,guest)).id,a.id);
+  const saved=f.db.read(`orders/${a.id}`);
+  assert.equal(saved.currency,'EUR');assert.equal(saved.country,'HU');assert.equal(saved.salesCountry,'VN');
+  assert.equal(saved.subtotal,39.98);assert.equal(saved.shippingFee,4.95);assert.equal(saved.totalAmountNumber,44.93);
+  assert.equal(f.inventory().countries.HU.stock,1);assert.equal(f.inventory().countries.VN.stock,1);assert.equal(f.inventory().mainStock,99);
+  await f.service.updateOrder({orderId:a.id,expectedStatus:STATUS.WAITING,action:'status',payload:{status:STATUS.PAID}},admin);
+  await f.service.updateOrder({orderId:a.id,expectedStatus:STATUS.PAID,action:'status',payload:{status:STATUS.REFUND_REQUESTED}},admin);
+  await f.service.updateOrder({orderId:a.id,expectedStatus:STATUS.REFUND_REQUESTED,action:'refund',payload:{amount:44.93,reference:'TEST-EUR'}},admin);
+  assert.equal(f.inventory().countries.HU.stock,3);
+});
+test('EUR rejects mismatched addresses, fractional cents, missing local settings and transit-only stock', async()=>{
+  const f=await euroFixture();
+  await rejectsCode(f.service.createBankTransferOrder(f.euro({customer:{...customer,country:'VN',province:'Test',ward:'Test'}}),guest),'invalid-argument');
+  await rejectsCode(f.service.createBankTransferOrder(f.euro({expectedTotal:44.931}),guest),'invalid-argument');
+  await rejectsCode(f.service.createBankTransferOrder(f.euro({customer:{...customer,country:'HU',province:'Budapest',postcode:'10511'}}),guest),'invalid-argument');
+  f.db.data.set('settings/commerce',settings);
+  await rejectsCode(f.service.createBankTransferOrder(f.euro(),guest),'failed-precondition');
+  f.db.data.set('settings/commerce',{...settings,hungary:{...settings,shippingFee:4.95,freeShippingThreshold:60}});
+  const inv=f.inventory();inv.countries.HU.stock=0;f.db.data.set(`inventory/${f.variant.variantId}`,inv);
+  await rejectsCode(f.service.createBankTransferOrder(f.euro(),guest),'failed-precondition');
+  assert.equal(f.db.count('orders'),0);
+});

@@ -4,10 +4,11 @@ import startupVietnam from '../../functions/manual-vietnam-settings.json' with {
 export const currencyForLanguage = () => 'VND';
 export const productPrice = (product, currency = 'KRW') => {
   const value = product?.prices?.[currency] ?? product?.[`price${currency}`];
-  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null;
+  return typeof value === 'number' && (currency === 'EUR' ? Number.isSafeInteger(Math.round(value * 100)) && Math.abs(value * 100 - Math.round(value * 100)) < 1e-7 : Number.isSafeInteger(value)) && value > 0 ? value : null;
 };
 export const formatMoney = (value, currency = 'KRW') => {
   if (value == null || !Number.isFinite(Number(value))) return '—';
+  if (currency === 'EUR') return new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }).format(Math.max(0, Number(value)));
   const amount = Math.max(0, Number(value)).toLocaleString(currency === 'VND' ? 'en-US' : 'ko-KR', { maximumFractionDigits: 0 });
   return currency === 'VND' ? `${amount} ₫` : `₩${amount}`;
 };
@@ -15,6 +16,7 @@ export const formatMoney = (value, currency = 'KRW') => {
 // Never reinterpret Korean shipping fees or bank details as Vietnam settings.
 export function marketSettings(settings, currency = 'KRW') {
   if (currency === 'KRW') return { ...settings, currency };
+  if (currency === 'EUR') return { shippingFee: 0, freeShippingThreshold: 0, depositDeadlineHours: 48, ...settings?.hungary, currency, orderEnabled: settings?.hungary?.orderEnabled === true };
   const vietnam = vietnamSettings(settings || {});
   return { ...settings, ...vietnam, currency,
     orderEnabled: vietnam.orderEnabled === true, policyConfirmed: vietnam.policyConfirmed === true,

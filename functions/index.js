@@ -10,7 +10,7 @@ const { verifyCountryProof } = require('./countryProof');
 initializeApp();
 const commerce = createCommerceService({
   db: getFirestore(),
-  sellingCurrencies: ['VND'],
+  sellingCurrencies: ['KRW', 'VND', 'EUR'],
   verifySalesCountry: (token, orderKey) => verifyCountryProof(token, orderKey, process.env.COUNTRY_TOKEN_SECRET),
   timestamp: (date) => Timestamp.fromDate(date),
   serverTimestamp: () => FieldValue.serverTimestamp(),

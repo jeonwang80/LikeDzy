@@ -28,12 +28,11 @@ export default function AdminCommerceSettings() {
   const submit = async event => {
     event.preventDefault(); setMessage('');
     let normalized;
-    try { normalized = normalizeCountryCommerce(settings); } catch (error) { setMessage(error.message); return; }
-    if (country === 'VN' && normalized.orderEnabled && !isCommerceReady(marketSettings({ ...source, vietnam: normalized }, 'VND'))) {
-      setMessage('베트남 주문 접수에 필요한 계좌 정보와 선택한 운영 방식의 사업자·정책 확인을 완료해 주세요.'); return;
+    try { normalized = normalizeCountryCommerce(settings, meta.currency); } catch (error) { setMessage(error.message); return; }
+    if (normalized.orderEnabled && !isCommerceReady(marketSettings(country === 'KR' ? normalized : { ...source, [country === 'VN' ? 'vietnam' : 'hungary']: normalized }, meta.currency))) {
+      setMessage('선택한 국가의 주문 접수에 필요한 계좌 정보와 선택한 운영 방식의 사업자·정책 확인을 완료해 주세요.'); return;
     }
-    if (country !== 'VN') normalized.orderEnabled = false;
-    else normalized.shippingPolicyConfigured = true;
+    if (country === 'VN') normalized.shippingPolicyConfigured = true;
     setSaving(true);
     try {
       const patch = country === 'KR' ? normalized : { [country === 'VN' ? 'vietnam' : 'hungary']: normalized };
@@ -50,10 +49,10 @@ export default function AdminCommerceSettings() {
     <div className="commerce-country-tabs" role="group" aria-label="판매 배송 국가">
       {Object.entries(COMMERCE_COUNTRIES).map(([code, item]) => <button key={code} type="button" aria-pressed={country === code} className={country === code ? 'admin-btn-primary' : 'admin-btn-secondary'} disabled={saving} onClick={() => { setCountry(code); setMessage(''); }}>{item.name} · {item.currency}{drafts[code] ? ' •' : ''}</button>)}
     </div>
-    <p className="commerce-country-notice">{meta.name} / {meta.currency} · {country === 'VN' ? '현재 운영 중인 배송 시장입니다. 저장한 배송비는 이후 신규 주문부터 적용됩니다.' : '출시 준비용 설정입니다. 저장해도 주문 접수가 시작되지 않으며 결제·배송 연동 후 별도 개통합니다.'} 무료배송 기준 0은 금액 조건을 사용하지 않음을 뜻합니다.</p>
+    <p className="commerce-country-notice">{meta.name} / {meta.currency} · 설정 완료 후 주문 접수를 켜면 해당 국가의 신규 주문에 적용됩니다. 무료배송 기준 0은 금액 조건을 사용하지 않음을 뜻합니다.</p>
     <fieldset className="commerce-country-fields" disabled={loading || saving || loadError}>
-      {country === 'VN' && <><label className="commerce-safety-check"><input type="checkbox" checked={settings.orderEnabled === true} onChange={e => update('orderEnabled', e.target.checked)} />베트남 주문 접수</label><label className="commerce-safety-check"><input type="checkbox" checked={settings.manualBankTransfer === true} onChange={e => update('manualBankTransfer', e.target.checked)} /><span>수기 입금 확인 운영 · 기존 방식 유지 (은행명·계좌번호·예금주 필수)</span></label></>}
-      <div className="commerce-settings-grid">{fields.map(([key, label, type = 'text']) => <label className="admin-form-field" key={key}><span>{label}{['shippingFee', 'freeShippingThreshold'].includes(key) ? ` (${meta.currency})` : ''}</span><input className="admin-input" type={type} min={type === 'number' ? (key === 'depositDeadlineHours' ? 1 : 0) : undefined} step={type === 'number' ? 1 : undefined} value={settings[key] ?? ''} onChange={e => update(key, e.target.value)} /></label>)}</div>
+      {<><label className="commerce-safety-check"><input type="checkbox" checked={settings.orderEnabled === true} onChange={e => update('orderEnabled', e.target.checked)} />{meta.name} 주문 접수</label>{country === 'VN' && <label className="commerce-safety-check"><input type="checkbox" checked={settings.manualBankTransfer === true} onChange={e => update('manualBankTransfer', e.target.checked)} /><span>수기 입금 확인 운영 · 기존 방식 유지 (은행명·계좌번호·예금주 필수)</span></label>}</>}
+      <div className="commerce-settings-grid">{fields.map(([key, label, type = 'text']) => <label className="admin-form-field" key={key}><span>{label}{['shippingFee', 'freeShippingThreshold'].includes(key) ? ` (${meta.currency})` : ''}</span><input className="admin-input" type={type} min={type === 'number' ? (key === 'depositDeadlineHours' ? 1 : 0) : undefined} step={type === 'number' ? (country === 'HU' && key !== 'depositDeadlineHours' ? 0.01 : 1) : undefined} value={settings[key] ?? ''} onChange={e => update(key, e.target.value)} /></label>)}</div>
       {['purchaseSafetyConfirmed', 'businessInfoConfirmed'].map((key, index) => <label className="commerce-safety-check" key={key}><input type="checkbox" checked={settings[key] === true} onChange={e => update(key, e.target.checked)} />{['해당 국가의 구매안전·결제 운영 조건을 확인했습니다.', '해당 국가의 사업자 정보를 확인했습니다.'][index]}</label>)}
       <div className="commerce-settings-grid">{['termsText', 'privacyText', 'returnsText'].map((key, index) => <label className="admin-form-field commerce-span-2" key={key}><span>{meta.name} {['이용약관', '개인정보 처리방침', '배송·교환·반품 안내'][index]}</span><textarea className="admin-input" rows="5" maxLength="20000" value={settings[key] || ''} onChange={e => update(key, e.target.value)} /></label>)}</div>
       <label className="commerce-safety-check"><input type="checkbox" checked={settings.policyConfirmed === true} onChange={e => update('policyConfirmed', e.target.checked)} />선택한 국가의 운영 정책을 검토·확정했습니다.</label>

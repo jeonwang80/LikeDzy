@@ -42,3 +42,18 @@ test('public country availability never exposes another country or MAIN as sella
  const row={allocationVersion:1,available:30,availableByCountry:{VN:0,HU:10,KR:2}};
  assert.equal(countryAvailability(row,'VN').available,0);assert.equal(countryAvailability(row,'HU').available,10);assert.equal(countryAvailability(row,'XX').available,0);
 });
+
+test('EUR product prices preserve cents without converting existing currencies', async () => {
+  const { productPrice, formatMoney } = await import('../../src/utils/market.js');
+  const { buildCatalogFields } = await import('../../src/utils/catalogQuery.js');
+  const product = { prices: { KRW: 59000, VND: 790000, EUR: 49.90 } };
+  assert.equal(productPrice(product, 'EUR'), 49.9);
+  assert.equal(productPrice({ prices: { EUR: 19.99 } }, 'EUR'), 19.99);
+  assert.equal(productPrice({ prices: { EUR: 19.999 } }, 'EUR'), null);
+  assert.equal(productPrice({ prices: { EUR: -1 } }, 'EUR'), null);
+  assert.equal(productPrice({ prices: { VND: 19.99 } }, 'VND'), null);
+  assert.equal(productPrice({ prices: { KRW: 59000 } }, 'EUR'), null);
+  assert.equal(formatMoney(49.9, 'EUR'), '€49.90');
+  assert.equal(buildCatalogFields(product).priceEUR, 49.9);
+  assert.equal(buildCatalogFields(product).priceVND, 790000);
+});

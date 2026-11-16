@@ -30,7 +30,7 @@ export function buildCatalogFields(product = {}, categoryMasters = []) {
     orderIndex: Number.isFinite(product.orderIndex) ? product.orderIndex : 999,
     createdAt: catalogDate(product.createdAt),
   };
-  for (const [language, suffix, currency] of [['ko', 'Ko', 'KRW'], ['en', 'En', 'USD'], ['vi', 'Vi', 'VND']]) {
+  for (const [language, suffix, currency] of [['ko', 'Ko', 'KRW'], ['en', 'En', 'USD'], ['vi', 'Vi', 'VND'], ['hu', 'Hu', 'EUR']]) {
     fields[`sortName${suffix}`] = String(product[language]?.name || product.ko?.name || product.name || '').normalize('NFKC').toLowerCase();
     fields[`price${currency}`] = numericPrice(product.prices?.[currency] ?? (currency === 'KRW' ? product.price : product[`price${currency}`]));
   }

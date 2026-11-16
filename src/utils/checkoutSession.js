@@ -30,7 +30,7 @@ export function orderAccess(id) {
 export function compactCartItem({ product, option, quantity }) {
   return {
     product: { id: product.id, name: product.name, ko: { name: product.ko?.name || product.name }, en: { name: product.en?.name || product.name },
-      prices: { KRW: Number(product.prices?.KRW ?? product.priceKRW) || 0, VND: Number(product.prices?.VND ?? product.priceVND) || 0 },
+      prices: { EUR: Number(product.prices?.EUR ?? product.priceEUR) || 0, KRW: Number(product.prices?.KRW ?? product.priceKRW) || 0, VND: Number(product.prices?.VND ?? product.priceVND) || 0 },
       cartColorName: product.cartColorName || '기본', cartColorBackground: product.cartColorBackground || '',
       cartThumbnailUrl: product.cartThumbnailUrl || product.imageUrls?.[0] || '', cartImageUrl: product.cartImageUrl || '' },
     option: { name: option?.name || '기본', variantId: option?.variantId || '', stock: Math.max(0, Number(option?.stock) || 0) },

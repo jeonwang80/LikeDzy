@@ -16,7 +16,8 @@ import 'react-quill-new/dist/quill.snow.css';
 import imageCompression from 'browser-image-compression';
 import { db, storage } from '../firebase';
 import { formatCategoryPath, useCategoryMasters } from '../hooks/useCategoryMasters';
-import { formatProductPrice, getColorSwatchBackground } from '../utils/productPresentation';
+import { getColorSwatchBackground } from '../utils/productPresentation';
+import { formatMoney, productPrice } from '../utils/market';
 import AdminColorPicker from '../components/AdminColorPicker';
 import { buildCatalogFields } from '../utils/catalogQuery';
 import '../admin.css';
@@ -174,7 +175,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
         { name: 'XL' },
         { name: '2XL' }
       ],
-      prices: { KRW: 0, USD: 0, VND: 0 }
+      prices: { KRW: 0, USD: 0, VND: 0, EUR: 0 }
     };
   });
 
@@ -204,11 +205,12 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
   };
 
   const handlePriceChange = (e) => {
-    const value = e.target.value.replace(/[^0-9]/g, '');
+    const value = e.target.value.replace(',', '.');
+    if (!(baseCurrency === 'EUR' ? /^\d*(?:\.\d{0,2})?$/ : /^\d*$/).test(value)) return;
     setRawPrice(value);
     setFormData(prev => {
-      const prices = { ...prev.prices, [baseCurrency]: Number(value) };
-      return { ...prev, prices, price: 'KRW ₩' + (prices.KRW || 0).toLocaleString() + ' / VND ₫' + (prices.VND || 0).toLocaleString() };
+      const prices = { ...prev.prices, [baseCurrency]: Number(value) || 0 };
+      return { ...prev, prices, price: ['KRW', 'VND', 'EUR'].map(code => `${code} ${formatMoney(prices[code] || 0, code)}`).join(' / ') };
     });
   };
 
@@ -549,7 +551,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
   const registrationChecks = [
     { label: '상품명', complete: Boolean(formData.ko?.name?.trim()) },
     { label: '카테고리', complete: Boolean(formData.ko?.category?.trim()) },
-    { label: '가격', complete: Number(formData.prices?.KRW || 0) > 0 },
+    { label: '가격', complete: ['KRW', 'VND', 'EUR'].some(code => productPrice(formData, code) !== null) },
     { label: '상품 이미지', complete: allPhotos.length > 0 },
   ];
   const completedCheckCount = registrationChecks.filter((item) => item.complete).length;
@@ -598,8 +600,8 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
 
           {/* Currency Pill */}
           <div className="live-builder-price-pill">
-            {formData.prices?.KRW > 0 
-              ? `KRW ₩${formData.prices.KRW?.toLocaleString()} / USD $${formData.prices.USD?.toLocaleString()} / VND ₫${formData.prices.VND?.toLocaleString()}`
+            {['KRW', 'VND', 'EUR'].some(code => formData.prices?.[code] > 0)
+              ? ['KRW', 'VND', 'EUR'].map(code => `${code} ${formatMoney(formData.prices?.[code] || 0, code)}`).join(' / ')
               : '가격 미설정'
             }
           </div>
@@ -950,6 +952,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                       >
                         <option value="KRW">KRW (원)</option>
                         <option value="VND">VND (동)</option>
+                        <option value="EUR">EUR (유로 · 헝가리)</option>
                       </select>
 
                       <input 
@@ -1169,7 +1172,7 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                   <span className="admin-preview-category">{currentLangData.category || 'CATEGORY'}</span>
                   <h1 className="alo-detail-title">{currentLangData.name || '상품명을 입력하세요'}</h1>
                   <div className="alo-detail-price-rating-row">
-                    <span className="alo-detail-price-text">{formatProductPrice(previewProduct, activeLang) || '가격 미설정'}</span>
+                    <span className="alo-detail-price-text">{`${baseCurrency} ${formatMoney(productPrice(previewProduct, baseCurrency), baseCurrency)}`}</span>
                     <span className="alo-detail-rating">TECHNICAL OUTDOOR</span>
                   </div>
                 </div>
@@ -1390,12 +1393,13 @@ export default function ProductEditor({ product: originalProduct, onClose, onSav
                       <select className="admin-select" value={baseCurrency} onChange={handleCurrencyChange}>
                         <option value="KRW">KRW (원)</option>
                         <option value="VND">VND (동)</option>
+                        <option value="EUR">EUR (유로 · 헝가리)</option>
                       </select>
                     </label>
                     <label className="admin-form-field span-2">
                       <span>판매 가격</span>
                       <input className="admin-input admin-price-input" value={rawPrice} onChange={handlePriceChange} inputMode="decimal" placeholder="숫자만 입력" />
-                      <small>통화별 판매가를 각각 입력합니다. KRW ₩{formData.prices?.KRW?.toLocaleString() || 0} · VND ₫{formData.prices?.VND?.toLocaleString() || 0}</small>
+                      <small>통화별 판매가를 각각 입력합니다. {['KRW', 'VND', 'EUR'].map(code => `${code} ${formatMoney(formData.prices?.[code] || 0, code)}`).join(' · ')}. EUR는 소수점 둘째 자리까지 입력할 수 있습니다.</small>
                     </label>
                   </div>
                 </section>
